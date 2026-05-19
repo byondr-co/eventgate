@@ -20,7 +20,8 @@ repos:
     hooks:
       - id: frontend-lint
         name: frontend eslint
-        entry: bash -c 'cd frontend && pnpm lint'
+        entry: bash -c 'source ~/.nvm/nvm.sh >/dev/null 2>&1 && nvm use 20 >/dev/null 2>&1 && cd frontend && pnpm lint'
         language: system
         files: ^frontend/.*\.(ts|tsx|js|jsx)$
         pass_filenames: false
+        stages: [manual]  # Re-enable as automatic in Task 14 once `pnpm lint` script exists
