@@ -8,7 +8,6 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
-.python-version
 
 # Virtualenvs / package managers
 .venv/
