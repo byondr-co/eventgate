@@ -1,4 +1,5 @@
 """Base settings — shared across dev, prod, test."""
+
 from pathlib import Path
 
 import environ

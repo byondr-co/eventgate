@@ -49,6 +49,7 @@ ignore = ["E501"]
 python_version = "3.12"
 strict = false
 plugins = ["mypy_django_plugin.main"]
+disable_error_code = ["import-untyped"]
 
 [tool.django-stubs]
 django_settings_module = "config.settings.dev"

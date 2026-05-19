@@ -1,5 +1,6 @@
 """Test settings — fast, isolated."""
-from .base import *  # noqa: F401,F403
+
+from .base import *  # noqa: F403
 
 DEBUG = False
 SECRET_KEY = "test-insecure-secret"
