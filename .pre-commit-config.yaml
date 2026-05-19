@@ -24,4 +24,3 @@ repos:
         language: system
         files: ^frontend/.*\.(ts|tsx|js|jsx)$
         pass_filenames: false
-        stages: [manual]  # Re-enable as automatic in Task 14 once `pnpm lint` script exists
