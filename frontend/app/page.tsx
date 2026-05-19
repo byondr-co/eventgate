@@ -17,11 +17,7 @@ export default function HomePage() {
         {isLoading && <HealthcheckCard loading />}
         {isError && <HealthcheckCard status="ok" database="error" version="unknown" />}
         {data && (
-          <HealthcheckCard
-            status={data.status}
-            database={data.database}
-            version={data.version}
-          />
+          <HealthcheckCard status={data.status} database={data.database} version={data.version} />
         )}
       </div>
     </main>
