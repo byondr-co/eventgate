@@ -87,9 +87,8 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "DEFAULT_PARSER_CLASSES": ("rest_framework.parsers.JSONParser",),
-    # DEFAULT_AUTHENTICATION_CLASSES / DEFAULT_PERMISSION_CLASSES are added by
-    # Plan B Task 6 once `apps.accounts.authentication.CookieJWTAuthentication`
-    # exists. Adding them now would break every DRF request before then.
+    "DEFAULT_AUTHENTICATION_CLASSES": ("apps.accounts.authentication.CookieJWTAuthentication",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
 
 SPECTACULAR_SETTINGS = {
