@@ -13,4 +13,7 @@ urlpatterns = [
     path("api/v1/", include("apps.orgs.urls")),
     path("api/v1/", include("apps.events.urls")),
     path("api/v1/", include("apps.guests.urls")),
+    path("api/v1/", include("apps.devices.urls")),
+    # path("api/v1/", include("apps.checkins.urls")),   # uncommented in Task 9
+    # path("api/v1/", include("apps.walkins.urls")),    # uncommented in Task 10
 ]
