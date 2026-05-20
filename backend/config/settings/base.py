@@ -1,5 +1,6 @@
 """Base settings — shared across dev, prod, test."""
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -26,8 +27,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "apps.common",
+    "apps.accounts",
+    "apps.orgs",
 ]
 
 MIDDLEWARE = [
@@ -83,6 +87,8 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "DEFAULT_PARSER_CLASSES": ("rest_framework.parsers.JSONParser",),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("apps.accounts.authentication.CookieJWTAuthentication",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
 
 SPECTACULAR_SETTINGS = {
@@ -111,3 +117,35 @@ CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://localhost:
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
+
+# Auth
+AUTH_USER_MODEL = "accounts.User"
+
+# Console email backend at MVP — magic links print to logs. Real email in Plan C.
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Eventgate <noreply@eventgate.dev>")
+
+# SimpleJWT
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=14),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+
+# Cookie-based JWT
+JWT_ACCESS_COOKIE = "eventgate_access"
+JWT_REFRESH_COOKIE = "eventgate_refresh"
+JWT_COOKIE_SECURE = env.bool("JWT_COOKIE_SECURE", default=False)
+JWT_COOKIE_SAMESITE = env("JWT_COOKIE_SAMESITE", default="Lax")
+JWT_COOKIE_DOMAIN = env("JWT_COOKIE_DOMAIN", default=None)
+
+# Magic-link
+MAGIC_LINK_TTL_MINUTES = 15
+MAGIC_LINK_FRONTEND_URL = env("MAGIC_LINK_FRONTEND_URL", default="http://localhost:3000")
+
+# Invites
+INVITE_TTL_HOURS = 72

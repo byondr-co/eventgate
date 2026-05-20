@@ -16,6 +16,9 @@ dependencies = [
   "uvicorn[standard]>=0.30,<0.31",
   "whitenoise>=6.7,<7.0",
   "django-cors-headers>=4.4,<5.0",
+  "djangorestframework-simplejwt>=5.3,<6.0",
+  "python-slugify>=8.0,<9.0",
+  "bcrypt>=4.2,<5.0",
 ]
 
 [dependency-groups]
