@@ -36,6 +36,10 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.events",
     "apps.guests",
+    "apps.audit",
+    "apps.devices",
+    "apps.checkins",
+    "apps.walkins",
 ]
 
 MIDDLEWARE = [
