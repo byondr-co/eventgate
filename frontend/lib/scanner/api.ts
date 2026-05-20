@@ -72,3 +72,69 @@ export function deviceAuthHeader(): string | null {
   if (!id) return null;
   return `Device ${id.device_token}`;
 }
+
+// ---- Check-in ----
+
+export type GuestSummary = {
+  id: string;
+  full_name: string;
+  email: string;
+  guest_type: "pre_registered" | "walk_in";
+  entry_status: string;
+  info_status: string;
+  gate: string;
+  scanner: string;
+  checked_in_at: string | null;
+};
+
+export type CheckinOutcome =
+  | { kind: "success"; guest: GuestSummary }
+  | { kind: "duplicate"; guest: GuestSummary; detail: string }
+  | { kind: "invalid"; detail: string }
+  | { kind: "session_expired" }
+  | { kind: "error"; detail: string };
+
+export type CheckinRequest = {
+  token: string;
+  gate: string;
+  scanner_label: string;
+  client_idempotency_key: string;
+};
+
+export async function postCheckin(body: CheckinRequest): Promise<CheckinOutcome> {
+  const session = loadSession();
+  if (!session) return { kind: "session_expired" };
+
+  let res: Response;
+  try {
+    res = await fetch("/api/v1/checkins/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.session_token}`,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    return { kind: "error", detail: (e as Error).message };
+  }
+
+  if (res.status === 401) return { kind: "session_expired" };
+
+  const data = (await res.json().catch(() => ({}))) as Partial<GuestSummary> & {
+    status?: string;
+    detail?: string;
+    guest?: GuestSummary;
+  };
+
+  if (res.status === 200 && data.guest) {
+    return { kind: "success", guest: data.guest };
+  }
+  if (res.status === 409 && data.guest) {
+    return { kind: "duplicate", guest: data.guest, detail: data.detail ?? "Already checked in." };
+  }
+  if (res.status === 404) {
+    return { kind: "invalid", detail: data.detail ?? "Token not recognised for this event." };
+  }
+  return { kind: "error", detail: data.detail ?? `${res.status} ${res.statusText}` };
+}
