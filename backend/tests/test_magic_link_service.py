@@ -83,3 +83,14 @@ class TestConsumeMagicLink:
     def test_unknown_token_rejected(self) -> None:
         with pytest.raises(MagicLinkInvalid):
             consume_magic_link("not-a-real-token")
+
+
+@pytest.mark.django_db
+def test_send_magic_link_email_creates_dispatch_row():
+    from apps.accounts.services import send_magic_link_email
+    from apps.notifications.models import NotificationDispatch
+
+    send_magic_link_email(email="alice@example.com", raw_token="some-token")
+    d = NotificationDispatch.objects.get(template="magic_link", recipient="alice@example.com")
+    assert d.channel == "email"
+    assert d.status in ("sent", "queued")

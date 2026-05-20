@@ -6,7 +6,6 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
@@ -48,23 +47,11 @@ def issue_magic_link(
 
 
 def send_magic_link_email(*, email: str, raw_token: str) -> None:
-    """Send the magic-link email. Uses the configured EMAIL_BACKEND.
+    """Enqueue the magic-link email send. Tests with CELERY_TASK_ALWAYS_EAGER=True
+    will execute it synchronously, which is what test_magic_link_service.py expects."""
+    from apps.accounts.tasks import send_magic_link_email_task
 
-    At MVP this is the console backend; the link prints to stdout / Fly logs.
-    Plan C replaces with Resend.
-    """
-    link = f"{settings.MAGIC_LINK_FRONTEND_URL}/auth/callback?token={raw_token}"
-    send_mail(
-        subject="Sign in to Eventgate",
-        message=(
-            "Click the link below to sign in. It works once and expires in 15 minutes.\n\n"
-            f"{link}\n\n"
-            "If you didn't request this, you can ignore the email."
-        ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[email],
-        fail_silently=False,
-    )
+    send_magic_link_email_task.delay(email=email, raw_token=raw_token)
 
 
 @transaction.atomic
