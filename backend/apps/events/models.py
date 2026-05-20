@@ -47,3 +47,39 @@ class Event(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class RegistrationField(models.Model):
+    """One field in an event's registration form."""
+
+    FIELD_TYPES = (
+        ("text", "Short text"),
+        ("email", "Email"),
+        ("phone", "Phone"),
+        ("textarea", "Long text"),
+        ("select", "Select"),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="registration_fields")
+    field_key = models.SlugField(max_length=40)
+    label_en = models.CharField(max_length=200)
+    label_km = models.CharField(max_length=200, blank=True)
+    field_type = models.CharField(max_length=12, choices=FIELD_TYPES, default="text")
+    required = models.BooleanField(default=False)
+    options_json = models.JSONField(default=list, blank=True)
+    order_index = models.PositiveIntegerField(default=0)
+    is_preset = models.BooleanField(default=False, help_text="Preset fields cannot be deleted.")
+    created_at = models.DateTimeField(default=tz.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints: ClassVar = [
+            models.UniqueConstraint(
+                fields=("event", "field_key"), name="unique_field_key_per_event"
+            ),
+        ]
+        ordering = ("order_index", "field_key")
+
+    def __str__(self) -> str:
+        return f"{self.event.slug}.{self.field_key}"
