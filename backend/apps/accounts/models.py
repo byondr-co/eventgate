@@ -11,7 +11,18 @@ from apps.accounts.managers import UserManager
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """Email-keyed user. No password by default — magic-link login at MVP."""
+    """Email-keyed user. No password by default — magic-link login at MVP.
+
+    Note: `AbstractBaseUser` contributes a `last_login` field auto-populated by
+    Django's `user_logged_in` signal. We do NOT call `django.contrib.auth.login()`
+    in our flow (we issue JWT tokens directly from `consume_magic_link`), so that
+    field will remain NULL. The canonical "last seen" field is `last_login_at`,
+    which `consume_magic_link` sets explicitly.
+
+    Permission framework: `PermissionsMixin` is included so Django admin works,
+    but `groups` and `user_permissions` are NOT used for Eventgate authorization.
+    All product-level roles live on `OrganizationMembership.role` (Plan B Task 10+).
+    """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)

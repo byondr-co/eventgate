@@ -11,7 +11,7 @@ class UserManager(BaseUserManager):
     use_in_migrations = True
 
     def _create_user(self, email: str, password: str | None = None, **extra_fields: Any):
-        if not email:
+        if not email or not email.strip():
             raise ValueError("Email is required")
         email = self.normalize_email(email).lower()
         user = self.model(email=email, **extra_fields)
