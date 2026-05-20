@@ -1,0 +1,16 @@
+{
+  "register": {
+    "title": "Register for {eventName}",
+    "subtitle": "Fill in your details — you'll get a QR code by email.",
+    "field_name": "Full name",
+    "field_email": "Email",
+    "field_phone": "Phone or Chat ID",
+    "submit": "Register",
+    "submitting": "Registering…",
+    "success_title": "You're registered!",
+    "success_subtitle": "Show this QR code at the entrance.",
+    "success_email_note": "We sent your QR code to your email. Show it at the entrance — staff will scan it.",
+    "success_check_spam": "Didn't receive it? Check spam, or contact the event organizer."
+  },
+  "language": "English"
+}

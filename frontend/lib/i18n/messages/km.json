@@ -1,0 +1,16 @@
+{
+  "register": {
+    "title": "ចុះឈ្មោះសម្រាប់ {eventName}",
+    "subtitle": "បំពេញព័ត៌មាន — អ្នកនឹងទទួលបាន QR Code តាមអ៊ីមែល។",
+    "field_name": "ឈ្មោះពេញ",
+    "field_email": "អ៊ីមែល",
+    "field_phone": "លេខទូរស័ព្ទ ឬ Chat ID",
+    "submit": "ចុះឈ្មោះ",
+    "submitting": "កំពុងចុះឈ្មោះ…",
+    "success_title": "អ្នកបានចុះឈ្មោះហើយ!",
+    "success_subtitle": "បង្ហាញ QR Code នេះនៅច្រកចូល។",
+    "success_email_note": "យើងបានផ្ញើ QR Code ទៅអ៊ីមែលរបស់អ្នក។ បង្ហាញវានៅច្រកចូល — បុគ្គលិកនឹងស្កេនវា។",
+    "success_check_spam": "មិនបានទទួល? ពិនិត្យ Spam ឬទាក់ទងអ្នករៀបចំព្រឹត្តិការណ៍។"
+  },
+  "language": "ខ្មែរ"
+}
