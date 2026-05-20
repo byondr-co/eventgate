@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "apps.common",
     "apps.accounts",
-    # `apps.orgs` is appended by Plan B Task 8 (when the app skeleton lands).
+    "apps.orgs",
 ]
 
 MIDDLEWARE = [
