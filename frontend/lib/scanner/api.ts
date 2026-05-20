@@ -138,3 +138,49 @@ export async function postCheckin(body: CheckinRequest): Promise<CheckinOutcome>
   }
   return { kind: "error", detail: data.detail ?? `${res.status} ${res.statusText}` };
 }
+
+// ---- Walk-in display ----
+
+export type WalkinDisplayResponse = {
+  guest_id: string;
+  entry_token: string;
+  claim_url: string;
+};
+
+export type WalkinDisplayOutcome =
+  | { kind: "ready"; data: WalkinDisplayResponse }
+  | { kind: "session_expired" }
+  | { kind: "error"; detail: string };
+
+export async function postWalkinDisplayNext(input: {
+  gate: string;
+  scanner_label: string;
+}): Promise<WalkinDisplayOutcome> {
+  const session = loadSession();
+  if (!session) return { kind: "session_expired" };
+
+  let res: Response;
+  try {
+    res = await fetch("/api/v1/walkins/displays/next/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.session_token}`,
+      },
+      body: JSON.stringify(input),
+    });
+  } catch (e) {
+    return { kind: "error", detail: (e as Error).message };
+  }
+
+  if (res.status === 401) return { kind: "session_expired" };
+  const data = (await res.json().catch(() => ({}))) as WalkinDisplayResponse | { detail?: string };
+
+  if (res.status === 200 && "entry_token" in data) {
+    return { kind: "ready", data };
+  }
+  return {
+    kind: "error",
+    detail: (data as { detail?: string }).detail ?? `${res.status} ${res.statusText}`,
+  };
+}
