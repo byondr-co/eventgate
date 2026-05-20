@@ -7,7 +7,8 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
-    pathname.startsWith(INVITE_PREFIX);
+    pathname.startsWith(INVITE_PREFIX) ||
+    pathname.startsWith("/e/");
 
   const hasAccess = req.cookies.get("eventgate_access");
   if (!hasAccess && !isPublic) {
