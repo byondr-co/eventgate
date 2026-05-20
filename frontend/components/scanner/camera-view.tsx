@@ -95,9 +95,8 @@ export function CameraView({ paused, onScan }: Props) {
       if (stream) stream.getTracks().forEach((t) => t.stop());
       video.srcObject = null;
     };
-    // Intentional empty deps — see refs above. We do NOT want to restart the
-    // camera when `paused` toggles; we just read the latest value via the ref.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentional empty deps — the effect reads `paused` and `onScan` via refs
+    // (see syncing effects above) so the camera doesn't restart on every render.
   }, []);
 
   return (
