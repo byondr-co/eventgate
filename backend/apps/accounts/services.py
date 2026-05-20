@@ -89,7 +89,13 @@ def consume_magic_link(raw_token: str) -> User:
     if token.expires_at <= timezone.now():
         raise MagicLinkExpired("Token expired")
 
-    user, _created = User.objects.get_or_create(email=token.email)
+    # Route new-user creation through the manager so set_unusable_password()
+    # runs. Plain get_or_create would bypass UserManager.create_user and leave
+    # the password field as an empty string (technically usable).
+    try:
+        user = User.objects.get(email=token.email)
+    except User.DoesNotExist:
+        user = User.objects.create_user(email=token.email)
     user.last_login_at = timezone.now()
     user.save(update_fields=["last_login_at", "updated_at"])
 

@@ -34,8 +34,8 @@ class TestIssueMagicLink:
         assert timedelta(minutes=14, seconds=55) < delta < timedelta(minutes=15, seconds=5)
         assert token.expires_at > after
 
-    def test_rate_limit_per_email(self) -> None:
-        # Issuing many tokens for the same email creates new rows
+    def test_multiple_tokens_can_exist_for_same_email(self) -> None:
+        # No rate limit at MVP — Plan C will add Redis-backed throttling.
         for _ in range(3):
             issue_magic_link(email="alice@example.com")
         assert MagicLinkToken.objects.filter(email="alice@example.com").count() == 3
