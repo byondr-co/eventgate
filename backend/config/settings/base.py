@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "apps.common",
-    # `apps.accounts` is appended by Plan B Task 2 (when the app skeleton lands).
+    "apps.accounts",
     # `apps.orgs` is appended by Plan B Task 8 (when the app skeleton lands).
 ]
 
