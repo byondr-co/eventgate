@@ -1,10 +1,22 @@
 import pytest
+from django.core.cache import cache
 from django.db import connection, transaction
 
 from apps.common.idempotency import already_seen, remember
 from apps.common.locks import advisory_xact_lock
 
 pytestmark = pytest.mark.django_db(transaction=True)
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """The locmem cache persists across tests within a pytest process. These
+    tests assert "first call" semantics — anything another test wrote earlier
+    under the same key would poison them. Clear in/out for guaranteed isolation.
+    """
+    cache.clear()
+    yield
+    cache.clear()
 
 
 def test_advisory_lock_returns_within_txn():
