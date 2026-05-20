@@ -43,3 +43,25 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return self.email
+
+
+class MagicLinkToken(models.Model):
+    """Single-use magic-link token. Stores SHA-256 hash, not the raw token."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(db_index=True)
+    token_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    requested_from_ip = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        indexes: ClassVar[list[models.Index]] = [models.Index(fields=["email", "expires_at"])]
+
+    def __str__(self) -> str:
+        return f"MagicLink<{self.email}>"
+
+    @property
+    def is_consumed(self) -> bool:
+        return self.consumed_at is not None
