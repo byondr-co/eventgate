@@ -1,0 +1,144 @@
+import uuid
+
+import django.db.models.deletion
+import django.utils.timezone
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+    initial = True
+
+    dependencies = [
+        ("events", "0002_registrationfield"),
+        ("orgs", "0002_invite"),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name="ScannerDevice",
+            fields=[
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("label", models.CharField(max_length=80)),
+                (
+                    "role",
+                    models.CharField(
+                        choices=[
+                            ("scanner", "Pre-reg scanner"),
+                            ("walkin_display", "Walk-in display"),
+                            ("helpdesk", "Help desk"),
+                        ],
+                        max_length=16,
+                    ),
+                ),
+                ("gate", models.CharField(blank=True, max_length=64)),
+                (
+                    "enrollment_code_hash",
+                    models.CharField(
+                        blank=True,
+                        help_text=(
+                            "SHA-256 of the one-time enrollment code. "
+                            "Cleared once exchanged."
+                        ),
+                        max_length=128,
+                    ),
+                ),
+                (
+                    "device_token_hash",
+                    models.CharField(
+                        blank=True,
+                        help_text=(
+                            "SHA-256 of the durable per-device token. "
+                            "Empty until enrollment completes."
+                        ),
+                        max_length=128,
+                    ),
+                ),
+                ("enrolled_at", models.DateTimeField(blank=True, null=True)),
+                ("last_seen_at", models.DateTimeField(blank=True, null=True)),
+                ("revoked_at", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(default=django.utils.timezone.now)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "event",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="scanner_devices",
+                        to="events.event",
+                    ),
+                ),
+                (
+                    "organization",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="orgs.organization",
+                    ),
+                ),
+            ],
+        ),
+        migrations.AddConstraint(
+            model_name="scannerdevice",
+            constraint=models.UniqueConstraint(
+                fields=("event", "label", "role"),
+                name="unique_device_label_per_event_role",
+            ),
+        ),
+        migrations.AddIndex(
+            model_name="scannerdevice",
+            index=models.Index(
+                fields=["event", "role", "revoked_at"],
+                name="device_event_role_idx",
+            ),
+        ),
+        migrations.CreateModel(
+            name="EventPinSession",
+            fields=[
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("session_token_hash", models.CharField(max_length=128)),
+                ("unlocked_at", models.DateTimeField(default=django.utils.timezone.now)),
+                ("expires_at", models.DateTimeField(blank=True, null=True)),
+                ("unlocked_by_ip", models.GenericIPAddressField(blank=True, null=True)),
+                (
+                    "event",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="pin_sessions",
+                        to="events.event",
+                    ),
+                ),
+                (
+                    "scanner_device",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="sessions",
+                        to="devices.scannerdevice",
+                    ),
+                ),
+            ],
+            options={
+                "ordering": ("-unlocked_at",),
+                "indexes": [
+                    models.Index(
+                        fields=["scanner_device", "-unlocked_at"],
+                        name="pin_session_device_idx",
+                    )
+                ],
+            },
+        ),
+    ]
