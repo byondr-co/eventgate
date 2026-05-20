@@ -120,9 +120,7 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 
 # Auth
-# AUTH_USER_MODEL is added by Plan B Task 3 once the custom User model exists.
-# (django.contrib.admin autodiscover eagerly resolves this at startup, so it
-#  must not point at a non-installed app.)
+AUTH_USER_MODEL = "accounts.User"
 
 # Console email backend at MVP — magic links print to logs. Real email in Plan C.
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
