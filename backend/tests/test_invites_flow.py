@@ -70,51 +70,75 @@ class TestSendInvite:
         assert response.status_code == 400
 
 
+def _create_invite(*, organization, email: str, role: str, invited_by) -> tuple[Invite, str]:
+    """Call send_invite directly to get the raw token from the returned instance.
+
+    The HTTP endpoint also calls send_invite, but DRF re-serializes the response
+    so the raw token attribute isn't accessible to test clients.
+    """
+    from apps.orgs.services import send_invite as _send
+
+    invite = _send(organization=organization, email=email, role=role, invited_by=invited_by)
+    return invite, invite.raw_token_for_test
+
+
 @pytest.mark.django_db
 class TestAcceptInvite:
     def test_recipient_can_accept_after_magic_link(self, client, acme_with_alice_owner) -> None:
-        client.post(
-            "/api/v1/orgs/acme/invites/",
-            {"email": "bob@example.com", "role": "admin"},
-            format="json",
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        alice = User.objects.get(email="alice@example.com")
+        _, raw_token = _create_invite(
+            organization=acme_with_alice_owner,
+            email="bob@example.com",
+            role="admin",
+            invited_by=alice,
         )
-        invite = Invite.objects.get(email="bob@example.com")
 
         bob_client = APIClient()
         _login(bob_client, "bob@example.com")
 
-        accept = bob_client.post(f"/api/v1/auth/invites/{invite.raw_token_for_test}/accept/")
+        accept = bob_client.post(f"/api/v1/auth/invites/{raw_token}/accept/")
         assert accept.status_code == 200
         assert OrganizationMembership.objects.filter(
             organization=acme_with_alice_owner, user__email="bob@example.com", role="admin"
         ).exists()
 
     def test_accept_with_wrong_email_returns_403(self, client, acme_with_alice_owner) -> None:
-        client.post(
-            "/api/v1/orgs/acme/invites/",
-            {"email": "bob@example.com", "role": "admin"},
-            format="json",
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        alice = User.objects.get(email="alice@example.com")
+        _, raw_token = _create_invite(
+            organization=acme_with_alice_owner,
+            email="bob@example.com",
+            role="admin",
+            invited_by=alice,
         )
-        invite = Invite.objects.get(email="bob@example.com")
 
         wrong = APIClient()
         _login(wrong, "charlie@example.com")
-        response = wrong.post(f"/api/v1/auth/invites/{invite.raw_token_for_test}/accept/")
+        response = wrong.post(f"/api/v1/auth/invites/{raw_token}/accept/")
         assert response.status_code == 403
 
     def test_expired_invite_rejected(self, client, acme_with_alice_owner) -> None:
         from datetime import timedelta
 
-        client.post(
-            "/api/v1/orgs/acme/invites/",
-            {"email": "bob@example.com", "role": "admin"},
-            format="json",
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        alice = User.objects.get(email="alice@example.com")
+        invite, raw_token = _create_invite(
+            organization=acme_with_alice_owner,
+            email="bob@example.com",
+            role="admin",
+            invited_by=alice,
         )
-        invite = Invite.objects.get(email="bob@example.com")
         invite.expires_at = timezone.now() - timedelta(seconds=1)
         invite.save()
 
         bob = APIClient()
         _login(bob, "bob@example.com")
-        response = bob.post(f"/api/v1/auth/invites/{invite.raw_token_for_test}/accept/")
+        response = bob.post(f"/api/v1/auth/invites/{raw_token}/accept/")
         assert response.status_code == 400

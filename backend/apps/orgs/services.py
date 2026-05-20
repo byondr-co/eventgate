@@ -55,9 +55,9 @@ def send_invite(*, organization: Organization, email: str, role: str, invited_by
         invited_by=invited_by,
         expires_at=timezone.now() + timedelta(hours=settings.INVITE_TTL_HOURS),
     )
-    # Store raw token in process-level registry so tests can access it via
-    # Invite.objects.get(...).raw_token_for_test without it ever hitting the DB.
-    Invite._raw_token_registry[str(invite.pk)] = raw
+    # Tests set this attribute on the returned Invite instance to retrieve the
+    # raw token. Production callers receive the raw token via email only.
+    invite.raw_token_for_test = raw  # type: ignore[attr-defined]
 
     link = f"{settings.MAGIC_LINK_FRONTEND_URL}/invites/{raw}"
     send_mail(
