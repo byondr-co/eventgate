@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.guests.views import GuestListView, PublicRegistrationView
+from apps.guests.views import GuestListView, GuestQrView, PublicRegistrationView
 
 urlpatterns = [
     path(
@@ -13,4 +13,5 @@ urlpatterns = [
         GuestListView.as_view({"get": "list"}),
         name="guest-list",
     ),
+    path("guests/<uuid:guest_id>/qr.png", GuestQrView.as_view(), name="guest-qr"),
 ]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -10,6 +11,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsOrgMember
+from apps.common.qr import render_png
+from apps.common.tokens import hash_token, tokens_match
 from apps.events.models import Event
 from apps.guests.models import Guest
 from apps.guests.serializers import GuestSerializer, RegistrationSubmitResponseSerializer
@@ -60,3 +63,26 @@ class GuestListView(viewsets.GenericViewSet):
         if page is not None:
             return self.get_paginated_response(ser.data)
         return Response(ser.data)
+
+
+class GuestQrView(APIView):
+    """GET /api/v1/guests/<id>/qr.png?token=<raw>
+
+    Public endpoint requiring possession of the raw entry_token. Constant-time
+    compare guards against timing attacks.
+    """
+
+    permission_classes = (AllowAny,)
+    authentication_classes: ClassVar[list] = []
+
+    def get(self, request: Request, guest_id) -> HttpResponse:
+        provided = request.query_params.get("token", "")
+        guest = get_object_or_404(Guest, id=guest_id)
+        if not tokens_match(provided, hash_token(guest.entry_token)):
+            return Response(
+                {"detail": "Token does not match guest."}, status=status.HTTP_403_FORBIDDEN
+            )
+        png = render_png(guest.entry_token)
+        resp = HttpResponse(png, content_type="image/png")
+        resp["Cache-Control"] = "private, max-age=300"
+        return resp
