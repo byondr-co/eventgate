@@ -7,12 +7,21 @@ primary_region = "sin"
   DJANGO_SETTINGS_MODULE = "config.settings.prod"
   PORT = "8000"
 
+# Two process groups: the web `app` (gunicorn) and the `worker` (Celery).
+# When [processes] is defined, Fly ignores the Dockerfile's CMD and uses the
+# commands here for each Machine, picked by process group name.
+[processes]
+  app = "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -"
+  worker = "celery -A config worker --loglevel=INFO --concurrency=4"
+
+# HTTP listener is bound to the `app` process group only.
 [http_service]
   internal_port = 8000
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 1
+  processes = ["app"]
 
 [[http_service.checks]]
   interval = "30s"
@@ -21,6 +30,14 @@ primary_region = "sin"
   method = "GET"
   path = "/api/health/"
 
+# A VM per process group. The worker doesn't expose any port so it does NOT
+# get an http_service block.
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["worker"]
