@@ -15,5 +15,5 @@ urlpatterns = [
     path("api/v1/", include("apps.guests.urls")),
     path("api/v1/", include("apps.devices.urls")),
     path("api/v1/", include("apps.checkins.urls")),
-    # path("api/v1/", include("apps.walkins.urls")),    # uncommented in Task 10
+    path("api/v1/", include("apps.walkins.urls")),
 ]

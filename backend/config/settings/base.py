@@ -166,5 +166,12 @@ JWT_COOKIE_DOMAIN = env("JWT_COOKIE_DOMAIN", default=None)
 MAGIC_LINK_TTL_MINUTES = 15
 MAGIC_LINK_FRONTEND_URL = env("MAGIC_LINK_FRONTEND_URL", default="http://localhost:3000")
 
+# Public base URL — used by walk-in QR codes (their URL points back at the
+# frontend's /e/<org>/<event>/claim/<token>/ page). Falls back to
+# MAGIC_LINK_FRONTEND_URL for environments that already set that one.
+PUBLIC_BASE_URL = env(
+    "PUBLIC_BASE_URL", default=env("MAGIC_LINK_FRONTEND_URL", default="http://localhost:3000")
+)
+
 # Invites
 INVITE_TTL_HOURS = 72

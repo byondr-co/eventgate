@@ -48,6 +48,13 @@ class Guest(OrgScopedModel):
     class Meta:
         constraints: ClassVar = [
             models.UniqueConstraint(fields=("event", "entry_token"), name="unique_token_per_event"),
+            # At most one walk-in can be in `displayed` state per (event, gate, scanner)
+            # at any moment. Mirrors the MVP "one displayed token per scope" rule.
+            models.UniqueConstraint(
+                fields=("event", "gate", "scanner"),
+                condition=models.Q(entry_status="displayed", guest_type="walk_in"),
+                name="one_displayed_walkin_per_scope",
+            ),
         ]
         indexes: ClassVar = [
             models.Index(fields=("event", "entry_status")),
