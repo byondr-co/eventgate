@@ -27,11 +27,14 @@ out/
 .env.*.local
 !.env.example
 
-# IDE
+# IDE / agents
 .idea/
 .vscode/
 *.swp
 .DS_Store
+.agents/
+.claude/
+skills-lock.json
 
 # Docker
 docker-volumes/
