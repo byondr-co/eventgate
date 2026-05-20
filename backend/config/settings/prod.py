@@ -28,3 +28,9 @@ if SENTRY_DSN:
         send_default_pii=False,
         environment=env("SENTRY_ENVIRONMENT", default="staging"),
     )
+
+# Resend email (anymail). Falls back to console backend if RESEND_API_KEY is unset.
+RESEND_API_KEY = env("RESEND_API_KEY", default="")
+if RESEND_API_KEY:
+    EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
+    ANYMAIL = {"RESEND_API_KEY": RESEND_API_KEY}

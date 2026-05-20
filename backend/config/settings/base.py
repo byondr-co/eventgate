@@ -29,9 +29,13 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
+    "anymail",
     "apps.common",
     "apps.accounts",
     "apps.orgs",
+    # apps.notifications — appended by Plan C Task 10 (when skeleton lands)
+    # apps.events — appended by Plan C Task 2 (when skeleton lands)
+    # apps.guests — appended by Plan C Task 6 (when skeleton lands)
 ]
 
 MIDDLEWARE = [
