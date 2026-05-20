@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -91,3 +93,45 @@ class EventPinView(APIView):
         except PinTooShort as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response({"detail": "PIN updated.", "rotated_at": event.event_pin_rotated_at})
+
+
+class PublicEventDetailView(APIView):
+    """GET /api/v1/e/<org_slug>/<event_slug>/  (anonymous)
+
+    Returns just enough for the public registration / walk-in claim pages to
+    render: event name + open status + EN/KM field labels. Sensitive columns
+    (event_pin_hash) are explicitly excluded.
+    """
+
+    permission_classes = (AllowAny,)
+    authentication_classes: ClassVar[list] = []
+
+    def get(self, request, org_slug, event_slug):
+        event = get_object_or_404(Event, organization__slug=org_slug, slug=event_slug)
+        fields = [
+            {
+                "field_key": f.field_key,
+                "label_en": f.label_en,
+                "label_km": f.label_km,
+                "field_type": f.field_type,
+                "required": f.required,
+                "options": f.options_json or [],
+                "order_index": f.order_index,
+            }
+            for f in event.registration_fields.order_by("order_index", "field_key")
+        ]
+        return Response(
+            {
+                "org_slug": org_slug,
+                "slug": event.slug,
+                "name": event.name,
+                "venue": event.venue,
+                "status": event.status,
+                "starts_at": event.starts_at,
+                "ends_at": event.ends_at,
+                "timezone": event.timezone,
+                "registration_open": event.registration_open,
+                "walkins_enabled": event.walkins_enabled,
+                "fields": fields,
+            }
+        )
