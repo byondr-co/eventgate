@@ -24,6 +24,7 @@ Visit http://localhost:3000 — you should see "Backend: ok" on the home page.
 - Redis: Upstash (Singapore)
 - Errors: Sentry
 
-## Plans
+## Docs
 
-Active implementation plans live in `/Users/vinei/Projects/Paperless-Pre-check-in/docs/superpowers/plans/`.
+- `docs/brief.md` — SaaS direction brief (the strategic foundation for all plans)
+- `docs/plans/` — sprint-by-sprint implementation plans (Plan A, B, …)
