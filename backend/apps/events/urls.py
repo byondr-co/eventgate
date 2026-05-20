@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.events.views import EventViewSet, RegistrationFieldViewSet
+from apps.events.views import EventPinView, EventViewSet, RegistrationFieldViewSet
 
 event_list = EventViewSet.as_view({"get": "list", "post": "create"})
 event_detail = EventViewSet.as_view(
@@ -29,5 +29,17 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/fields/<slug:field_key>/",
         field_detail,
         name="field-detail",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:slug>/pin/set/",
+        EventPinView.as_view(),
+        {"action": "set"},
+        name="event-pin-set",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:slug>/pin/rotate/",
+        EventPinView.as_view(),
+        {"action": "rotate"},
+        name="event-pin-rotate",
     ),
 ]

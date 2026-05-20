@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.events.models import Event, RegistrationField
 from apps.events.serializers import EventSerializer, RegistrationFieldSerializer
-from apps.events.services import seed_preset_fields
+from apps.events.services import PinTooShort, seed_preset_fields, set_event_pin
 from apps.orgs.views import StandardPagination
 
 
@@ -68,3 +71,23 @@ class RegistrationFieldViewSet(viewsets.ModelViewSet):
 
             raise PermissionDenied("Preset fields cannot be deleted.")
         instance.delete()
+
+
+class EventPinView(APIView):
+    """POST /api/v1/orgs/<org_slug>/events/<slug>/pin/{set,rotate}/
+
+    Owner/admin only. `set` and `rotate` share semantics — the second URL is a
+    clearer name for the recurring case.
+    """
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin")
+
+    def post(self, request, org_slug, slug, action):
+        event = get_object_or_404(Event, organization=request.organization, slug=slug)
+        pin = (request.data.get("pin") or "").strip()
+        try:
+            set_event_pin(event, pin)
+        except PinTooShort as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response({"detail": "PIN updated.", "rotated_at": event.event_pin_rotated_at})

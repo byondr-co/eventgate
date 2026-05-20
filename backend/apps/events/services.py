@@ -1,8 +1,10 @@
-"""Event services: preset field seeding."""
+"""Event services: preset field seeding + event PIN management."""
 
 from __future__ import annotations
 
+import bcrypt
 from django.db import transaction
+from django.utils import timezone
 
 from apps.events.models import Event, RegistrationField
 
@@ -43,3 +45,33 @@ def seed_preset_fields(event: Event) -> None:
             field_key=preset["field_key"],
             defaults={**preset, "is_preset": True},
         )
+
+
+PIN_MIN_LENGTH = 4
+
+
+class PinTooShort(ValueError):
+    pass
+
+
+def set_event_pin(event: Event, raw_pin: str) -> None:
+    """Hash raw_pin with bcrypt and stamp event_pin_rotated_at.
+
+    Raises PinTooShort if pin is shorter than PIN_MIN_LENGTH or empty.
+    """
+    if not raw_pin or len(raw_pin) < PIN_MIN_LENGTH:
+        raise PinTooShort(f"PIN must be at least {PIN_MIN_LENGTH} characters.")
+    hashed = bcrypt.hashpw(raw_pin.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    event.event_pin_hash = hashed
+    event.event_pin_rotated_at = timezone.now()
+    event.save(update_fields=["event_pin_hash", "event_pin_rotated_at", "updated_at"])
+
+
+def check_event_pin(event: Event, raw_pin: str) -> bool:
+    """Constant-time-ish bcrypt compare. False on empty or absent hash."""
+    if not event.event_pin_hash or not raw_pin:
+        return False
+    try:
+        return bcrypt.checkpw(raw_pin.encode("utf-8"), event.event_pin_hash.encode("utf-8"))
+    except ValueError:
+        return False
