@@ -3426,3 +3426,60 @@ git push
 - **Event slug is unique per org, not globally.** Two orgs can both have `conf-2026`. URLs distinguish via org slug.
 - **Public registration is gated only by `event.registration_open`.** No auth, no captcha at MVP. Rate limiting deferred to Plan F.
 - **Email send is always via Celery now.** Both magic-link (Plan B) and QR delivery flow through `accounts.tasks` and `guests.tasks` with `NotificationDispatch` rows.
+
+---
+
+## Completion Log
+
+- **Completed:** 2026-05-20
+- **Backend:** 105 tests (12 new test files added in Plan C). New apps: `events`, `guests`, `notifications`. Real email via Resend ready (conditional on `RESEND_API_KEY` — currently unset; falls back to console backend).
+- **Frontend:** 7 new pages + 2 hook modules + 7 components. next-intl wired with EN + KM bundles.
+- **Staging deploy:** backend redeployed (commit `fdbc557`), all Plan C migrations applied to Neon; frontend redeployed to Vercel.
+
+### End-to-end verification (against staging)
+
+```
+POST /api/v1/auth/magic-link/request/ {"email":"plan-c-v3@..."}
+  → 204 + magic-link printed to Fly logs ✓
+
+POST /api/v1/auth/magic-link/consume/ {"token":"<raw>"}
+  → 200 + JWT cookies set ✓
+
+POST /api/v1/orgs/ {"name":"Plan C Smoke"}
+  → 201 slug=plan-c-smoke ✓
+
+POST /api/v1/orgs/plan-c-smoke/events/ {"name":"Conf 2026","slug":"conf-2026"}
+  → 201 (preset fields name/email/phone_or_chat auto-seeded) ✓
+
+POST /api/v1/e/plan-c-smoke/conf-2026/register/ {"name":"Alice","email":"alice-e2e@...","phone_or_chat":"+855 ..."}
+  → 201 {"guest_id":"<uuid>"} (entry_token NOT exposed in response) ✓
+  → QR email rendered + delivered to console (visible in Fly logs) ✓
+
+GET /api/v1/orgs/plan-c-smoke/events/conf-2026/guests/
+  → 200 count=1, Alice listed ✓
+
+GET /api/v1/guests/<uuid>/qr.png?token=<raw>
+  → 200 image/png, 629x629 PNG, 860 bytes ✓
+```
+
+### Deviations from this plan
+
+- **PyPI dep name fix.** Plan said `anymail[resend]`; actual PyPI distribution is `django-anymail`. Fixed inline in Task 1.
+- **Field shadowing.** Plan C Task 2's `Event` model has a `timezone` field that shadowed `django.utils.timezone`. Implementer aliased the import as `tz` and used `tz.now` consistently (also applied in Task 3 RegistrationField and Task 10 NotificationDispatch).
+- **QR scale.** Plan said `render_png(scale=10)` default; that produces ~230px which fails the `≥320px` test. Implementer bumped default to `scale=17` (~391px). Documented as the correct resolution of the spec contradiction.
+- **DRF test response API.** Plan used `response.text` (from `requests` library); DRF Response uses `response.content.decode()`. Implementer fixed inline.
+- **CELERY_TASK_ALWAYS_EAGER on staging.** Plan didn't anticipate that staging has no separate Celery worker process — only the web process. After Task 11 moved emails into Celery tasks, they queued indefinitely. Wired `CELERY_TASK_ALWAYS_EAGER` as an env-var-readable Django setting and set the Fly secret to `"true"`. **A real worker process on Fly is a Plan D ops task.**
+- **Public event-detail endpoint not added.** The public registration page falls back to using `eventSlug` as the title. The plan acknowledged this as an open follow-up; a public `GET /api/v1/e/<org>/<event>/` endpoint should land in Plan D.
+- **Khmer translations are starter-grade.** The `lib/i18n/messages/km.json` strings are first-pass and need review by the user's identified Khmer translator before any external pilot.
+- **Resend not yet wired in production.** `RESEND_API_KEY` is unset; staging uses console backend. User signed up for Resend in parallel — wire on next deploy.
+
+### Follow-ups for Plan D (parking lot)
+
+- Provision a Celery worker process on Fly (currently emails run synchronously in the web process via `CELERY_TASK_ALWAYS_EAGER`).
+- Add public `GET /api/v1/e/<org>/<event>/` endpoint so the registration page can show the real event name.
+- Wire `RESEND_API_KEY` on Fly once user completes Resend signup + sender domain verification.
+- Khmer translation review pass with the identified translator.
+- Walk-in flow (Plan D core).
+- Pre-reg scanner PWA (Plan D core).
+- Pre-event-detail public endpoint for the registration form.
+- HTML version of the QR delivery email (currently plaintext-only).
