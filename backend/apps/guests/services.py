@@ -57,4 +57,9 @@ def register_guest(*, event: Event, payload: dict[str, Any], source: str = "publ
         custom_fields=custom,
         source=source,
     )
+
+    from apps.guests.tasks import send_qr_email_task
+
+    send_qr_email_task.delay(guest_id=str(guest.id))
+
     return guest
