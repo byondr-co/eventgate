@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { EventsTable } from "@/components/events/events-table";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrg } from "@/lib/orgs";
 
 export default function OrgDashboardPage() {
@@ -23,24 +23,11 @@ export default function OrgDashboardPage() {
             {org.slug} · {org.role}
           </p>
         </div>
-        <Link
-          href={`/orgs/${slug}/members`}
-          className={buttonVariants({ variant: "outline" })}
-        >
+        <Link href={`/orgs/${slug}/members`} className={buttonVariants({ variant: "outline" })}>
           Members
         </Link>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Events</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No events yet. Event management lands in Plan C.
-          </p>
-        </CardContent>
-      </Card>
+      <EventsTable orgSlug={slug} />
     </div>
   );
 }
