@@ -38,6 +38,18 @@ export default function EventDashboardPage() {
           >
             Guests
           </Link>
+          <Link
+            href={`/orgs/${slug}/events/${eventSlug}/devices`}
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Devices
+          </Link>
+          <Link
+            href={`/orgs/${slug}/events/${eventSlug}/settings`}
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Settings
+          </Link>
         </div>
       </div>
 
