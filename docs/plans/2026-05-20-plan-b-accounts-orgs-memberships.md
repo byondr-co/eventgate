@@ -3994,3 +3994,63 @@ Plan B does not touch any of the firm decisions from Appendix A of the brief —
 - **404 over the org for non-members.** Do not reveal org existence to outsiders.
 - **One open invite per (org, email) at a time.** New invite revokes prior open invite.
 - **Owner-on-create.** Creating an org auto-makes the creator the owner — no separate ownership-claim step.
+
+---
+
+## Completion Log
+
+- **Completed:** 2026-05-20
+- **Backend:** 65 new tests added (all passing). Backend commits: T1 `7e5d34a` → T13 `54e1562`, plus 4 follow-up fixes (`d6700f6`, `bf4bbf7`, `fed8ff8`, `ed31d14`).
+- **Frontend:** 9 pages + 2 hooks files added. Frontend commits: T14 `77c87bb` → T21 `328da51`.
+- **Staging deploy:** backend redeployed and migrated; frontend redeployed.
+  - https://eventgate-backend-staging.fly.dev
+  - https://frontend-five-lovat-94.vercel.app
+
+### End-to-end verification (API, against staging)
+
+```
+POST /api/v1/auth/magic-link/request/ {"email":"e2e-test@eventgate.dev"}
+  → 204
+  (Fly logs printed: https://frontend-five-lovat-94.vercel.app/auth/callback?token=<raw>)
+
+POST /api/v1/auth/magic-link/consume/ {"token":"<raw>"}
+  → 200 + httpOnly access + refresh cookies set, body contains user
+
+GET /api/v1/auth/me/ (with cookies)
+  → 200 {"email":"e2e-test@eventgate.dev", ...}
+
+POST /api/v1/orgs/ {"name":"E2E Smoke Org"}
+  → 201 {"slug":"e2e-smoke-org", "role":"owner", ...}
+
+GET /api/v1/orgs/
+  → 200 {"count":1, "results":[{"slug":"e2e-smoke-org", ...}]}
+```
+
+### Deviations from this plan
+
+- **Sequencing fix for Task 1.** The original spec added `AUTH_USER_MODEL`, `apps.accounts`, `apps.orgs` to `INSTALLED_APPS`, and `DEFAULT_AUTHENTICATION_CLASSES` all in Task 1. Code review caught that these eagerly fail Django setup. Deferred:
+  - `AUTH_USER_MODEL` → Task 3 (when User exists)
+  - `apps.accounts` in INSTALLED_APPS → Task 2 (when skeleton exists)
+  - `apps.orgs` in INSTALLED_APPS → Task 8 (when skeleton exists)
+  - `DEFAULT_AUTHENTICATION_CLASSES` / `DEFAULT_PERMISSION_CLASSES` → Task 6 (when CookieJWTAuthentication exists)
+- **Task 2 follow-up.** UserManager's `if password:` truthiness check changed to `if password is not None:` (empty-string footgun).
+- **Task 3 follow-ups.** Whitespace-only email guard added (`if not email or not email.strip():`); design notes on `last_login` vs `last_login_at` and on `PermissionsMixin` documented in the model docstring.
+- **Task 5 follow-up.** `consume_magic_link` now routes new-user creation through `UserManager.create_user()` (was using `get_or_create` which bypassed `set_unusable_password()`).
+- **Task 11 follow-up.** The first Task 11 commit added a class-level `Invite._raw_token_registry` to bridge tests that re-fetched invites via ORM. That registry was populated by production code and grew without bound — real memory leak. Fixed by removing the registry and refactoring 3 invite-accept tests to call `apps.orgs.services.send_invite` directly (raw token comes off the returned instance).
+- **shadcn Button has no `asChild`.** The shadcn variant scaffolded by `shadcn init -d` uses `@base-ui/react/button` rather than Radix's Slot, so `<Button asChild>` doesn't compile. Replaced with `<Link className={buttonVariants({ ... })}>` everywhere.
+- **React 19 lint rule.** `react-hooks/set-state-in-effect` flagged setting state directly inside `useEffect`. Auth-callback page restructured to compute initial state from `useSearchParams()` at render time; only async then/catch callbacks set state.
+- **Staging DB reset.** Neon Postgres had migrations from Plan A applied against the default `auth.User`. Switching to `AUTH_USER_MODEL = "accounts.User"` produced `InconsistentMigrationHistory`. Dropped + recreated the `public` schema (safe — no real data) and re-migrated cleanly.
+- **One missing test count.** Plan said Task 10 had 5 tests; actually 6 (I miscounted in the spec). No real issue.
+
+### Follow-ups for Plan C (parking lot)
+
+- Real email backend (Resend) — wired alongside QR delivery in Plan C.
+- Magic-link rate limiting (Redis-backed throttle).
+- Production-tight `ALLOWED_HOSTS` / `JWT_COOKIE_SAMESITE` (currently `*` / `Lax` for staging convenience).
+- Concurrent-consume race-condition test for `consume_magic_link`.
+- Empty-string-token test branch for `consume_magic_link`.
+- Periodic Celery task to purge expired `MagicLinkToken` and revoked `Invite` rows.
+- Frontend E2E test for the magic-link flow (Playwright currently only exercises `/debug/health`).
+- The frontend healthcheck Playwright test now targets `/debug/health` — the original `/` test is gone with the page.
+- Rotate the Vercel and Fly API tokens pasted in chat during deploy.
+- Pick the real brand name and rename: GitHub repo, Fly app, Vercel project, Sentry project.
