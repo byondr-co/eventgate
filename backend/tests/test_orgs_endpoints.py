@@ -73,3 +73,35 @@ class TestRetrieveOrg:
         Organization.objects.create(name="Other", slug="other")
         response = client.get("/api/v1/orgs/other/")
         assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestMembersList:
+    def test_owner_sees_all_members(self, client) -> None:
+        _login(client, "alice@example.com")
+        client.post("/api/v1/orgs/", {"name": "Acme"}, format="json")
+        # Send + accept invite for bob via service (consistent with Task 11 refactor)
+        from django.contrib.auth import get_user_model
+
+        from apps.orgs.services import send_invite
+
+        User = get_user_model()
+        alice = User.objects.get(email="alice@example.com")
+        acme = Organization.objects.get(slug="acme")
+        invite = send_invite(
+            organization=acme, email="bob@example.com", role="admin", invited_by=alice
+        )
+        bob = APIClient()
+        _login(bob, "bob@example.com")
+        bob.post(f"/api/v1/auth/invites/{invite.raw_token_for_test}/accept/")
+
+        response = client.get("/api/v1/orgs/acme/members/")
+        assert response.status_code == 200
+        emails = sorted(m["user_email"] for m in response.json()["results"])
+        assert emails == ["alice@example.com", "bob@example.com"]
+
+    def test_non_member_gets_404(self, client) -> None:
+        _login(client, "outsider@example.com")
+        Organization.objects.create(name="Acme", slug="acme")
+        response = client.get("/api/v1/orgs/acme/members/")
+        assert response.status_code == 404

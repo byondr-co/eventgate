@@ -13,6 +13,7 @@ from apps.orgs.models import Organization, OrganizationMembership
 from apps.orgs.serializers import (
     InviteCreateSerializer,
     InviteSerializer,
+    MembershipSerializer,
     OrganizationSerializer,
 )
 from apps.orgs.services import (
@@ -99,6 +100,19 @@ class OrgInviteCreateView(viewsets.GenericViewSet, mixins.CreateModelMixin):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response(InviteSerializer(invite).data, status=status.HTTP_201_CREATED)
+
+
+class OrgMembersListView(viewsets.GenericViewSet, mixins.ListModelMixin):
+    """GET /api/v1/orgs/<slug>/members/"""
+
+    permission_classes = (IsAuthenticated, IsOrgMember)
+    pagination_class = StandardPagination
+    serializer_class = MembershipSerializer
+
+    def get_queryset(self):
+        return OrganizationMembership.objects.filter(
+            organization=self.request.organization, is_active=True
+        ).select_related("user")
 
 
 class AcceptInviteView(viewsets.GenericViewSet):
