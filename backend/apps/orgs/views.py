@@ -2,14 +2,26 @@ from __future__ import annotations
 
 from django.db import transaction
 from django.utils import timezone
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
+from rest_framework.response import Response
 
-from apps.common.permissions import IsOrgMember
+from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.orgs.models import Organization, OrganizationMembership
-from apps.orgs.serializers import OrganizationSerializer
+from apps.orgs.serializers import (
+    InviteCreateSerializer,
+    InviteSerializer,
+    OrganizationSerializer,
+)
+from apps.orgs.services import (
+    InviteAlreadyMember,
+    InviteEmailMismatch,
+    InviteError,
+    accept_invite,
+    send_invite,
+)
 
 
 class StandardPagination(PageNumberPagination):
@@ -62,3 +74,51 @@ class OrganizationViewSet(
             accepted_at=timezone.now(),
         )
         serializer.instance = org
+
+
+class OrgInviteCreateView(viewsets.GenericViewSet, mixins.CreateModelMixin):
+    """POST /api/v1/orgs/<slug>/invites/"""
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+    serializer_class = InviteCreateSerializer
+
+    def create(self, request: Request, *args, **kwargs) -> Response:
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            invite = send_invite(
+                organization=request.organization,
+                email=ser.validated_data["email"],
+                role=ser.validated_data["role"],
+                invited_by=request.user,
+            )
+        except InviteAlreadyMember:
+            return Response(
+                {"detail": "This email is already a member of the organization."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(InviteSerializer(invite).data, status=status.HTTP_201_CREATED)
+
+
+class AcceptInviteView(viewsets.GenericViewSet):
+    """POST /api/v1/auth/invites/<token>/accept/"""
+
+    permission_classes = (IsAuthenticated,)
+
+    def create(self, request: Request, token: str | None = None) -> Response:
+        try:
+            membership = accept_invite(raw_token=token or "", user=request.user)
+        except InviteEmailMismatch as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except InviteError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "organization": OrganizationSerializer(
+                    membership.organization, context={"request": request}
+                ).data,
+                "role": membership.role,
+            },
+            status=status.HTTP_200_OK,
+        )

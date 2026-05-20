@@ -78,3 +78,67 @@ class OrganizationMembership(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user.email} @ {self.organization.name} ({self.role})"
+
+
+class Invite(models.Model):
+    """Email invitation to join an Organization with a specific role.
+
+    Single-use token, 72h TTL, scoped to the recipient email.
+    """
+
+    # Test-only registry: maps invite pk (str) -> raw token.  Set by send_invite()
+    # so that tests can do Invite.objects.get(...).raw_token_for_test without the
+    # raw token ever touching the database.  Production code never reads this dict.
+    _raw_token_registry: ClassVar[dict] = {}
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invites")
+    email = models.EmailField()
+    role = models.CharField(max_length=16, choices=Organization.ROLES, default="staff")
+    token_hash = models.CharField(max_length=64, unique=True)
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes: ClassVar = [models.Index(fields=("organization", "email"))]
+        constraints: ClassVar = [
+            models.UniqueConstraint(
+                fields=("organization", "email"),
+                condition=models.Q(accepted_at__isnull=True, revoked_at__isnull=True),
+                name="one_open_invite_per_email_per_org",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Invite<{self.email} → {self.organization.slug}>"
+
+    @property
+    def is_active(self) -> bool:
+        return (
+            self.accepted_at is None
+            and self.revoked_at is None
+            and self.expires_at > timezone.now()
+        )
+
+    @property
+    def raw_token_for_test(self) -> str:
+        """Return the raw (unhashed) token for use in tests only.
+
+        The service layer stores the raw token in _raw_token_registry keyed by
+        invite pk immediately after creation.  Subsequent ORM fetches of the same
+        invite (same pk) can still access the token via this property as long as
+        they run in the same process (i.e. within a single test run).
+        """
+        key = str(self.pk)
+        try:
+            return Invite._raw_token_registry[key]
+        except KeyError as exc:
+            raise AttributeError(
+                "raw_token_for_test is only available when the invite was created "
+                "in the same process via send_invite()."
+            ) from exc

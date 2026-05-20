@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.orgs.models import Organization, OrganizationMembership
+from apps.orgs.models import Invite, Organization, OrganizationMembership
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -46,3 +46,15 @@ class MembershipSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("id", "user_email", "user_full_name", "accepted_at", "created_at")
+
+
+class InviteCreateSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    role = serializers.ChoiceField(choices=Organization.ROLES)
+
+
+class InviteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invite
+        fields = ("id", "email", "role", "created_at", "expires_at", "accepted_at")
+        read_only_fields = ("id", "email", "role", "created_at", "expires_at", "accepted_at")
