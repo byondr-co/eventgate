@@ -10,12 +10,21 @@ Two-step issuance:
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from apps.common.tokens import generate_token, hash_token
-from apps.devices.models import ScannerDevice
+from apps.devices.models import EventPinSession, ScannerDevice
+from apps.events.services import check_event_pin
+
+SESSION_TTL = timedelta(hours=8)
+
+
+class WrongPin(Exception):
+    pass
 
 
 @transaction.atomic
@@ -70,3 +79,28 @@ def revoke_device(device: ScannerDevice) -> None:
         return
     device.revoked_at = timezone.now()
     device.save(update_fields=["revoked_at", "updated_at"])
+
+
+@transaction.atomic
+def unlock_with_pin(
+    *, device: ScannerDevice, raw_pin: str, ip: str | None = None
+) -> tuple[EventPinSession, str]:
+    """Validate the device's event PIN; mint a new EventPinSession.
+
+    Raises WrongPin if the PIN doesn't match. Returns (session, raw_token);
+    the raw token is what the device sends as `Authorization: Bearer <…>`.
+    """
+    if not check_event_pin(device.event, raw_pin):
+        raise WrongPin("Incorrect event PIN.")
+    raw_session = generate_token()
+    expires = timezone.now() + SESSION_TTL
+    session = EventPinSession.objects.create(
+        event=device.event,
+        scanner_device=device,
+        session_token_hash=hash_token(raw_session),
+        expires_at=expires,
+        unlocked_by_ip=ip,
+    )
+    device.last_seen_at = timezone.now()
+    device.save(update_fields=["last_seen_at", "updated_at"])
+    return session, raw_session

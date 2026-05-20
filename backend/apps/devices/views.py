@@ -10,9 +10,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import HasOrgRole, IsOrgMember
+from apps.devices.auth import DeviceTokenAuthentication
 from apps.devices.models import ScannerDevice
 from apps.devices.serializers import DeviceCreateSerializer, DeviceSerializer
-from apps.devices.services import complete_enrollment, create_device, revoke_device
+from apps.devices.services import (
+    WrongPin,
+    complete_enrollment,
+    create_device,
+    revoke_device,
+    unlock_with_pin,
+)
 from apps.events.models import Event
 
 
@@ -80,6 +87,39 @@ class DeviceEnrollView(APIView):
                 "event_id": str(device.event_id),
                 "event_slug": device.event.slug,
                 "org_slug": device.organization.slug,
+                "label": device.label,
+                "role": device.role,
+            }
+        )
+
+
+class DeviceUnlockView(APIView):
+    """POST /api/v1/devices/unlock/  Authorization: Device <raw>  {"pin": "..."}
+    -> {session_token, expires_at, device_id, event_id, label, role}
+    """
+
+    authentication_classes = (DeviceTokenAuthentication,)
+    permission_classes = (AllowAny,)  # auth class enforces it
+
+    def post(self, request):
+        device = getattr(request, "scanner_device", None)
+        if not device:
+            return Response({"detail": "Device token required."}, status=401)
+        pin = (request.data.get("pin") or "").strip()
+        try:
+            session, raw = unlock_with_pin(
+                device=device,
+                raw_pin=pin,
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+        except WrongPin as exc:
+            return Response({"detail": str(exc)}, status=403)
+        return Response(
+            {
+                "session_token": raw,
+                "expires_at": session.expires_at,
+                "device_id": str(device.id),
+                "event_id": str(device.event_id),
                 "label": device.label,
                 "role": device.role,
             }
