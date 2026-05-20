@@ -33,7 +33,7 @@ INSTALLED_APPS = [
     "apps.common",
     "apps.accounts",
     "apps.orgs",
-    # apps.notifications — appended by Plan C Task 10 (when skeleton lands)
+    "apps.notifications",
     "apps.events",
     "apps.guests",
 ]
