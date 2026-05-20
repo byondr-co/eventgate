@@ -34,6 +34,45 @@ export type RegistrationField = {
   is_preset: boolean;
 };
 
+/** Shape returned by the public, anonymous GET /api/v1/e/<org>/<event>/ endpoint.
+ *  No id, no event_pin_hash, no created_at — just what the registration /
+ *  claim pages need. */
+export type PublicEventField = {
+  field_key: string;
+  label_en: string;
+  label_km: string;
+  field_type: FieldType;
+  required: boolean;
+  options: string[];
+  order_index: number;
+};
+
+export type PublicEventDetail = {
+  org_slug: string;
+  slug: string;
+  name: string;
+  venue: string;
+  status: EventStatus;
+  starts_at: string | null;
+  ends_at: string | null;
+  timezone: string;
+  registration_open: boolean;
+  walkins_enabled: boolean;
+  fields: PublicEventField[];
+};
+
+export function usePublicEventDetail(orgSlug: string, eventSlug: string) {
+  return useQuery({
+    queryKey: ["public-event", orgSlug, eventSlug],
+    queryFn: async (): Promise<PublicEventDetail> => {
+      const res = await fetch(`/api/v1/e/${orgSlug}/${eventSlug}/`);
+      if (!res.ok) throw new Error("event_not_found");
+      return res.json();
+    },
+    enabled: !!orgSlug && !!eventSlug,
+  });
+}
+
 type Paginated<T> = { count: number; results: T[] };
 
 export function useEvents(orgSlug: string) {

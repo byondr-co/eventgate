@@ -1,21 +1,41 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { PublicEventField } from "@/lib/events";
 import { useRegisterPublic } from "@/lib/guests";
 
-type Props = { orgSlug: string; eventSlug: string; eventName: string };
+const PRESET_KEYS = new Set(["name", "email", "phone_or_chat"]);
 
-export function RegistrationForm({ orgSlug, eventSlug, eventName }: Props) {
+type Props = {
+  orgSlug: string;
+  eventSlug: string;
+  eventName: string;
+  venue?: string;
+  fields?: PublicEventField[];
+};
+
+export function RegistrationForm({ orgSlug, eventSlug, eventName, venue, fields }: Props) {
   const t = useTranslations("register");
+  const locale = useLocale();
   const router = useRouter();
   const register = useRegisterPublic(orgSlug, eventSlug);
-  const [form, setForm] = useState({ name: "", email: "", phone_or_chat: "" });
+  const [form, setForm] = useState<Record<string, string>>({
+    name: "",
+    email: "",
+    phone_or_chat: "",
+  });
   const [error, setError] = useState<string | null>(null);
+
+  // Custom (non-preset) fields, sorted by order_index — appended after the
+  // preset name/email/phone block.
+  const customFields = (fields ?? [])
+    .filter((f) => !PRESET_KEYS.has(f.field_key))
+    .sort((a, b) => a.order_index - b.order_index);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,11 +48,15 @@ export function RegistrationForm({ orgSlug, eventSlug, eventName }: Props) {
     }
   };
 
+  const label = (f: PublicEventField) => (locale === "km" && f.label_km ? f.label_km : f.label_en);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t("title", { eventName })}</CardTitle>
-        <CardDescription>{t("subtitle")}</CardDescription>
+        <CardDescription>
+          {venue ? venue : t("subtitle")}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -64,6 +88,49 @@ export function RegistrationForm({ orgSlug, eventSlug, eventName }: Props) {
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
           </label>
+
+          {customFields.map((f) => (
+            <label key={f.field_key} className="block">
+              <span className="text-sm font-medium">
+                {label(f)}
+                {f.required ? <span className="text-destructive"> *</span> : null}
+              </span>
+              {f.field_type === "textarea" ? (
+                <textarea
+                  required={f.required}
+                  value={form[f.field_key] ?? ""}
+                  onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  rows={3}
+                />
+              ) : f.field_type === "select" ? (
+                <select
+                  required={f.required}
+                  value={form[f.field_key] ?? ""}
+                  onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="" disabled>
+                    {t("selectPlaceholder")}
+                  </option>
+                  {(f.options ?? []).map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  required={f.required}
+                  type={f.field_type === "email" ? "email" : "text"}
+                  value={form[f.field_key] ?? ""}
+                  onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              )}
+            </label>
+          ))}
+
           <Button type="submit" className="w-full" disabled={register.isPending}>
             {register.isPending ? t("submitting") : t("submit")}
           </Button>
