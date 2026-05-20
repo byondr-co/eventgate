@@ -30,8 +30,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "apps.common",
-    "apps.accounts",
-    "apps.orgs",
+    # `apps.accounts` is appended by Plan B Task 2 (when the app skeleton lands).
+    # `apps.orgs` is appended by Plan B Task 8 (when the app skeleton lands).
 ]
 
 MIDDLEWARE = [
@@ -87,8 +87,9 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "DEFAULT_PARSER_CLASSES": ("rest_framework.parsers.JSONParser",),
-    "DEFAULT_AUTHENTICATION_CLASSES": ("apps.accounts.authentication.CookieJWTAuthentication",),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    # DEFAULT_AUTHENTICATION_CLASSES / DEFAULT_PERMISSION_CLASSES are added by
+    # Plan B Task 6 once `apps.accounts.authentication.CookieJWTAuthentication`
+    # exists. Adding them now would break every DRF request before then.
 }
 
 SPECTACULAR_SETTINGS = {
@@ -119,7 +120,9 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 
 # Auth
-AUTH_USER_MODEL = "accounts.User"
+# AUTH_USER_MODEL is added by Plan B Task 3 once the custom User model exists.
+# (django.contrib.admin autodiscover eagerly resolves this at startup, so it
+#  must not point at a non-installed app.)
 
 # Console email backend at MVP — magic links print to logs. Real email in Plan C.
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
@@ -137,6 +140,9 @@ SIMPLE_JWT = {
 }
 
 # Cookie-based JWT
+# Production hardening: set JWT_COOKIE_SECURE=True and JWT_COOKIE_SAMESITE=Strict
+# (or None+Secure for cross-site SPA flows) via env vars. Defaults below are
+# dev-friendly only.
 JWT_ACCESS_COOKIE = "eventgate_access"
 JWT_REFRESH_COOKIE = "eventgate_refresh"
 JWT_COOKIE_SECURE = env.bool("JWT_COOKIE_SECURE", default=False)
