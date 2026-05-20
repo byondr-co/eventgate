@@ -15,10 +15,10 @@ const nextConfig: NextConfig = {
   // (cookies set by the backend bind to this Vercel domain, not fly.dev).
   async rewrites() {
     return [
-      {
-        source: "/api/:path*",
-        destination: `${API_BASE}/api/:path*`,
-      },
+      // Match both with and without trailing slash; always send trailing slash
+      // to Django (which enforces APPEND_SLASH=True).
+      { source: "/api/:path*/", destination: `${API_BASE}/api/:path*/` },
+      { source: "/api/:path*", destination: `${API_BASE}/api/:path*/` },
     ];
   },
 };
