@@ -26,5 +26,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|favicon.ico|.*\\..*).*)"],
+  // Skip _next, api (rewritten to Django), favicon, and any path with a dot
+  // (static assets like /file.svg, qr.png, etc.).
+  matcher: ["/((?!api|_next|favicon.ico|.*\\..*).*)"],
 };
