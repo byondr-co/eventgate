@@ -3471,13 +3471,13 @@ GET /api/v1/guests/<uuid>/qr.png?token=<raw>
 - **CELERY_TASK_ALWAYS_EAGER on staging.** Plan didn't anticipate that staging has no separate Celery worker process — only the web process. After Task 11 moved emails into Celery tasks, they queued indefinitely. Wired `CELERY_TASK_ALWAYS_EAGER` as an env-var-readable Django setting and set the Fly secret to `"true"`. **A real worker process on Fly is a Plan D ops task.**
 - **Public event-detail endpoint not added.** The public registration page falls back to using `eventSlug` as the title. The plan acknowledged this as an open follow-up; a public `GET /api/v1/e/<org>/<event>/` endpoint should land in Plan D.
 - **Khmer translations are starter-grade.** The `lib/i18n/messages/km.json` strings are first-pass and need review by the user's identified Khmer translator before any external pilot.
-- **Resend not yet wired in production.** `RESEND_API_KEY` is unset; staging uses console backend. User signed up for Resend in parallel — wire on next deploy.
+- **Resend wired in production.** `RESEND_API_KEY` set on Fly; `DEFAULT_FROM_EMAIL=Eventgate <onboarding@resend.dev>` (Resend's sandbox sender). Verified real send: magic-link to `vinei.dev@gmail.com` succeeded with `NotificationDispatch.status=sent`. **Follow-up:** Verify a real sender domain in Resend dashboard before sending to arbitrary recipients — the sandbox sender can typically only send to the account-owner's email.
 
 ### Follow-ups for Plan D (parking lot)
 
 - Provision a Celery worker process on Fly (currently emails run synchronously in the web process via `CELERY_TASK_ALWAYS_EAGER`).
 - Add public `GET /api/v1/e/<org>/<event>/` endpoint so the registration page can show the real event name.
-- Wire `RESEND_API_KEY` on Fly once user completes Resend signup + sender domain verification.
+- Verify a sender domain in Resend dashboard (current sandbox sender `onboarding@resend.dev` only sends to account-owner email).
 - Khmer translation review pass with the identified translator.
 - Walk-in flow (Plan D core).
 - Pre-reg scanner PWA (Plan D core).
