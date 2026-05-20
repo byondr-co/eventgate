@@ -51,6 +51,10 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])
+# Required because the frontend uses fetch(..., { credentials: "include" }) to
+# carry JWT cookies. Without this header on the response, browsers silently
+# reject the request with "Failed to fetch".
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = "config.urls"
 
