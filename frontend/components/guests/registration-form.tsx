@@ -54,9 +54,7 @@ export function RegistrationForm({ orgSlug, eventSlug, eventName, venue, fields 
     <Card>
       <CardHeader>
         <CardTitle>{t("title", { eventName })}</CardTitle>
-        <CardDescription>
-          {venue ? venue : t("subtitle")}
-        </CardDescription>
+        <CardDescription>{venue ? venue : t("subtitle")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">

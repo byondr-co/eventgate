@@ -30,7 +30,7 @@ def _set_jwt_cookies(response: Response, user) -> Response:
     response.set_cookie(
         settings.JWT_ACCESS_COOKIE,
         access,
-        max_age=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),
+        max_age=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),  # type: ignore[attr-defined]
         secure=settings.JWT_COOKIE_SECURE,
         httponly=True,
         samesite=settings.JWT_COOKIE_SAMESITE,
@@ -40,7 +40,7 @@ def _set_jwt_cookies(response: Response, user) -> Response:
     response.set_cookie(
         settings.JWT_REFRESH_COOKIE,
         str(refresh),
-        max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),
+        max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),  # type: ignore[attr-defined]
         secure=settings.JWT_COOKIE_SECURE,
         httponly=True,
         samesite=settings.JWT_COOKIE_SAMESITE,

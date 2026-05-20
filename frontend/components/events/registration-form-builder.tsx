@@ -128,9 +128,7 @@ export function RegistrationFormBuilder({
                           Remove
                         </Button>
                       )}
-                      {f.is_preset && (
-                        <span className="text-xs text-muted-foreground">Preset</span>
-                      )}
+                      {f.is_preset && <span className="text-xs text-muted-foreground">Preset</span>}
                     </td>
                   </tr>
                 ))}

@@ -3,13 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGuests } from "@/lib/guests";
 
-export function GuestsTable({
-  orgSlug,
-  eventSlug,
-}: {
-  orgSlug: string;
-  eventSlug: string;
-}) {
+export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
   const guests = useGuests(orgSlug, eventSlug);
 
   return (

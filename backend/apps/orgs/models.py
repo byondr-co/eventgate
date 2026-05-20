@@ -17,7 +17,7 @@ class OrganizationManager(models.Manager):
         while self.filter(slug=candidate).exists():
             n += 1
             candidate = f"{base}-{n}"
-        return self.create(name=name, slug=candidate, **extra)
+        return self.create(name=name, slug=candidate, **extra)  # type: ignore[return-value]
 
 
 class Organization(models.Model):

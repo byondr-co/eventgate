@@ -6,10 +6,7 @@ import type { PublicEventDetail } from "@/lib/events";
 
 type Props = { params: Promise<{ orgSlug: string; eventSlug: string }> };
 
-async function loadEvent(
-  orgSlug: string,
-  eventSlug: string,
-): Promise<PublicEventDetail | null> {
+async function loadEvent(orgSlug: string, eventSlug: string): Promise<PublicEventDetail | null> {
   try {
     const res = await fetch(`${API_BASE}/api/v1/e/${orgSlug}/${eventSlug}/`, {
       cache: "no-store",
@@ -39,9 +36,7 @@ export default async function RegisterPage({ params }: Props) {
       <main className="min-h-screen flex items-center justify-center bg-muted/30 p-6">
         <div className="text-center">
           <h1 className="text-xl font-semibold">{event.name}</h1>
-          {event.venue ? (
-            <p className="mt-1 text-sm text-muted-foreground">{event.venue}</p>
-          ) : null}
+          {event.venue ? <p className="mt-1 text-sm text-muted-foreground">{event.venue}</p> : null}
           <p className="mt-4 text-sm text-muted-foreground">{t("registrationClosed")}</p>
         </div>
       </main>

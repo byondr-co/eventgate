@@ -113,9 +113,7 @@ export function useFields(orgSlug: string, eventSlug: string) {
   return useQuery({
     queryKey: ["events", orgSlug, eventSlug, "fields"],
     queryFn: () =>
-      apiFetch<Paginated<RegistrationField>>(
-        `/api/v1/orgs/${orgSlug}/events/${eventSlug}/fields/`,
-      ),
+      apiFetch<Paginated<RegistrationField>>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/fields/`),
     enabled: !!orgSlug && !!eventSlug,
   });
 }
@@ -135,8 +133,7 @@ export function useAddField(orgSlug: string, eventSlug: string) {
         method: "POST",
         body: JSON.stringify(input),
       }),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug, "fields"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug, "fields"] }),
   });
 }
 
@@ -147,7 +144,6 @@ export function useDeleteField(orgSlug: string, eventSlug: string) {
       apiFetch<void>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/fields/${field_key}/`, {
         method: "DELETE",
       }),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug, "fields"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug, "fields"] }),
   });
 }

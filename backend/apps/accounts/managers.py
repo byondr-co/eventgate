@@ -16,9 +16,9 @@ class UserManager(BaseUserManager):
         email = self.normalize_email(email).lower()
         user = self.model(email=email, **extra_fields)
         if password is not None:
-            user.set_password(password)
+            user.set_password(password)  # type: ignore[attr-defined]
         else:
-            user.set_unusable_password()
+            user.set_unusable_password()  # type: ignore[attr-defined]
         user.save(using=self._db)
         return user
 
