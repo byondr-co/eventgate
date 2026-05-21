@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 
-from django.db.models import Max
+from django.db.models import Count, Max
 from django.http import HttpResponseNotModified
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
@@ -39,8 +39,12 @@ class HelpDeskTicketListView(APIView):
         elif status_filter == "open_or_claimed":
             qs = qs.filter(claim_status__in=("open", "claimed"))
 
-        agg = qs.aggregate(latest=Max("updated_at"), maxid=Max("id"))
-        raw = f"{agg.get('latest')}-{agg.get('maxid')}-{status_filter or 'all'}"
+        agg = qs.aggregate(
+            latest=Max("updated_at"),
+            maxid=Max("id"),
+            n=Count("id"),
+        )
+        raw = f"{agg.get('latest')}-{agg.get('maxid')}-{agg.get('n')}-{status_filter or 'all'}"
         etag = f'W/"{hashlib.sha256(raw.encode()).hexdigest()[:16]}"'
 
         if request.META.get("HTTP_IF_NONE_MATCH") == etag:
