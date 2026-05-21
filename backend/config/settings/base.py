@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "apps.checkins",
     "apps.walkins",
     "apps.scanner",
+    "apps.helpdesk",
 ]
 
 MIDDLEWARE = [
