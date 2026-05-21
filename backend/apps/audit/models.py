@@ -10,8 +10,9 @@ from django.utils import timezone as tz
 class AuditEvent(models.Model):
     """Append-only audit row. write_audit() is the only sanctioned writer.
 
-    A DB-level trigger to REVOKE UPDATE/DELETE is deferred to Plan F when the
-    viewer UI lands; until then, app-layer discipline.
+    DB-level enforcement: a BEFORE UPDATE OR DELETE trigger raises an
+    exception (migration 0002). The app's write_audit() guard remains the
+    primary call site; the trigger is defense in depth.
     """
 
     ACTOR_TYPES = (
