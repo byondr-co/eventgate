@@ -17,8 +17,7 @@ export type EventStats = {
 
 const statsEtagCache = createEtagCache();
 
-const fetcher = (url: string): Promise<EventStats> =>
-  statsEtagCache.fetchJSON<EventStats>(url);
+const fetcher = (url: string): Promise<EventStats> => statsEtagCache.fetchJSON<EventStats>(url);
 
 export function useEventStats(orgSlug: string, eventSlug: string) {
   return useQuery<EventStats>({
