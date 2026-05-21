@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 
 import { InstallButton } from "@/components/scanner/install-button";
+import { IOSInstallBanner } from "@/components/scanner/ios-install-banner";
 import { OfflineBanner } from "@/components/scanner/offline-banner";
 import { useQueueCount } from "@/lib/scanner/queue-observers";
 import { startRefreshLoop } from "@/lib/scanner/refresh-loop";
@@ -77,6 +78,7 @@ export default function ScannerLayout({ children }: { children: React.ReactNode 
         </div>
       </header>
       <OfflineBanner />
+      <IOSInstallBanner />
       {children}
     </div>
   );
