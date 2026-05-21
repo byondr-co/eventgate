@@ -75,8 +75,8 @@ function makePng(size, pixelFn) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size, 0); // width
   ihdr.writeUInt32BE(size, 4); // height
-  ihdr[8] = 8;  // bit depth
-  ihdr[9] = 6;  // color type: RGBA
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 6; // color type: RGBA
   ihdr[10] = 0; // compression
   ihdr[11] = 0; // filter
   ihdr[12] = 0; // interlace
