@@ -45,6 +45,12 @@ export default function EventDashboardPage() {
             Devices
           </Link>
           <Link
+            href={`/orgs/${slug}/events/${eventSlug}/helpdesk`}
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Help desk
+          </Link>
+          <Link
             href={`/orgs/${slug}/events/${eventSlug}/settings`}
             className={buttonVariants({ variant: "outline" })}
           >
