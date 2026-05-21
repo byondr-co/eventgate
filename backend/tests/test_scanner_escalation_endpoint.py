@@ -12,6 +12,7 @@ from apps.audit.models import AuditEvent
 from apps.common.tokens import hash_token
 from apps.devices.models import EventPinSession, ScannerDevice
 from apps.events.models import Event
+from apps.helpdesk.models import HelpDeskTicketState
 from apps.orgs.models import Organization
 
 
@@ -88,3 +89,21 @@ def test_escalation_rejects_missing_token(client, session):
     )
     assert res.status_code == 400
     assert "token" in res.json()["detail"].lower()
+
+
+@pytest.mark.django_db
+def test_escalation_creates_open_ticket_state(client, session):
+    org, event, device, raw = session
+    url = reverse("scanner-escalation")
+    res = client.post(
+        url,
+        data={"token": "raw-token-y", "reason": "manual"},
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {raw}",
+    )
+    assert res.status_code == 201, res.content
+    audit_id = res.json()["escalation_id"]
+    state = HelpDeskTicketState.objects.get(audit_event_id=audit_id)
+    assert state.claim_status == "open"
+    assert state.organization_id == org.id
+    assert state.event_id == event.id

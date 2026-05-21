@@ -7,12 +7,14 @@ device's role permits the action. Endpoints here are intended to be called
 
 from __future__ import annotations
 
+from django.db import transaction
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.audit.services import write_audit
 from apps.devices.auth import SessionTokenAuthentication
+from apps.helpdesk.models import HelpDeskTicketState
 
 
 class EscalationView(APIView):
@@ -44,19 +46,26 @@ class EscalationView(APIView):
         original_payload = request.data.get("original_payload") or {}
         conflict_payload = request.data.get("conflict_payload") or {}
 
-        audit = write_audit(
-            organization=device.organization,
-            event=device.event,
-            actor_type="scanner_device",
-            actor_id=str(device.id),
-            action="checkin.help_desk_escalation",
-            result="warning",
-            entry_token=token[:128],
-            details={
-                "reason": reason,
-                "original_payload": original_payload,
-                "conflict_payload": conflict_payload,
-                "device_label": device.label,
-            },
-        )
+        with transaction.atomic():
+            audit = write_audit(
+                organization=device.organization,
+                event=device.event,
+                actor_type="scanner_device",
+                actor_id=str(device.id),
+                action="checkin.help_desk_escalation",
+                result="warning",
+                entry_token=token[:128],
+                details={
+                    "reason": reason,
+                    "original_payload": original_payload,
+                    "conflict_payload": conflict_payload,
+                    "device_label": device.label,
+                },
+            )
+            HelpDeskTicketState.objects.create(
+                audit_event=audit,
+                organization=device.organization,
+                event=device.event,
+                claim_status="open",
+            )
         return Response({"escalation_id": str(audit.id)}, status=201)
