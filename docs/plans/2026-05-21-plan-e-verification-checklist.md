@@ -23,6 +23,14 @@
   ```
   Expected: top commit `cfbb089 docs(plan-e): completion log + handoff reset for Plan F`, followed by 18 Plan E commits.
 
+- [ ] **Deploy backend if any backend commits since last Fly deploy.**
+
+  ```bash
+  cd backend && flyctl deploy --remote-only --app eventgate-backend-staging
+  ```
+
+  Verification opens with the assumption that the backend on Fly matches the git tip on `main`. Fly has no auto-deploy hook yet (Plan F Task 0b adds one); until that lands, run this step manually whenever `git log --oneline origin/main..main -- backend/` is non-empty since the last `flyctl deploy`.
+
 - [ ] **Confirm backend tests green locally**
   ```bash
   cd backend && uv run pytest -q 2>&1 | tail -5
@@ -193,6 +201,8 @@ export DASHBOARD="https://<your-vercel-domain>"  # production or preview URL
 
 - [ ] **Service worker registered**:
   DevTools → **Application** → **Service Workers**. Expected: `/sw.js` shows status `activated and is running`. Scope `/`. Source matches the deployed bundle.
+
+  > **Note:** Cmd+Shift+R (hard reload) bypasses the service worker entirely. If you see empty caches or absent SW behavior, check whether you hard-reloaded. Use Cmd+R or DevTools → "Update on reload" instead.
 
 - [ ] **SW file is the Workbox bundle** (not Plan D's hand-rolled minimal):
   In the SW row, click "source" or open `$DASHBOARD/sw.js` in a tab. First line should be:
