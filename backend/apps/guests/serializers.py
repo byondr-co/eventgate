@@ -29,3 +29,29 @@ class GuestSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = fields
+
+
+class GuestSyncSerializer(serializers.ModelSerializer):
+    """Minimal guest projection for the scanner cache.
+
+    Carries the fields the offline path needs to validate a scanned token
+    locally and render a "QUEUED" optimistic result card. Excludes anything
+    PII-heavier than name/email — richer info is fetched on-demand by the
+    (future) help-desk lane.
+    """
+
+    id = serializers.UUIDField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        model = Guest
+        fields = (
+            "id",
+            "entry_token",
+            "full_name",
+            "email",
+            "guest_type",
+            "entry_status",
+            "info_status",
+            "updated_at",
+        )

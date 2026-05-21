@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 from typing import ClassVar
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils.dateparse import parse_datetime
 from rest_framework import status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
@@ -13,9 +15,14 @@ from rest_framework.views import APIView
 from apps.common.permissions import IsOrgMember
 from apps.common.qr import render_png
 from apps.common.tokens import hash_token, tokens_match
+from apps.devices.auth import SessionTokenAuthentication
 from apps.events.models import Event
 from apps.guests.models import Guest
-from apps.guests.serializers import GuestSerializer, RegistrationSubmitResponseSerializer
+from apps.guests.serializers import (
+    GuestSerializer,
+    GuestSyncSerializer,
+    RegistrationSubmitResponseSerializer,
+)
 from apps.guests.services import EventNotOpen, RegistrationError, register_guest
 from apps.orgs.models import Organization
 from apps.orgs.views import StandardPagination
@@ -86,3 +93,66 @@ class GuestQrView(APIView):
         resp = HttpResponse(png, content_type="image/png")
         resp["Cache-Control"] = "private, max-age=300"
         return resp
+
+
+class GuestSyncView(APIView):
+    """GET /api/v1/orgs/<org>/events/<event>/guests/sync/?since=<iso>
+
+    Returns the minimal guest projection for this event, optionally filtered
+    to rows changed at or after `since`. Authenticated by scanner session token.
+
+    Response shape:
+        {
+            "guests": [GuestSyncSerializer, …],
+            "cursor": "<iso8601>"   ← max updated_at across returned rows
+        }
+
+    The response carries an ETag of `sha1(cursor)`. Clients should resend
+    that ETag as If-None-Match to get a 304 when nothing changed.
+    """
+
+    authentication_classes = (SessionTokenAuthentication,)
+    permission_classes = (AllowAny,)  # session auth enforces it
+
+    def get(self, request: Request, org_slug: str, event_slug: str) -> Response:
+        device = getattr(request, "scanner_device", None)
+        if not device:
+            return Response({"detail": "Session token required."}, status=401)
+        event = get_object_or_404(Event, organization=device.organization, slug=event_slug)
+        if device.event_id != event.id:
+            return Response({"detail": "Device not paired to this event."}, status=403)
+
+        qs = event.guests.all()
+        since_raw = request.query_params.get("since")
+        if since_raw:
+            since = parse_datetime(since_raw)
+            if since is None:
+                # Unencoded `+` in the query string arrives as a space; recover.
+                since = parse_datetime(since_raw.replace(" ", "+"))
+            if since is None:
+                return Response({"detail": "Invalid 'since' parameter."}, status=400)
+            qs = qs.filter(updated_at__gte=since)
+
+        rows = list(qs.order_by("updated_at"))
+        if rows:
+            max_updated = max(r.updated_at for r in rows)
+            cursor_iso = max_updated.isoformat()
+        elif since_raw:
+            cursor_iso = since_raw
+        else:
+            cursor_iso = ""
+        etag = hashlib.sha1(cursor_iso.encode("utf-8")).hexdigest() if cursor_iso else "empty"
+
+        if_none_match = request.META.get("HTTP_IF_NONE_MATCH")
+        if if_none_match and if_none_match.strip('"') == etag:
+            res = Response(status=304)
+            res["ETag"] = etag
+            return res
+
+        body = {
+            "guests": GuestSyncSerializer(rows, many=True).data,
+            "cursor": cursor_iso,
+        }
+        res = Response(body)
+        res["ETag"] = etag
+        return res
