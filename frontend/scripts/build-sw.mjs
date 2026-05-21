@@ -38,15 +38,37 @@ async function walk(dir) {
   return out;
 }
 
+// Next.js writes a few internal manifest files into `.next/static/<BUILD_ID>/`
+// (`_buildManifest.js`, `_ssgManifest.js`, `_clientMiddlewareManifest.js`).
+// These are NOT served as public static assets in production — Vercel returns
+// 404 for them — so we MUST filter them out of the precache, otherwise
+// Workbox throws `bad-precaching-response` on SW install.
+//
+// The pattern is: any underscore-prefixed `.js` directly inside the build-ID
+// directory. Other files (chunks/, css/, media/) are public and must stay.
+function isPublicAsset(relUnix) {
+  const base = path.posix.basename(relUnix);
+  const dir = path.posix.dirname(relUnix); // e.g. "_next/static/<BUILD_ID>"
+  // Match files directly inside `_next/static/<single-segment>/`
+  const inBuildIdDir = /^_next\/static\/[^/]+$/.test(dir);
+  if (inBuildIdDir && base.startsWith("_") && base.endsWith(".js")) return false;
+  return true;
+}
+
 async function buildManifest() {
   const files = await walk(NEXT_STATIC);
-  return files.map((f) => ({
-    url:
-      "/" +
-      path
-        .relative(FRONTEND_ROOT, f)
-        .replace(/\\/g, "/")
-        .replace(/^\.next\//, "_next/"),
+  const entries = files.map((f) => {
+    const rel = path.relative(FRONTEND_ROOT, f).replace(/\\/g, "/");
+    const url = "/" + rel.replace(/^\.next\//, "_next/");
+    return { url, rel };
+  });
+  const kept = entries.filter((e) => isPublicAsset(e.url.replace(/^\//, "")));
+  const skipped = entries.length - kept.length;
+  if (skipped > 0) {
+    console.log(`[build-sw] skipped ${skipped} internal Next.js manifest file(s) from precache`);
+  }
+  return kept.map(({ url }) => ({
+    url,
     revision: null, // Next.js fingerprints in the filename
   }));
 }
