@@ -20,6 +20,7 @@ from apps.devices.services import (
     revoke_device,
     unlock_with_pin,
 )
+from apps.devices.throttles import DeviceEnrollIPThrottle
 from apps.events.models import Event
 
 
@@ -71,6 +72,7 @@ class DeviceEnrollView(APIView):
 
     permission_classes = (AllowAny,)
     authentication_classes: ClassVar[list] = []
+    throttle_classes = (DeviceEnrollIPThrottle,)
 
     def post(self, request):
         code = (request.data.get("enrollment_code") or "").strip()
