@@ -7,7 +7,7 @@
  * singleton; multiple `startSyncLoop()` calls return no-op cleanups.
  */
 
-import { drainQueueOnce } from "./mutation-queue";
+import { drainQueueOnce, reapStaleInFlight } from "./mutation-queue";
 import { loadDevice, loadSession } from "./session";
 
 const SYNC_INTERVAL_MS = 30_000;
@@ -35,6 +35,10 @@ async function tryDrain() {
 export function startSyncLoop(): () => void {
   if (started || typeof window === "undefined") return () => {};
   started = true;
+
+  // One-shot: reset rows stuck in_flight from a previous PWA session before
+  // they're invisible to getPendingMutations() forever. Best-effort.
+  void reapStaleInFlight().catch(() => {});
 
   const onOnline = () => {
     void tryDrain();

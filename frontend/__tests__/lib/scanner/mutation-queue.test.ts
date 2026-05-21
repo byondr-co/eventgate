@@ -7,6 +7,7 @@ import {
   drainQueueOnce,
   enqueueCheckin,
   getPendingMutations,
+  reapStaleInFlight,
 } from "@/lib/scanner/mutation-queue";
 
 const NOW = 1716_000_000_000; // 2024-05-18T05:20:00Z — stable anchor
@@ -140,5 +141,54 @@ describe("mutation queue", () => {
     const ids = due.map((m) => m.id);
     expect(ids).toContain(a);
     expect(ids).not.toContain(b);
+  });
+});
+
+describe("reapStaleInFlight", () => {
+  beforeEach(async () => {
+    await db.mutation_queue.clear();
+  });
+
+  it("resets in_flight rows older than 5 minutes to pending", async () => {
+    const sixMinAgo = Date.now() - 6 * 60 * 1000;
+    await db.mutation_queue.put({
+      id: "stale",
+      mutation_type: "checkin",
+      target_token: "tok",
+      client_idempotency_key: "k",
+      payload: { token: "tok", gate: "G1", scanner_label: "S1", client_idempotency_key: "k" },
+      status: "in_flight",
+      attempts: 0,
+      next_attempt_at: sixMinAgo,
+      created_at: sixMinAgo,
+      completed_at: null,
+      last_error: null,
+      server_response: null,
+    });
+    const n = await reapStaleInFlight();
+    expect(n).toBe(1);
+    const row = await db.mutation_queue.get("stale");
+    expect(row?.status).toBe("pending");
+  });
+
+  it("leaves fresh in_flight rows alone", async () => {
+    await db.mutation_queue.put({
+      id: "fresh",
+      mutation_type: "checkin",
+      target_token: "tok",
+      client_idempotency_key: "k",
+      payload: { token: "tok", gate: "G1", scanner_label: "S1", client_idempotency_key: "k" },
+      status: "in_flight",
+      attempts: 0,
+      next_attempt_at: Date.now(),
+      created_at: Date.now(),
+      completed_at: null,
+      last_error: null,
+      server_response: null,
+    });
+    const n = await reapStaleInFlight();
+    expect(n).toBe(0);
+    const row = await db.mutation_queue.get("fresh");
+    expect(row?.status).toBe("in_flight");
   });
 });

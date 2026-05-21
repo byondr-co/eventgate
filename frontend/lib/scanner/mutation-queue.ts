@@ -29,7 +29,35 @@ import { markCachedGuestCheckedIn } from "./guest-cache";
 
 const BACKOFF_MS = [1000, 2000, 4000, 8000, 16000, 32000, 60000, 60000];
 const MAX_ATTEMPTS = BACKOFF_MS.length;
+const REAP_THRESHOLD_MS = 5 * 60 * 1000;
 const GC_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Reset `in_flight` rows that haven't moved in >5 minutes back to `pending`.
+ * Runs once at startup. If the PWA died between `set in_flight` and the
+ * server's response, the row would otherwise be invisible to
+ * `getPendingMutations()` and stuck forever.
+ *
+ * Uses `created_at` (enqueue time) as the staleness check — `drainQueueOnce`
+ * doesn't currently update `next_attempt_at` on the pending→in_flight
+ * transition, so enqueue time is a sufficient lower bound for "how old is
+ * this in_flight."
+ */
+export async function reapStaleInFlight(): Promise<number> {
+  const cutoff = Date.now() - REAP_THRESHOLD_MS;
+  const stale = await db.mutation_queue
+    .where("status")
+    .equals("in_flight")
+    .filter((r) => r.created_at < cutoff)
+    .toArray();
+  for (const row of stale) {
+    await db.mutation_queue.update(row.id, {
+      status: "pending",
+      next_attempt_at: Date.now(),
+    });
+  }
+  return stale.length;
+}
 
 function uuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
