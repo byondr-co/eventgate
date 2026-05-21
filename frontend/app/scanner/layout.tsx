@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 
+import { startRefreshLoop } from "@/lib/scanner/refresh-loop";
 import { loadDevice } from "@/lib/scanner/session";
 
 const ENROLL_PATH = "/scanner/enroll";
@@ -35,6 +36,10 @@ export default function ScannerLayout({ children }: { children: React.ReactNode 
       const id = loadDevice();
       if (!id) router.replace(ENROLL_PATH);
     }
+    const stopRefresh = startRefreshLoop();
+    return () => {
+      stopRefresh();
+    };
   }, [pathname, router]);
 
   return (

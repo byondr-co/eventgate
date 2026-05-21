@@ -68,3 +68,47 @@ export async function markCachedGuestCheckedIn(token: string): Promise<void> {
       g.entry_status = "checked_in";
     });
 }
+
+/**
+ * Incremental refresh. Sends the stored cursor as ?since and the stored
+ * ETag as If-None-Match. Updates the cache + cursor + etag on 200; no-op
+ * on 304.
+ *
+ * Called from refresh-loop.ts on (a) the `online` event, (b) `visibilitychange`
+ * to "visible", (c) a 5-minute interval while the scanner shell is mounted.
+ */
+export async function refreshGuestCache(args: PrimeArgs): Promise<void> {
+  const cursor = await db.meta.get("sync_cursor");
+  const etag = await db.meta.get("etag");
+  const path = `/api/v1/orgs/${args.orgSlug}/events/${args.eventSlug}/guests/sync/`;
+  const params = new URLSearchParams();
+  if (cursor?.value) params.set("since", cursor.value);
+  const url = params.size > 0 ? `${path}?${params.toString()}` : path;
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${args.sessionToken}`,
+  };
+  if (etag?.value) headers["If-None-Match"] = etag.value;
+
+  const res = await fetch(url, { method: "GET", headers });
+
+  if (res.status === 304) {
+    return; // cache is current
+  }
+  if (!res.ok) {
+    throw new Error(`refreshGuestCache: ${res.status} ${res.statusText}`);
+  }
+  const body = (await res.json()) as { guests: CachedGuest[]; cursor: string };
+  await db.transaction("rw", db.guests, db.meta, async () => {
+    if (body.guests.length > 0) {
+      await db.guests.bulkPut(body.guests);
+    }
+    if (body.cursor) {
+      await db.meta.put({ key: "sync_cursor", value: body.cursor });
+    }
+    const newEtag = res.headers.get("ETag");
+    if (newEtag) {
+      await db.meta.put({ key: "etag", value: newEtag });
+    }
+  });
+}

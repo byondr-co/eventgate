@@ -6,6 +6,7 @@ import {
   lookupGuestByToken,
   markCachedGuestCheckedIn,
   primeGuestCache,
+  refreshGuestCache,
 } from "@/lib/scanner/guest-cache";
 
 describe("guest cache priming + lookup", () => {
@@ -85,5 +86,58 @@ describe("guest cache priming + lookup", () => {
     await markCachedGuestCheckedIn("tok-1");
     const after = await lookupGuestByToken("tok-1");
     expect(after?.entry_status).toBe("checked_in");
+  });
+});
+
+describe("incremental refresh", () => {
+  beforeEach(async () => {
+    await db.guests.clear();
+    await db.meta.clear();
+  });
+
+  it("uses the stored cursor as ?since", async () => {
+    await db.meta.put({ key: "sync_cursor", value: "2026-05-21T09:00:00Z" });
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ guests: [], cursor: "2026-05-21T09:00:00Z" }), {
+        status: 200,
+        headers: { ETag: '"v2"' },
+      }),
+    );
+
+    await refreshGuestCache({ orgSlug: "acme", eventSlug: "door", sessionToken: "s" });
+
+    const call = fetchSpy.mock.calls[0]?.[0] as string;
+    expect(call).toContain("since=2026-05-21T09%3A00%3A00Z");
+  });
+
+  it("on 304, leaves the cache untouched", async () => {
+    await db.guests.put({
+      id: "g1",
+      entry_token: "tok-1",
+      full_name: "Alice",
+      email: "a@example.com",
+      guest_type: "pre_registered",
+      entry_status: "registered_not_arrived",
+      info_status: "info_completed",
+      updated_at: "2026-05-21T08:00:00Z",
+    });
+    await db.meta.put({ key: "sync_cursor", value: "2026-05-21T08:00:00Z" });
+    await db.meta.put({ key: "etag", value: '"v1"' });
+
+    // 304 cannot be used in the Response constructor (null body status), so
+    // we synthesize a minimal Response-shaped object that satisfies the
+    // properties our code reads: status, ok, headers.get(), statusText.
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      status: 304,
+      ok: false,
+      statusText: "Not Modified",
+      headers: new Headers({ ETag: '"v1"' }),
+    } as Response);
+
+    await refreshGuestCache({ orgSlug: "acme", eventSlug: "door", sessionToken: "s" });
+    const all = await db.guests.toArray();
+    expect(all).toHaveLength(1);
+    expect(all[0].full_name).toBe("Alice");
   });
 });
