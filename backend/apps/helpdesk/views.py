@@ -5,14 +5,17 @@ import hashlib
 from django.db.models import Max
 from django.http import HttpResponseNotModified
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsOrgMember
 from apps.events.models import Event
 from apps.helpdesk.models import HelpDeskTicketState
 from apps.helpdesk.serializers import HelpDeskTicketStateSerializer
+from apps.helpdesk.services import claim_ticket, release_ticket, resolve_ticket
 
 
 class _Pagination(PageNumberPagination):
@@ -49,3 +52,37 @@ class HelpDeskTicketListView(APIView):
         resp = paginator.get_paginated_response(ser.data)
         resp["ETag"] = etag
         return resp
+
+
+class _TicketActionMixin:
+    permission_classes = (IsAuthenticated, IsOrgMember)
+
+    def _ticket(self, request, event_slug, ticket_id) -> HelpDeskTicketState:
+        event = get_object_or_404(Event, organization=request.organization, slug=event_slug)
+        return get_object_or_404(HelpDeskTicketState, id=ticket_id, event=event)
+
+
+class HelpDeskTicketClaimView(_TicketActionMixin, APIView):
+    def post(self, request, org_slug, event_slug, ticket_id):
+        ticket = self._ticket(request, event_slug, ticket_id)
+        ticket = claim_ticket(ticket=ticket, user=request.user)
+        return Response(HelpDeskTicketStateSerializer(ticket).data)
+
+
+class HelpDeskTicketReleaseView(_TicketActionMixin, APIView):
+    def post(self, request, org_slug, event_slug, ticket_id):
+        ticket = self._ticket(request, event_slug, ticket_id)
+        ticket = release_ticket(ticket=ticket, user=request.user)
+        return Response(HelpDeskTicketStateSerializer(ticket).data)
+
+
+class HelpDeskTicketResolveView(_TicketActionMixin, APIView):
+    def post(self, request, org_slug, event_slug, ticket_id):
+        ticket = self._ticket(request, event_slug, ticket_id)
+        action = (request.data.get("action") or "").strip()
+        notes = (request.data.get("notes") or "").strip()
+        try:
+            ticket = resolve_ticket(ticket=ticket, user=request.user, action=action, notes=notes)
+        except ValueError as exc:
+            raise ValidationError({"action": str(exc)}) from exc
+        return Response(HelpDeskTicketStateSerializer(ticket).data)
