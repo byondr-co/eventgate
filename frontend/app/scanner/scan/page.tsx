@@ -8,6 +8,8 @@ import { ManualTokenEntry } from "@/components/scanner/manual-token-entry";
 import { ResultCard } from "@/components/scanner/result-card";
 import { postCheckin, type CheckinOutcome } from "@/lib/scanner/api";
 import { useBarcodeDetectorSupport } from "@/lib/scanner/camera";
+import { lookupGuestByToken } from "@/lib/scanner/guest-cache";
+import { enqueueCheckin } from "@/lib/scanner/mutation-queue";
 import { useDeviceIdentity } from "@/lib/scanner/session";
 
 const RESULT_CARD_MS = 1800; // brief specifies ≥1.5s; +300ms breathing room
@@ -33,18 +35,80 @@ export default function ScannerScanPage() {
       if (!device) return;
       if (busy) return;
       setBusy(true);
-      const result = await postCheckin({
-        token: rawToken,
-        gate: device.label ?? "",
-        scanner_label: device.label ?? "",
-        client_idempotency_key: uuid(),
-      });
-      setOutcome(result);
-      setBusy(false);
-      if (result.kind === "session_expired") {
-        // Bounce after the result card has time to show, so the staffer sees
-        // why the unlock screen reappeared.
-        setTimeout(() => router.replace("/scanner/unlock"), RESULT_CARD_MS);
+      try {
+        // Online: existing path.
+        if (navigator.onLine) {
+          const result = await postCheckin({
+            token: rawToken,
+            gate: device.label ?? "",
+            scanner_label: device.label ?? "",
+            client_idempotency_key: uuid(),
+          });
+          setOutcome(result);
+          if (result.kind === "session_expired") {
+            // Bounce after the result card has time to show, so the staffer
+            // sees why the unlock screen reappeared.
+            setTimeout(() => router.replace("/scanner/unlock"), RESULT_CARD_MS);
+          }
+          return;
+        }
+
+        // Offline: validate against the local cache + enqueue.
+        const cached = await lookupGuestByToken(rawToken);
+        if (!cached) {
+          // No local record. Still enqueue so the server can resolve on
+          // reconnect, but surface this to the staffer so they don't trust
+          // the result blindly.
+          await enqueueCheckin({
+            token: rawToken,
+            gate: device.label ?? "",
+            scanner_label: device.label ?? "",
+          });
+          setOutcome({
+            kind: "invalid",
+            detail: "Token not in offline cache. Will validate on reconnect.",
+          });
+          return;
+        }
+        if (cached.entry_status === "checked_in") {
+          setOutcome({
+            kind: "duplicate",
+            guest: {
+              id: cached.id,
+              full_name: cached.full_name,
+              email: cached.email,
+              guest_type: cached.guest_type,
+              entry_status: cached.entry_status,
+              info_status: cached.info_status,
+              gate: "",
+              scanner: "",
+              checked_in_at: null,
+            },
+            detail: "Already checked in (offline cache).",
+          });
+          return;
+        }
+        await enqueueCheckin({
+          token: rawToken,
+          gate: device.label ?? "",
+          scanner_label: device.label ?? "",
+        });
+        setOutcome({
+          kind: "success",
+          guest: {
+            id: cached.id,
+            full_name: cached.full_name,
+            email: cached.email,
+            guest_type: cached.guest_type,
+            entry_status: "checked_in",
+            info_status: cached.info_status,
+            gate: device.label ?? "",
+            scanner: device.label ?? "",
+            checked_in_at: null,
+          },
+        });
+      } finally {
+        setBusy(false);
       }
     },
     [device, busy, router],
