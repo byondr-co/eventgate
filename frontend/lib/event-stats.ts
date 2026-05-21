@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { apiFetch } from "./api";
+import { createEtagCache } from "@/lib/etag-fetch";
 
 export type EventStats = {
   checked_in: number;
@@ -15,10 +15,15 @@ export type EventStats = {
   as_of: string;
 };
 
+const statsEtagCache = createEtagCache();
+
+const fetcher = (url: string): Promise<EventStats> =>
+  statsEtagCache.fetchJSON<EventStats>(url);
+
 export function useEventStats(orgSlug: string, eventSlug: string) {
   return useQuery<EventStats>({
     queryKey: ["event-stats", orgSlug, eventSlug],
-    queryFn: () => apiFetch<EventStats>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/stats/`),
+    queryFn: () => fetcher(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/stats/`),
     enabled: !!orgSlug && !!eventSlug,
     refetchInterval: 5_000,
     refetchOnWindowFocus: true,

@@ -2,6 +2,8 @@
 
 import useSWR from "swr";
 
+import { createEtagCache } from "@/lib/etag-fetch";
+
 export type AuditEventCompact = {
   id: string;
   occurred_at: string;
@@ -30,11 +32,10 @@ export type Ticket = {
 
 type ListResponse = { results: Ticket[]; count: number };
 
-const fetcher = async (url: string): Promise<ListResponse> => {
-  const r = await fetch(url, { credentials: "include" });
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  return (await r.json()) as ListResponse;
-};
+const ticketsEtagCache = createEtagCache();
+
+const fetcher = (url: string): Promise<ListResponse> =>
+  ticketsEtagCache.fetchJSON<ListResponse>(url);
 
 export function useTickets(orgSlug: string, eventSlug: string, status: string) {
   const qs = status === "all" ? "" : `?status=${status}`;
