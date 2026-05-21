@@ -1,8 +1,10 @@
 """Append-only audit writer.
 
-write_audit() is the ONLY sanctioned path to create AuditEvent rows. A future
-DB trigger (Plan F) will REVOKE UPDATE/DELETE; until then, this is the
-app-layer enforcement point.
+write_audit() is the ONLY sanctioned path to create AuditEvent rows. A
+BEFORE UPDATE OR DELETE trigger on audit_auditevent (migration audit.0002)
+plus a REVOKE on the app role enforce append-only at the DB layer. This
+helper remains the canonical write site so callers can attach the right
+fields and so any future invariants live in one place.
 """
 
 from __future__ import annotations

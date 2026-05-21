@@ -56,3 +56,38 @@ def test_backfill_creates_state_for_existing_escalations():
     for state in HelpDeskTicketState.objects.all():
         assert state.claim_status == "open"
         assert state.audit_event.action == "checkin.help_desk_escalation"
+
+
+@pytest.mark.django_db
+def test_backfill_skips_audit_rows_with_null_event():
+    org = Organization.objects.create(name="Acme2", slug="acme2")
+    event = Event.objects.create(organization=org, name="D", slug="d2")
+    # Two escalations: one with event set, one with event=None.
+    write_audit(
+        organization=org,
+        event=event,
+        actor_type="scanner_device",
+        actor_id="d1",
+        action="checkin.help_desk_escalation",
+        result="warning",
+    )
+    write_audit(
+        organization=org,
+        event=None,
+        actor_type="system",
+        actor_id="manual-ops",
+        action="checkin.help_desk_escalation",
+        result="warning",
+    )
+    # Pre-wipe any existing state rows so we can count freshly.
+    HelpDeskTicketState.objects.all().delete()
+
+    mod = importlib.import_module("apps.helpdesk.migrations.0002_backfill_existing_escalations")
+    from django.apps import apps as django_apps
+
+    mod.backfill(django_apps, None)
+
+    # Only the row with event set should produce a HelpDeskTicketState.
+    assert HelpDeskTicketState.objects.count() == 1
+    state = HelpDeskTicketState.objects.first()
+    assert state.event_id == event.id

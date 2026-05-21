@@ -11,7 +11,14 @@ def backfill(apps, schema_editor):
     AuditEvent = apps.get_model("audit", "AuditEvent")
     HelpDeskTicketState = apps.get_model("helpdesk", "HelpDeskTicketState")
 
-    escalations = AuditEvent.objects.filter(action="checkin.help_desk_escalation")
+    # Skip rows without an event_id — HelpDeskTicketState.event was originally
+    # non-nullable; even though migration 0003 relaxes that constraint, the
+    # inbox UI is event-scoped, so a state row with no event is unreachable
+    # and not worth creating.
+    escalations = AuditEvent.objects.filter(
+        action="checkin.help_desk_escalation",
+        event_id__isnull=False,
+    )
     for audit in escalations.iterator():
         if HelpDeskTicketState.objects.filter(audit_event_id=audit.id).exists():
             continue

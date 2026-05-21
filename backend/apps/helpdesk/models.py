@@ -38,7 +38,13 @@ class HelpDeskTicketState(models.Model):
     organization = models.ForeignKey(
         "orgs.Organization", on_delete=models.PROTECT, related_name="+"
     )
-    event = models.ForeignKey("events.Event", on_delete=models.PROTECT, related_name="+")
+    event = models.ForeignKey(
+        "events.Event",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
     claim_status = models.CharField(max_length=16, choices=CLAIM_STATUSES, default="open")
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
