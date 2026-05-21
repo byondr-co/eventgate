@@ -88,6 +88,7 @@ export default function HelpDeskPage() {
         <div>
           {selected?.type === "ticket" ? (
             <TicketDetail
+              key={selected.key}
               ticket={selected.ticket}
               orgSlug={slug}
               eventSlug={eventSlug}
@@ -95,6 +96,7 @@ export default function HelpDeskPage() {
             />
           ) : selected?.type === "manual_review" ? (
             <ManualReviewDetail
+              key={selected.key}
               guest={selected.guest}
               orgSlug={slug}
               eventSlug={eventSlug}
