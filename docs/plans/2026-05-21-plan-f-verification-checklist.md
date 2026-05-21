@@ -44,6 +44,12 @@
   ```
   Expected: `Success: no issues found in 119 source files`.
 
+- [ ] **Install frontend deps** (idempotent, but required if `pnpm-lock.yaml` changed since your last `pnpm install`; otherwise `tsc` fails with `Cannot find module 'swr'` or similar)
+  ```bash
+  cd frontend && pnpm install --frozen-lockfile 2>&1 | tail -3
+  ```
+  Expected: `Done in <Ns>` with no errors. If `node_modules/swr` was missing, this will install it.
+
 - [ ] **Confirm frontend Vitest green**
   ```bash
   cd frontend && pnpm test 2>&1 | tail -3
