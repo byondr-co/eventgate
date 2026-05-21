@@ -125,6 +125,31 @@ def perform_checkin(
             scanner=scanner_label,
             entry_token=token[:32],
         )
+        # If the existing check-in was performed by a different device/gate,
+        # emit an additional checkin.conflict row. Plan F's help-desk inbox
+        # filters on this action to surface offline-vs-online race conditions.
+        if (guest.gate or "") != (gate or "") or (guest.scanner or "") != (scanner_label or ""):
+            write_audit(
+                organization=device.organization,
+                event=device.event,
+                guest=guest,
+                actor_type="scanner_device",
+                actor_id=str(device.id),
+                action="checkin.conflict",
+                result="warning",
+                previous_status=guest.entry_status,
+                new_status=guest.entry_status,
+                gate=gate,
+                scanner=scanner_label,
+                entry_token=token[:32],
+                details={
+                    "original_gate": guest.gate,
+                    "original_scanner": guest.scanner,
+                    "original_checked_in_at": (
+                        guest.checked_in_at.isoformat() if guest.checked_in_at else None
+                    ),
+                },
+            )
         raise CheckinFailure(
             {
                 "status": "duplicate",
