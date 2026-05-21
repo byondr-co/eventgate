@@ -137,6 +137,22 @@ export async function getConflictMutations(): Promise<QueuedMutation[]> {
   return db.mutation_queue.where("status").equals("conflict").toArray();
 }
 
+export async function getFailedMutations(): Promise<QueuedMutation[]> {
+  return db.mutation_queue.where("status").equals("failed").toArray();
+}
+
+export async function retryFailedMutation(id: string): Promise<void> {
+  const row = await db.mutation_queue.get(id);
+  if (!row || row.status !== "failed") return;
+  await db.mutation_queue.update(id, {
+    status: "pending",
+    attempts: 0,
+    next_attempt_at: Date.now(),
+    completed_at: null,
+    last_error: null,
+  });
+}
+
 type DrainArgs = {
   sessionToken: string;
   deviceGate: string;

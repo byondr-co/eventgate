@@ -8,6 +8,7 @@ import {
   enqueueCheckin,
   getPendingMutations,
   reapStaleInFlight,
+  retryFailedMutation,
 } from "@/lib/scanner/mutation-queue";
 
 const NOW = 1716_000_000_000; // 2024-05-18T05:20:00Z — stable anchor
@@ -217,5 +218,54 @@ describe("enqueueCheckin dedupe", () => {
     const id1 = await enqueueCheckin({ token: "a", gate: "G", scanner_label: "S" });
     const id2 = await enqueueCheckin({ token: "b", gate: "G", scanner_label: "S" });
     expect(id2).not.toBe(id1);
+  });
+});
+
+describe("retryFailedMutation", () => {
+  beforeEach(async () => {
+    await db.mutation_queue.clear();
+  });
+
+  it("resets a failed row to pending with attempts=0", async () => {
+    await db.mutation_queue.put({
+      id: "f1",
+      mutation_type: "checkin",
+      target_token: "tok",
+      client_idempotency_key: "k",
+      payload: { token: "tok", gate: "G", scanner_label: "S", client_idempotency_key: "k" },
+      status: "failed",
+      attempts: 8,
+      next_attempt_at: Date.now() - 10000,
+      created_at: Date.now() - 60000,
+      completed_at: Date.now() - 1000,
+      last_error: "token_not_recognised",
+      server_response: null,
+    });
+    await retryFailedMutation("f1");
+    const row = await db.mutation_queue.get("f1");
+    expect(row?.status).toBe("pending");
+    expect(row?.attempts).toBe(0);
+    expect(row?.completed_at).toBeNull();
+    expect(row?.last_error).toBeNull();
+  });
+
+  it("is a no-op on non-failed rows", async () => {
+    await db.mutation_queue.put({
+      id: "c1",
+      mutation_type: "checkin",
+      target_token: "t",
+      client_idempotency_key: "k",
+      payload: { token: "t", gate: "G", scanner_label: "S", client_idempotency_key: "k" },
+      status: "completed",
+      attempts: 0,
+      next_attempt_at: Date.now(),
+      created_at: Date.now(),
+      completed_at: Date.now(),
+      last_error: null,
+      server_response: null,
+    });
+    await retryFailedMutation("c1");
+    const row = await db.mutation_queue.get("c1");
+    expect(row?.status).toBe("completed");
   });
 });
