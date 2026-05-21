@@ -8,7 +8,7 @@ import { ManualTokenEntry } from "@/components/scanner/manual-token-entry";
 import { ResultCard } from "@/components/scanner/result-card";
 import { postCheckin, type CheckinOutcome } from "@/lib/scanner/api";
 import { useBarcodeDetectorSupport } from "@/lib/scanner/camera";
-import { lookupGuestByToken } from "@/lib/scanner/guest-cache";
+import { lookupGuestByToken, markCachedGuestCheckedIn } from "@/lib/scanner/guest-cache";
 import { enqueueCheckin } from "@/lib/scanner/mutation-queue";
 import { useDeviceIdentity } from "@/lib/scanner/session";
 
@@ -45,6 +45,9 @@ export default function ScannerScanPage() {
             client_idempotency_key: uuid(),
           });
           setOutcome(result);
+          if (result.kind === "success") {
+            await markCachedGuestCheckedIn(rawToken).catch(() => {});
+          }
           if (result.kind === "session_expired") {
             // Bounce after the result card has time to show, so the staffer
             // sees why the unlock screen reappeared.
