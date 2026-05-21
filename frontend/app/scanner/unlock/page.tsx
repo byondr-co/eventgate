@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { postUnlock } from "@/lib/scanner/api";
+import { primeGuestCache } from "@/lib/scanner/guest-cache";
 import {
   clearDevice,
   saveSession,
@@ -45,6 +46,16 @@ export default function ScannerUnlockPage() {
     try {
       const r = await postUnlock(device.device_token, pin.trim());
       saveSession({ session_token: r.session_token, expires_at: r.expires_at });
+      try {
+        await primeGuestCache({
+          orgSlug: device.org_slug,
+          eventSlug: device.event_slug,
+          sessionToken: r.session_token,
+        });
+      } catch (err) {
+        // Non-fatal: scanner still works online, the cache will fill on next refresh.
+        console.warn("primeGuestCache failed", err);
+      }
       router.replace(ROLE_LANDING[device.role]);
     } catch (err) {
       setError((err as Error).message);
