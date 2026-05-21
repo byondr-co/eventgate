@@ -1,0 +1,58 @@
+"use client";
+
+import { Card, CardContent } from "@/components/ui/card";
+import { useEventStats } from "@/lib/event-stats";
+
+type Tile = { label: string; value: number; tone: "default" | "warning" | "danger" };
+
+export function StatsWidget({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
+  const { data, isLoading } = useEventStats(orgSlug, eventSlug);
+
+  if (isLoading || !data) {
+    return <p className="text-sm text-muted-foreground">Loading counts…</p>;
+  }
+
+  const tiles: Tile[] = [
+    { label: "Checked in", value: data.checked_in, tone: "default" },
+    { label: "Pending", value: data.registered_not_arrived, tone: "default" },
+    { label: "Walk-in QR shown", value: data.displayed, tone: "default" },
+    {
+      label: "Manual review",
+      value: data.manual_review,
+      tone: data.manual_review > 0 ? "warning" : "default",
+    },
+    {
+      label: "Open escalations",
+      value: data.open_escalations,
+      tone: data.open_escalations > 0 ? "warning" : "default",
+    },
+    {
+      label: "Conflicts (15m)",
+      value: data.conflicts_recent_15min,
+      tone: data.conflicts_recent_15min > 0 ? "danger" : "default",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      {tiles.map((t) => (
+        <Card key={t.label}>
+          <CardContent className="py-4">
+            <div
+              className={`text-2xl font-semibold tabular-nums ${
+                t.tone === "warning"
+                  ? "text-amber-600 dark:text-amber-400"
+                  : t.tone === "danger"
+                    ? "text-red-600 dark:text-red-400"
+                    : ""
+              }`}
+            >
+              {t.value}
+            </div>
+            <div className="text-xs text-muted-foreground">{t.label}</div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}

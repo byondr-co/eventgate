@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { StatsWidget } from "@/components/events/stats-widget";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEvent } from "@/lib/events";
@@ -64,6 +65,8 @@ export default function EventDashboardPage() {
           </Link>
         </div>
       </div>
+
+      <StatsWidget orgSlug={slug} eventSlug={eventSlug} />
 
       <Card>
         <CardHeader>
