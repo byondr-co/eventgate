@@ -8,6 +8,7 @@ import { InstallButton } from "@/components/scanner/install-button";
 import { OfflineBanner } from "@/components/scanner/offline-banner";
 import { useQueueCount } from "@/lib/scanner/queue-observers";
 import { startRefreshLoop } from "@/lib/scanner/refresh-loop";
+import { initScannerSentry } from "@/lib/scanner/sentry";
 import { loadDevice } from "@/lib/scanner/session";
 import { startSyncLoop } from "@/lib/scanner/sync";
 
@@ -36,6 +37,7 @@ export default function ScannerLayout({ children }: { children: React.ReactNode 
 
   // Side effects only: SW registration + auth-redirect. No setState here.
   useEffect(() => {
+    void initScannerSentry();
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
