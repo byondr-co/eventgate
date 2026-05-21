@@ -73,6 +73,22 @@ type EnqueueInput = {
 };
 
 export async function enqueueCheckin(input: EnqueueInput): Promise<string> {
+  // Dedupe: if an active row already exists for this token, return its id.
+  // "Active" = anything not completed/escalated. Failed/conflict rows still
+  // count so the retry-failed affordance has a single row to act on.
+  const existing = await db.mutation_queue
+    .where("target_token")
+    .equals(input.token)
+    .filter(
+      (r) =>
+        r.status === "pending" ||
+        r.status === "in_flight" ||
+        r.status === "failed" ||
+        r.status === "conflict",
+    )
+    .first();
+  if (existing) return existing.id;
+
   const id = uuid();
   const key = uuid();
   const payload: CheckinPayload = {

@@ -192,3 +192,30 @@ describe("reapStaleInFlight", () => {
     expect(row?.status).toBe("in_flight");
   });
 });
+
+describe("enqueueCheckin dedupe", () => {
+  beforeEach(async () => {
+    await db.mutation_queue.clear();
+  });
+
+  it("returns the existing row id if the same token is enqueued twice while pending", async () => {
+    const id1 = await enqueueCheckin({ token: "same-token", gate: "G", scanner_label: "S" });
+    const id2 = await enqueueCheckin({ token: "same-token", gate: "G", scanner_label: "S" });
+    expect(id2).toBe(id1);
+    const rows = await db.mutation_queue.where("target_token").equals("same-token").toArray();
+    expect(rows).toHaveLength(1);
+  });
+
+  it("creates a new row if the prior one is completed", async () => {
+    const id1 = await enqueueCheckin({ token: "done-token", gate: "G", scanner_label: "S" });
+    await db.mutation_queue.update(id1, { status: "completed", completed_at: Date.now() });
+    const id2 = await enqueueCheckin({ token: "done-token", gate: "G", scanner_label: "S" });
+    expect(id2).not.toBe(id1);
+  });
+
+  it("does not dedupe when target_token differs", async () => {
+    const id1 = await enqueueCheckin({ token: "a", gate: "G", scanner_label: "S" });
+    const id2 = await enqueueCheckin({ token: "b", gate: "G", scanner_label: "S" });
+    expect(id2).not.toBe(id1);
+  });
+});
