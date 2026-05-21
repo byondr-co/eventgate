@@ -1,37 +1,47 @@
 /**
  * Eventgate scanner — Workbox-composed service worker (Plan E).
  *
- * Three jobs:
+ * Two jobs:
  *
- *   1. Cache the Next.js static asset bundle so the scanner shell can boot
- *      with no network.
+ *   1. Cache the PWA shell (`/manifest.webmanifest`, `/favicon.ico`, `/icons/*`)
+ *      cache-first so install/icon paths never hit the network.
  *
- *   2. Serve `/manifest.webmanifest`, `/sw.js`, `/icons/*`, and `/favicon.ico`
- *      from cache-first so the PWA install / icon paths never hit the network.
+ *   2. Cache Next.js static chunks via NetworkFirst — fresh on every online
+ *      load, falls back to cache when offline.
  *
- *   3. Stay out of the way of `/api/*`. The mutation queue lives in the page
- *      context (Dexie + lib/scanner/sync.ts) — the SW does NOT intercept
- *      POSTs, because we need bodied responses for conflict detection and
- *      workbox-background-sync's BackgroundSyncPlugin replays headers-only.
+ * Notably absent: NO `precacheAndRoute(...)`. Vercel rebuilds the Next.js
+ * chunks with new content-hash filenames on every deploy, but Vercel does
+ * NOT re-run `scripts/build-sw.mjs` (Vercel's framework detection runs
+ * `next build` only, not the `pnpm build` chain in package.json). So
+ * baking chunk URLs into a precache manifest would point at stale hashes
+ * after each deploy and Workbox would throw `bad-precaching-response` on
+ * SW install. Runtime caching via NetworkFirst sidesteps this entirely:
+ * chunks cache lazily on first online fetch (which is exactly when the
+ * scanner pairs + primes its guest cache), then serve from cache when
+ * offline. Trade-off vs. precache: a user who installs the PWA, never
+ * navigates while online, and immediately goes offline would see a
+ * miss — not a real scenario for door-day check-in.
+ *
+ * Also intentionally absent: NO fetch handler for `/api/*`. The mutation
+ * queue lives in the page context (Dexie + lib/scanner/sync.ts). The SW
+ * does NOT intercept POSTs, because we need bodied responses for conflict
+ * detection and workbox-background-sync's BackgroundSyncPlugin replays
+ * headers-only.
  *
  * Compiled by scripts/build-sw.mjs to public/sw.js. Editing public/sw.js
  * directly is wasted effort — the script overwrites it on every build.
  */
 
+/// <reference lib="webworker" />
+
 import { clientsClaim, skipWaiting } from "workbox-core";
-import { precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { CacheFirst, NetworkFirst } from "workbox-strategies";
 
-declare const self: ServiceWorkerGlobalScope & {
-  __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
-};
+declare const self: ServiceWorkerGlobalScope;
 
 skipWaiting();
 clientsClaim();
-
-// __WB_MANIFEST is replaced at build time by scripts/build-sw.mjs.
-precacheAndRoute(self.__WB_MANIFEST || []);
 
 // PWA icons + manifest — cache-first, refresh in background.
 registerRoute(
