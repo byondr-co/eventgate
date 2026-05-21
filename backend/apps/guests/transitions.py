@@ -21,8 +21,9 @@ class InvalidTransition(Exception):
 _ENTRY_TABLE: dict[tuple[str, str], set[str]] = {
     ("pre_registered", "registered_not_arrived"): {"checked_in", "manual_review"},
     ("walk_in", "displayed"): {"checked_in", "voided", "manual_review"},
-    # No exits from checked_in, voided, manual_review at MVP — admin override
-    # is a Plan F concern (help-desk lane).
+    # Plan F: help-desk override authority (brief Appendix A row 8).
+    ("pre_registered", "manual_review"): {"checked_in", "voided"},
+    ("walk_in", "manual_review"): {"checked_in", "voided"},
 }
 
 # from_info_status -> {allowed_to_info_status}

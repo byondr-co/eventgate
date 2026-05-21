@@ -6,6 +6,7 @@ from apps.helpdesk.views import (
     HelpDeskTicketReleaseView,
     HelpDeskTicketResolveView,
 )
+from apps.helpdesk.views_manual_review import ManualReviewResolveView
 
 PREFIX = "orgs/<slug:org_slug>/events/<slug:event_slug>/helpdesk/tickets"
 
@@ -23,5 +24,11 @@ urlpatterns = [
         f"{PREFIX}/<int:ticket_id>/resolve/",
         HelpDeskTicketResolveView.as_view(),
         name="helpdesk-resolve",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/helpdesk/manual-review/"
+        "<uuid:guest_id>/resolve/",
+        ManualReviewResolveView.as_view(),
+        name="helpdesk-manual-review-resolve",
     ),
 ]

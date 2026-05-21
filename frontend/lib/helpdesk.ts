@@ -88,3 +88,66 @@ export async function resolveTicket(
   if (!r.ok) throw new Error(`${r.status}`);
   return (await r.json()) as Ticket;
 }
+
+export type ManualReviewGuest = {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_or_chat: string;
+  guest_type: "pre_registered" | "walk_in";
+  entry_status: "manual_review";
+  info_status: string;
+  updated_at: string;
+};
+
+type ManualReviewListResponse = {
+  results: ManualReviewGuest[];
+  count: number;
+};
+
+export function useManualReviewGuests(
+  orgSlug: string,
+  eventSlug: string,
+  enabled: boolean,
+) {
+  return useSWR<ManualReviewListResponse>(
+    enabled
+      ? `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/?entry_status=manual_review`
+      : null,
+    async (url) => {
+      const r = await fetch(url, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status}`);
+      const body = (await r.json()) as
+        | ManualReviewListResponse
+        | ManualReviewGuest[];
+      if (Array.isArray(body)) {
+        return { results: body, count: body.length };
+      }
+      return body;
+    },
+    { refreshInterval: 5000 },
+  );
+}
+
+export async function resolveManualReview(
+  orgSlug: string,
+  eventSlug: string,
+  guestId: string,
+  body: { action: "approve_checkin" | "void"; notes: string },
+): Promise<{ guest_id: string; entry_status: string }> {
+  const r = await fetch(
+    `/api/v1/orgs/${orgSlug}/events/${eventSlug}/helpdesk/manual-review/${guestId}/resolve/`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!r.ok) throw new Error(`${r.status}`);
+  return (await r.json()) as { guest_id: string; entry_status: string };
+}
+
+export type InboxItem =
+  | { type: "ticket"; key: string; sortAt: string; ticket: Ticket }
+  | { type: "manual_review"; key: string; sortAt: string; guest: ManualReviewGuest };

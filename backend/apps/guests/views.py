@@ -58,10 +58,14 @@ class GuestListView(viewsets.GenericViewSet):
     permission_classes = (IsAuthenticated, IsOrgMember)
 
     def get_queryset(self):
-        return Guest.objects.filter(
+        qs = Guest.objects.filter(
             organization=self.request.organization,
             event__slug=self.kwargs["event_slug"],
         )
+        entry_status = self.request.query_params.get("entry_status")
+        if entry_status:
+            qs = qs.filter(entry_status=entry_status)
+        return qs
 
     def list(self, request, *args, **kwargs):
         qs = self.filter_queryset(self.get_queryset())
