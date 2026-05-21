@@ -9,7 +9,7 @@ from django.utils import timezone
 from slugify import slugify
 
 
-class OrganizationManager(models.Manager):
+class OrganizationManager(models.Manager["Organization"]):
     def create_with_unique_slug(self, *, name: str, **extra) -> Organization:
         base = slugify(name) or "org"
         candidate = base
@@ -17,7 +17,7 @@ class OrganizationManager(models.Manager):
         while self.filter(slug=candidate).exists():
             n += 1
             candidate = f"{base}-{n}"
-        return self.create(name=name, slug=candidate, **extra)  # type: ignore[return-value]
+        return self.create(name=name, slug=candidate, **extra)
 
 
 class Organization(models.Model):

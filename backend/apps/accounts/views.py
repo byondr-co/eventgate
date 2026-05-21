@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from datetime import timedelta
+from typing import ClassVar, cast
 
 from django.conf import settings
 from rest_framework import permissions, status
@@ -30,7 +31,7 @@ def _set_jwt_cookies(response: Response, user) -> Response:
     response.set_cookie(
         settings.JWT_ACCESS_COOKIE,
         access,
-        max_age=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),  # type: ignore[attr-defined]
+        max_age=int(cast(timedelta, settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"]).total_seconds()),
         secure=settings.JWT_COOKIE_SECURE,
         httponly=True,
         samesite=settings.JWT_COOKIE_SAMESITE,
@@ -40,7 +41,7 @@ def _set_jwt_cookies(response: Response, user) -> Response:
     response.set_cookie(
         settings.JWT_REFRESH_COOKIE,
         str(refresh),
-        max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),  # type: ignore[attr-defined]
+        max_age=int(cast(timedelta, settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"]).total_seconds()),
         secure=settings.JWT_COOKIE_SECURE,
         httponly=True,
         samesite=settings.JWT_COOKIE_SAMESITE,

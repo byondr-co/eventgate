@@ -17,8 +17,7 @@ class OrgScopedQuerySet(models.QuerySet):
         return self.filter(organization=org)
 
 
-class OrgScopedManager(models.Manager.from_queryset(OrgScopedQuerySet)):  # type: ignore[misc]
-    pass
+OrgScopedManager = models.Manager.from_queryset(OrgScopedQuerySet)
 
 
 class OrgScopedModel(models.Model):

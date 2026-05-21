@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -11,6 +12,9 @@ from django.utils import timezone
 
 from apps.accounts.models import MagicLinkToken
 from apps.common.tokens import generate_token, hash_token, tokens_match
+
+if TYPE_CHECKING:
+    from apps.accounts.models import User as UserModel
 
 User = get_user_model()
 
@@ -55,7 +59,7 @@ def send_magic_link_email(*, email: str, raw_token: str) -> None:
 
 
 @transaction.atomic
-def consume_magic_link(raw_token: str) -> User:  # type: ignore[valid-type]
+def consume_magic_link(raw_token: str) -> UserModel:
     """Validate and consume a magic-link token, returning the (possibly-new) user."""
     if not raw_token:
         raise MagicLinkInvalid("Empty token")
