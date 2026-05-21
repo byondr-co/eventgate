@@ -30,8 +30,17 @@ export function TicketDetail({ ticket, orgSlug, eventSlug, onChanged }: Props) {
 
   const claim = wrap(() => claimTicket(orgSlug, eventSlug, ticket.id));
   const release = wrap(() => releaseTicket(orgSlug, eventSlug, ticket.id));
-  const resolve = (action: "approve_checkin" | "resolved_with_note" | "void") =>
-    wrap(() => resolveTicket(orgSlug, eventSlug, ticket.id, { action, notes }));
+  const resolve = (
+    action: "approve_checkin" | "resolved_with_note" | "void" | "escalated_to_manual_review",
+  ) => wrap(() => resolveTicket(orgSlug, eventSlug, ticket.id, { action, notes }));
+
+  const RESOLUTION_LABELS: Record<Ticket["resolution_action"], string> = {
+    "": "",
+    approve_checkin: "Approve check-in",
+    resolved_with_note: "Resolved with note",
+    void: "Void",
+    escalated_to_manual_review: "Sent to manual review",
+  };
 
   const original = ticket.audit_event.details_json as {
     reason?: string;
@@ -93,6 +102,13 @@ export function TicketDetail({ ticket, orgSlug, eventSlug, onChanged }: Props) {
               <Button onClick={resolve("resolved_with_note")} disabled={busy} variant="secondary">
                 Mark resolved (note)
               </Button>
+              <Button
+                onClick={resolve("escalated_to_manual_review")}
+                disabled={busy}
+                variant="outline"
+              >
+                Send to manual review
+              </Button>
               <Button onClick={resolve("void")} disabled={busy} variant="destructive">
                 Mark void
               </Button>
@@ -100,7 +116,9 @@ export function TicketDetail({ ticket, orgSlug, eventSlug, onChanged }: Props) {
           </>
         ) : (
           <div className="rounded-md bg-muted p-3 text-sm">
-            <div className="font-medium">Resolved · {ticket.resolution_action}</div>
+            <div className="font-medium">
+              Resolved · {RESOLUTION_LABELS[ticket.resolution_action] || ticket.resolution_action}
+            </div>
             {ticket.resolution_notes ? (
               <div className="mt-1 text-muted-foreground">{ticket.resolution_notes}</div>
             ) : null}

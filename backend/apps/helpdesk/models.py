@@ -28,6 +28,7 @@ class HelpDeskTicketState(models.Model):
         ("approve_checkin", "Approve check-in"),
         ("resolved_with_note", "Resolved with note"),
         ("void", "Void"),
+        ("escalated_to_manual_review", "Escalated to manual review"),
     )
 
     audit_event = models.OneToOneField(
@@ -55,7 +56,7 @@ class HelpDeskTicketState(models.Model):
     )
     claimed_at = models.DateTimeField(null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
-    resolution_action = models.CharField(max_length=24, choices=RESOLUTION_ACTIONS, blank=True)
+    resolution_action = models.CharField(max_length=32, choices=RESOLUTION_ACTIONS, blank=True)
     resolution_notes = models.TextField(blank=True)
     created_at = models.DateTimeField(default=tz.now)
     updated_at = models.DateTimeField(auto_now=True)

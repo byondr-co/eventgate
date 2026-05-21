@@ -24,7 +24,12 @@ export type Ticket = {
   assigned_to_email: string | null;
   claimed_at: string | null;
   resolved_at: string | null;
-  resolution_action: "" | "approve_checkin" | "resolved_with_note" | "void";
+  resolution_action:
+    | ""
+    | "approve_checkin"
+    | "resolved_with_note"
+    | "void"
+    | "escalated_to_manual_review";
   resolution_notes: string;
   created_at: string;
   updated_at: string;
@@ -73,7 +78,7 @@ export async function resolveTicket(
   eventSlug: string,
   id: number,
   body: {
-    action: "approve_checkin" | "resolved_with_note" | "void";
+    action: "approve_checkin" | "resolved_with_note" | "void" | "escalated_to_manual_review";
     notes: string;
   },
 ): Promise<Ticket> {
@@ -106,11 +111,7 @@ type ManualReviewListResponse = {
   count: number;
 };
 
-export function useManualReviewGuests(
-  orgSlug: string,
-  eventSlug: string,
-  enabled: boolean,
-) {
+export function useManualReviewGuests(orgSlug: string, eventSlug: string, enabled: boolean) {
   return useSWR<ManualReviewListResponse>(
     enabled
       ? `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/?entry_status=manual_review`
@@ -118,9 +119,7 @@ export function useManualReviewGuests(
     async (url) => {
       const r = await fetch(url, { credentials: "include" });
       if (!r.ok) throw new Error(`${r.status}`);
-      const body = (await r.json()) as
-        | ManualReviewListResponse
-        | ManualReviewGuest[];
+      const body = (await r.json()) as ManualReviewListResponse | ManualReviewGuest[];
       if (Array.isArray(body)) {
         return { results: body, count: body.length };
       }
