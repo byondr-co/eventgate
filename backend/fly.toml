@@ -41,3 +41,9 @@ primary_region = "sin"
   size = "shared-cpu-1x"
   memory = "512mb"
   processes = ["worker"]
+
+# Force the worker Machine to deploy with restart=always so it doesn't end up
+# in standby mode (started only on demand by the app process).
+[[restart]]
+  policy = "always"
+  processes = ["worker"]
