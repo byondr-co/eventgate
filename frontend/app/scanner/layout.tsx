@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 
+import { OfflineBanner } from "@/components/scanner/offline-banner";
+import { useQueueCount } from "@/lib/scanner/queue-observers";
 import { startRefreshLoop } from "@/lib/scanner/refresh-loop";
 import { loadDevice } from "@/lib/scanner/session";
 import { startSyncLoop } from "@/lib/scanner/sync";
@@ -27,6 +30,8 @@ export default function ScannerLayout({ children }: { children: React.ReactNode 
   // useSyncExternalStore avoids the "setState in effect" lint trap — the
   // browser is the source of truth, we just subscribe and re-render.
   const online = useSyncExternalStore(subscribeOnline, getOnline, getOnlineServer);
+  const pending = useQueueCount("pending");
+  const conflicts = useQueueCount("conflict");
 
   // Side effects only: SW registration + auth-redirect. No setState here.
   useEffect(() => {
@@ -49,13 +54,25 @@ export default function ScannerLayout({ children }: { children: React.ReactNode 
     <div className="min-h-screen bg-neutral-950 text-white">
       <header className="flex items-center justify-between border-b border-neutral-800 px-4 py-2 text-xs">
         <span className="font-mono">Eventgate Scanner</span>
-        <span
-          className={online ? "font-mono text-green-400" : "font-mono text-amber-400"}
-          aria-live="polite"
-        >
-          {online ? "● online" : "● offline"}
-        </span>
+        <div className="flex items-center gap-3">
+          {conflicts > 0 ? (
+            <Link
+              href="/scanner/escalations"
+              className="font-mono text-amber-300 hover:underline"
+              aria-label={`${conflicts} conflicts pending escalation`}
+            >
+              ⚠ {conflicts} conflict{conflicts === 1 ? "" : "s"}
+            </Link>
+          ) : null}
+          <span
+            className={online ? "font-mono text-green-400" : "font-mono text-amber-400"}
+            aria-live="polite"
+          >
+            {online ? "● online" : `● offline${pending > 0 ? ` — ${pending} queued` : ""}`}
+          </span>
+        </div>
       </header>
+      <OfflineBanner />
       {children}
     </div>
   );
