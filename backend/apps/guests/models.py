@@ -64,3 +64,37 @@ class Guest(OrgScopedModel):
 
     def __str__(self) -> str:
         return f"{self.full_name or self.email or self.entry_token[:8]} @ {self.event.slug}"
+
+
+class CsvImport(OrgScopedModel):
+    """A CSV guest-import job. Status transitions: preview -> pending -> running -> complete/failed."""
+
+    STATUSES = (
+        ("preview", "Preview"),
+        ("pending", "Pending"),
+        ("running", "Running"),
+        ("complete", "Complete"),
+        ("failed", "Failed"),
+    )
+
+    event = models.ForeignKey("events.Event", on_delete=models.CASCADE, related_name="csv_imports")
+    uploaded_by = models.ForeignKey(
+        "accounts.User", on_delete=models.PROTECT, related_name="csv_imports"
+    )
+    file = models.FileField(upload_to="csv_imports/%Y/%m/%d/")
+    column_mapping = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=16, choices=STATUSES, default="preview")
+    total_rows = models.IntegerField(default=0)
+    imported_rows = models.IntegerField(default=0)
+    failed_rows = models.IntegerField(default=0)
+    error_report = models.FileField(upload_to="csv_imports/errors/%Y/%m/%d/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def save(self, *args, **kwargs):
+        if not self.organization_id and self.event_id:
+            self.organization = self.event.organization
+        super().save(*args, **kwargs)
