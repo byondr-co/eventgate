@@ -14,6 +14,7 @@ class TestSeedDevEvent:
         event = Event.objects.get(slug="dev-conf")
         assert event.registration_open is True
         assert event.walkins_enabled is True
+        assert event.walkin_capacity == 10
         guests = Guest.objects.filter(event=event, guest_type="pre_registered")
         assert guests.count() == 2
         # Tokens are printable and unique

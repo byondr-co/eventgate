@@ -14,8 +14,10 @@ from apps.walkins.serializers import (
     WalkinNextResponseSerializer,
 )
 from apps.walkins.services import (
+    WalkinCapacityFull,
     claim_walkin,
     complete_walkin_info,
+    count_active_walkins,
     get_or_create_displayed,
 )
 
@@ -37,16 +39,34 @@ class WalkinDisplayNextView(APIView):
             return Response({"detail": "This device cannot run the walk-in display."}, status=403)
         ser = WalkinNextRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        guest, url = get_or_create_displayed(device=device, **ser.validated_data)
-        return Response(
-            WalkinNextResponseSerializer(
+        try:
+            guest, url = get_or_create_displayed(device=device, **ser.validated_data)
+        except WalkinCapacityFull as exc:
+            # 200 + full state: the tablet polls continuously, so a soft
+            # state is friendlier than a 4xx that would trigger error UI.
+            return Response(
                 {
-                    "guest_id": guest.id,
-                    "entry_token": guest.entry_token,
-                    "claim_url": url,
+                    "status": "full",
+                    "walkin_count": exc.count,
+                    "walkin_capacity": exc.capacity,
                 }
-            ).data
-        )
+            )
+        # Recount AFTER the mint so the tablet's counter reflects the just-issued slot.
+        active = count_active_walkins(device.event)
+        payload = WalkinNextResponseSerializer(
+            {
+                "guest_id": guest.id,
+                "entry_token": guest.entry_token,
+                "claim_url": url,
+            }
+        ).data
+        # Augment the response with capacity counters. We add these alongside the
+        # existing keys (rather than wrapping in a status: "ready" envelope) to
+        # keep the success contract backwards-compatible.
+        payload["status"] = "ready"
+        payload["walkin_count"] = active
+        payload["walkin_capacity"] = device.event.walkin_capacity
+        return Response(payload)
 
 
 class WalkinClaimView(APIView):

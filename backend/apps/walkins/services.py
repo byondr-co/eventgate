@@ -38,6 +38,37 @@ from apps.guests.transitions import (
 )
 
 
+class WalkinCapacityFull(Exception):
+    """Raised by `get_or_create_displayed` when the event has hit `walkin_capacity`.
+
+    The view layer catches this and returns a 200 + `{"status": "full", ...}` body
+    rather than an error — the tablet polls continuously and a full-state UI
+    is friendlier than triggering the generic error path.
+    """
+
+    def __init__(self, *, count: int, capacity: int) -> None:
+        super().__init__(f"walk-in capacity reached: {count}/{capacity}")
+        self.count = count
+        self.capacity = capacity
+
+
+def count_active_walkins(event: Event) -> int:
+    """Count walk-in guests for `event` that consume capacity (everything not voided)."""
+    return (
+        Guest.objects.filter(event=event, guest_type="walk_in")
+        .exclude(entry_status="voided")
+        .count()
+    )
+
+
+def _is_walkin_full(event: Event) -> tuple[bool, int]:
+    """Return (full?, active_count). capacity=0 is unlimited and never full."""
+    if event.walkin_capacity == 0:
+        return False, count_active_walkins(event)
+    active = count_active_walkins(event)
+    return active >= event.walkin_capacity, active
+
+
 def build_claim_url(*, event: Event, token: str) -> str:
     """Compose the URL that the displayed walk-in QR encodes."""
     base = getattr(settings, "PUBLIC_BASE_URL", "http://localhost:3000").rstrip("/")
@@ -50,6 +81,9 @@ def get_or_create_displayed(*, device, gate: str, scanner_label: str) -> tuple[G
 
     Locks on (event, gate, scanner_label) so racing display refreshes don't
     create two simultaneous walk-ins for the same physical lane.
+
+    Raises `WalkinCapacityFull` if the event has hit `walkin_capacity` and the
+    current (gate, scanner) scope doesn't already have a displayed walk-in.
     """
     advisory_xact_lock(f"walkin-display:{device.event_id}:{gate}:{scanner_label}")
     existing = (
@@ -65,6 +99,10 @@ def get_or_create_displayed(*, device, gate: str, scanner_label: str) -> tuple[G
     )
     if existing:
         return existing, build_claim_url(event=device.event, token=existing.entry_token)
+
+    full, count = _is_walkin_full(device.event)
+    if full:
+        raise WalkinCapacityFull(count=count, capacity=device.event.walkin_capacity)
 
     token = generate_token()
     guest = Guest.objects.create(

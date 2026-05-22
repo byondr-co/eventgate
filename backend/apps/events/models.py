@@ -31,6 +31,10 @@ class Event(models.Model):
     venue = models.CharField(max_length=255, blank=True)
     registration_open = models.BooleanField(default=True)
     walkins_enabled = models.BooleanField(default=True)
+    walkin_capacity = models.PositiveIntegerField(
+        default=0,
+        help_text="Hard cap on total walk-in guests (counting all non-voided). 0 means unlimited.",
+    )
     event_pin_hash = models.CharField(max_length=128, blank=True)
     event_pin_rotated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=tz.now)

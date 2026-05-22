@@ -37,6 +37,7 @@ class Command(BaseCommand):
                 "name": "Dev Conference",
                 "registration_open": True,
                 "walkins_enabled": True,
+                "walkin_capacity": 10,
             },
         )
         if created:
