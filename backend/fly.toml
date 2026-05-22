@@ -14,12 +14,17 @@ primary_region = "sin"
 [deploy]
   release_command = "python manage.py migrate --noinput && python manage.py setup_telegram_webhook"
 
-# Two process groups: the web `app` (gunicorn) and the `worker` (Celery).
-# When [processes] is defined, Fly ignores the Dockerfile's CMD and uses the
-# commands here for each Machine, picked by process group name.
+# Three process groups: the web `app` (gunicorn), the `worker` (Celery task
+# consumer), and `beat` (Celery periodic scheduler). When [processes] is
+# defined, Fly ignores the Dockerfile's CMD and uses the commands here for
+# each Machine, picked by process group name.
+#
+# `beat` MUST be exactly one Machine — multiple beat instances would double-
+# emit periodic tasks. Worker can scale horizontally; beat cannot.
 [processes]
   app = "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -"
   worker = "celery -A config worker --loglevel=INFO --concurrency=4"
+  beat = "celery -A config beat --loglevel=INFO"
 
 # HTTP listener is bound to the `app` process group only.
 [http_service]
@@ -49,8 +54,19 @@ primary_region = "sin"
   memory = "512mb"
   processes = ["worker"]
 
-# Force the worker Machine to deploy with restart=always so it doesn't end up
-# in standby mode (started only on demand by the app process).
+# Beat is lightweight (a sleep-and-emit loop) but must always be running for
+# scheduled tasks to fire. Single 256MB Machine is plenty.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+  processes = ["beat"]
+
+# Force the worker AND beat Machines to deploy with restart=always so they
+# don't end up in standby mode (started only on demand by the app process).
 [[restart]]
   policy = "always"
   processes = ["worker"]
+
+[[restart]]
+  policy = "always"
+  processes = ["beat"]
