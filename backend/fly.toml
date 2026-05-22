@@ -11,8 +11,11 @@ primary_region = "sin"
 # active. If migrations fail, the deploy is rolled back and the old version
 # keeps serving traffic. --noinput suppresses confirmation prompts for any
 # data-loss migration; review migrations before merging.
+#
+# Wrapped in `sh -c` because Fly runs release_command without a shell, so
+# `&&` would otherwise be parsed as argv to `python manage.py migrate`.
 [deploy]
-  release_command = "python manage.py migrate --noinput && python manage.py setup_telegram_webhook"
+  release_command = "sh -c 'python manage.py migrate --noinput && python manage.py setup_telegram_webhook'"
 
 # Three process groups: the web `app` (gunicorn), the `worker` (Celery task
 # consumer), and `beat` (Celery periodic scheduler). When [processes] is
