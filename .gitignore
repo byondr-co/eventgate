@@ -39,6 +39,10 @@ skills-lock.json
 # Docker
 docker-volumes/
 
+# Django dev uploads (FileField MEDIA_ROOT)
+backend/media/
+backend/staticfiles/
+
 # Build artifacts
 dist/
 build/

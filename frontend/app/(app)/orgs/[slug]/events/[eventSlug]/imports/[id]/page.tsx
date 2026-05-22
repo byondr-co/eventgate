@@ -40,6 +40,7 @@ export default function ImportDetailPage() {
         <Button
           variant="outline"
           size="sm"
+          nativeButton={false}
           render={<Link href={`/orgs/${slug}/events/${eventSlug}/guests`}>Back to guests</Link>}
         />
       </div>
