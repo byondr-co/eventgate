@@ -5,6 +5,8 @@ import uuid
 from django.db import models
 from django.utils import timezone as tz
 
+from apps.common.models import OrgScopedModel
+
 
 class NotificationDispatch(models.Model):
     """Audit trail of outbound notifications (email, Telegram, etc.).
@@ -44,3 +46,25 @@ class NotificationDispatch(models.Model):
 
     def __str__(self) -> str:
         return f"{self.channel}:{self.template} -> {self.recipient} ({self.status})"
+
+
+class TelegramBinding(OrgScopedModel):
+    """Joins a Telegram chat_id to a Guest row. Created on /start <guest_token>."""
+
+    guest = models.OneToOneField(
+        "guests.Guest", on_delete=models.CASCADE, related_name="telegram_binding"
+    )
+    chat_id = models.BigIntegerField(unique=True)
+    username = models.CharField(max_length=64, blank=True)
+    bound_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = (models.Index(fields=["chat_id"]),)
+
+    def save(self, *args, **kwargs):
+        if not self.organization_id and self.guest_id:
+            self.organization = self.guest.event.organization
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"TelegramBinding(chat_id={self.chat_id}, guest={self.guest_id})"
