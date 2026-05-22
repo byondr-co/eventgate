@@ -30,11 +30,19 @@ def send_qr_email_task(self, *, guest_id: str) -> str:
 
     try:
         png = render_png(guest.entry_token)
+        telegram_line = ""
+        bot_username = getattr(settings, "TELEGRAM_BOT_USERNAME", "")
+        if bot_username:
+            telegram_line = (
+                f"\n\nPrefer Telegram? Tap here to receive your QR via @{bot_username}: "
+                f"https://t.me/{bot_username}?start={guest.entry_token}"
+            )
         body = (
             f"Hi {guest.full_name or 'there'},\n\n"
             f"You're registered for {guest.event.name}.\n\n"
             "Show the attached QR code at the entrance — staff will scan it.\n"
-            "Keep it private; do not share.\n\n"
+            "Keep it private; do not share."
+            f"{telegram_line}\n\n"
             "See you there!\n"
             "— Eventgate"
         )

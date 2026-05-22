@@ -51,3 +51,27 @@ class TestQrEmailTask:
         )
         assert len(mail.outbox) == 0
         assert not NotificationDispatch.objects.filter(template="pre_reg_qr").exists()
+
+
+@pytest.mark.django_db
+def test_email_body_includes_telegram_link_when_bot_username_set(event, settings):
+    settings.TELEGRAM_BOT_USERNAME = "EventgateBot"
+    mail.outbox.clear()
+    guest = register_guest(
+        event=event,
+        payload={"name": "Alice", "email": "alice@example.com", "phone_or_chat": "+1"},
+    )
+    msg = mail.outbox[0]
+    assert f"https://t.me/EventgateBot?start={guest.entry_token}" in msg.body
+
+
+@pytest.mark.django_db
+def test_email_body_omits_telegram_link_when_bot_username_blank(event, settings):
+    settings.TELEGRAM_BOT_USERNAME = ""
+    mail.outbox.clear()
+    register_guest(
+        event=event,
+        payload={"name": "Alice", "email": "alice@example.com", "phone_or_chat": "+1"},
+    )
+    msg = mail.outbox[0]
+    assert "t.me/" not in msg.body
