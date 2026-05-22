@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.guests.views import (
+    CsvImportCommitView,
     CsvImportPreviewView,
     CsvImportStatusView,
     GuestListView,
@@ -29,6 +30,11 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/imports/preview/",
         CsvImportPreviewView.as_view(),
         name="csv-import-preview",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/imports/",
+        CsvImportCommitView.as_view(),
+        name="csv-import-commit",
     ),
     path(
         "orgs/<slug:org_slug>/events/<slug:event_slug>/imports/<uuid:import_id>/",

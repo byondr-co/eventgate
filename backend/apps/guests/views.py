@@ -34,6 +34,7 @@ from apps.guests.services import (
     parse_csv_preview,
     register_guest,
 )
+from apps.guests.tasks import process_csv_import_task
 from apps.orgs.models import Organization
 from apps.orgs.views import StandardPagination
 
@@ -244,3 +245,46 @@ class CsvImportStatusView(APIView):
         event = get_object_or_404(Event, organization__slug=org_slug, slug=event_slug)
         ci = get_object_or_404(CsvImport, id=import_id, event=event)
         return Response(CsvImportSerializer(ci, context={"request": request}).data)
+
+
+class CsvImportCommitView(APIView):
+    """POST /api/v1/orgs/<org_slug>/events/<event_slug>/imports/
+
+    Accepts {preview_id, column_mapping}. Transitions the existing preview-status
+    CsvImport row to "pending" and enqueues the processing task. Returns 201.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated, IsOrgMember]
+
+    def post(self, request: Request, org_slug: str, event_slug: str) -> Response:
+        event = get_object_or_404(Event, organization__slug=org_slug, slug=event_slug)
+
+        preview_id = request.data.get("preview_id")
+        mapping = request.data.get("column_mapping", {})
+        if not isinstance(mapping, dict):
+            return Response(
+                {"detail": "column_mapping must be an object."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        ci = get_object_or_404(CsvImport, id=preview_id, event=event)
+        if ci.status != "preview":
+            return Response(
+                {"detail": f"Import is already in status '{ci.status}'."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        ci.column_mapping = mapping
+        ci.status = "pending"
+        ci.save(update_fields=["column_mapping", "status"])
+
+        process_csv_import_task.delay(import_id=str(ci.id))
+
+        return Response(
+            {
+                "import_id": str(ci.id),
+                "status": ci.status,
+                "total_rows": ci.total_rows,
+            },
+            status=status.HTTP_201_CREATED,
+        )
