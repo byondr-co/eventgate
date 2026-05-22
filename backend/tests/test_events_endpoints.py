@@ -93,3 +93,30 @@ class TestRetrieveAndUpdate:
         assert patch.status_code == 200
         ev.refresh_from_db()
         assert ev.venue == "Diamond Island"
+
+
+@pytest.mark.django_db
+def test_event_detail_includes_walkin_capacity(acme):
+    ev = Event.objects.create(organization=acme, name="A", slug="a")
+    ev.walkin_capacity = 7
+    ev.save(update_fields=["walkin_capacity", "updated_at"])
+    client = APIClient()
+    _login(client, "alice@example.com")
+    resp = client.get(f"/api/v1/orgs/{acme.slug}/events/{ev.slug}/")
+    assert resp.status_code == 200
+    assert resp.json()["walkin_capacity"] == 7
+
+
+@pytest.mark.django_db
+def test_event_patch_updates_walkin_capacity(acme):
+    ev = Event.objects.create(organization=acme, name="A", slug="a")
+    client = APIClient()
+    _login(client, "alice@example.com")
+    resp = client.patch(
+        f"/api/v1/orgs/{acme.slug}/events/{ev.slug}/",
+        data={"walkin_capacity": 25},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.json()
+    ev.refresh_from_db()
+    assert ev.walkin_capacity == 25

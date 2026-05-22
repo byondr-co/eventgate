@@ -34,6 +34,7 @@ class EventSerializer(serializers.ModelSerializer):
             "venue",
             "registration_open",
             "walkins_enabled",
+            "walkin_capacity",
             "created_at",
         )
         read_only_fields = ("id", "created_at")
