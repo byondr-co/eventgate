@@ -25,7 +25,11 @@ class AuditEvent(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(
-        "orgs.Organization", on_delete=models.PROTECT, related_name="+"
+        "orgs.Organization",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
     )
     event = models.ForeignKey(
         "events.Event",
