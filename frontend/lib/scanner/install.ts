@@ -6,11 +6,13 @@
  * (users must use the share sheet's "Add to Home Screen").
  *
  * Module-level singleton: the event fires once per page load, so we stash it
- * and let `useInstallPrompt()` subscribe to changes via a small set of
- * listeners.
+ * and let `useInstallPrompt()` subscribe to changes via useSyncExternalStore.
+ * SSR-safe: the server snapshot returns false, so React's hydration sees a
+ * matching tree on the first paint regardless of whether the browser has
+ * already fired beforeinstallprompt.
  */
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 type BIPEvent = Event & {
   prompt: () => Promise<void>;
@@ -32,17 +34,20 @@ if (typeof window !== "undefined") {
   });
 }
 
+function subscribe(callback: () => void): () => void {
+  listeners.add(callback);
+  return () => {
+    listeners.delete(callback);
+  };
+}
+
+const getSnapshot = (): boolean => deferred !== null;
+const getServerSnapshot = (): boolean => false;
+
 export function useInstallPrompt(): { canInstall: boolean; install: () => Promise<void> } {
-  const [, setVersion] = useState(0);
-  useEffect(() => {
-    const l = () => setVersion((v) => v + 1);
-    listeners.add(l);
-    return () => {
-      listeners.delete(l);
-    };
-  }, []);
+  const canInstall = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   return {
-    canInstall: deferred !== null,
+    canInstall,
     install: async () => {
       const d = deferred;
       if (!d) return;
