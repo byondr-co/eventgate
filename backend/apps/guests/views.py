@@ -40,7 +40,7 @@ from apps.orgs.views import StandardPagination
 class PublicRegistrationView(APIView):
     """POST /api/v1/e/<org_slug>/<event_slug>/register/
 
-    Anonymous. Returns 201 with guest_id only (raw token never echoed).
+    Anonymous. Returns 201 with guest_id + entry_token (see serializer for security rationale).
     """
 
     permission_classes = (AllowAny,)
