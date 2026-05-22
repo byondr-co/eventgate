@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv as _csv
+import io as _io
 from typing import Any
 
 from django.db import transaction
@@ -63,3 +65,57 @@ def register_guest(*, event: Event, payload: dict[str, Any], source: str = "publ
     send_qr_email_task.delay(guest_id=str(guest.id))
 
     return guest
+
+
+NAME_ALIASES: set[str] = {"name", "fullname", "full_name", "attendee", "guest_name"}
+EMAIL_ALIASES: set[str] = {"email", "email_address", "e-mail", "mail"}
+PHONE_ALIASES: set[str] = {"phone", "phone_number", "tel", "mobile", "phone_or_chat"}
+
+MAX_CSV_BYTES = 5 * 1024 * 1024  # 5MB
+MAX_PREVIEW_ROWS = 5
+
+
+def auto_detect(headers: list[str]) -> dict[str, str | None]:
+    out: dict[str, str | None] = {}
+    for i, header in enumerate(headers):
+        norm = header.strip().lower().replace(" ", "_")
+        if norm in NAME_ALIASES:
+            out[str(i)] = "name"
+        elif norm in EMAIL_ALIASES:
+            out[str(i)] = "email"
+        elif norm in PHONE_ALIASES:
+            out[str(i)] = "phone"
+        else:
+            out[str(i)] = None
+    return out
+
+
+class CsvParseError(Exception):
+    """Raised when an uploaded CSV can't be parsed or has no data rows."""
+
+
+def parse_csv_preview(file_bytes: bytes) -> tuple[list[str], list[list[str]]]:
+    """Decode + parse a CSV file. Returns (headers, first_5_data_rows)."""
+    try:
+        text = file_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise CsvParseError("File must be UTF-8 encoded.") from exc
+
+    reader = _csv.reader(_io.StringIO(text))
+    try:
+        headers = next(reader)
+    except StopIteration as exc:
+        raise CsvParseError("File must contain at least one data row.") from exc
+
+    rows: list[list[str]] = []
+    for row in reader:
+        if not row:
+            continue
+        rows.append(row)
+        if len(rows) >= MAX_PREVIEW_ROWS:
+            break
+
+    if not rows:
+        raise CsvParseError("File must contain at least one data row.")
+
+    return headers, rows

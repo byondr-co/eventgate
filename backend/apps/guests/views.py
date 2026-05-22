@@ -7,6 +7,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
 from rest_framework import status, viewsets
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -17,13 +18,21 @@ from apps.common.qr import render_png
 from apps.common.tokens import hash_token, tokens_match
 from apps.devices.auth import SessionTokenAuthentication
 from apps.events.models import Event
-from apps.guests.models import Guest
+from apps.guests.models import CsvImport, Guest
 from apps.guests.serializers import (
     GuestSerializer,
     GuestSyncSerializer,
     RegistrationSubmitResponseSerializer,
 )
-from apps.guests.services import EventNotOpen, RegistrationError, register_guest
+from apps.guests.services import (
+    MAX_CSV_BYTES,
+    CsvParseError,
+    EventNotOpen,
+    RegistrationError,
+    auto_detect,
+    parse_csv_preview,
+    register_guest,
+)
 from apps.orgs.models import Organization
 from apps.orgs.views import StandardPagination
 
@@ -160,3 +169,60 @@ class GuestSyncView(APIView):
         res = Response(body)
         res["ETag"] = etag
         return res
+
+
+class CsvImportPreviewView(APIView):
+    """POST /api/v1/orgs/<org_slug>/events/<event_slug>/imports/preview/
+
+    Multipart upload. Parses headers + first 5 data rows, returns an auto-mapping
+    proposal and the event's `RegistrationField`s. Creates a `CsvImport` row
+    with status="preview" so the client can later commit by referencing it.
+    Enforces a 5 MB max upload size and requires UTF-8 + at least one data row.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated, IsOrgMember]
+    parser_classes: ClassVar = [MultiPartParser]
+
+    def post(self, request: Request, org_slug: str, event_slug: str) -> Response:
+        event = get_object_or_404(Event, organization__slug=org_slug, slug=event_slug)
+
+        uploaded = request.FILES.get("file")
+        if uploaded is None:
+            return Response({"detail": "Missing file."}, status=status.HTTP_400_BAD_REQUEST)
+        if uploaded.size > MAX_CSV_BYTES:
+            return Response(
+                {"detail": "File too large. Max 5 MB."},
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            )
+
+        raw = uploaded.read()
+        try:
+            headers, rows = parse_csv_preview(raw)
+        except CsvParseError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        uploaded.seek(0)
+        ci = CsvImport.objects.create(
+            event=event,
+            uploaded_by=request.user,
+            file=uploaded,
+            column_mapping={},
+            status="preview",
+        )
+
+        registration_fields = [
+            {"id": str(rf.id), "label": rf.label_en, "field_key": rf.field_key}
+            for rf in event.registration_fields.exclude(
+                field_key__in={"name", "email", "phone_or_chat"}
+            )
+        ]
+
+        return Response(
+            {
+                "preview_id": str(ci.id),
+                "headers": headers,
+                "first_rows": rows,
+                "auto_mapping": auto_detect(headers),
+                "registration_fields": registration_fields,
+            }
+        )

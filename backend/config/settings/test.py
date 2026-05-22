@@ -1,9 +1,14 @@
 """Test settings — fast, isolated."""
 
+import tempfile
+
 from .base import *  # noqa: F403
 
 DEBUG = False
 SECRET_KEY = "test-insecure-secret"
+
+# Sandbox file uploads so tests never pollute the working tree.
+MEDIA_ROOT = tempfile.mkdtemp(prefix="eventgate-test-media-")
 
 DATABASES = {
     "default": {
