@@ -22,6 +22,8 @@ from apps.events.services import check_event_pin
 
 SESSION_TTL = timedelta(hours=8)
 
+VALID_ROLES = {r for r, _ in ScannerDevice.ROLES}
+
 
 class WrongPin(Exception):
     pass
@@ -32,6 +34,8 @@ def create_device(
     *, organization, event, label: str, role: str, gate: str = ""
 ) -> tuple[ScannerDevice, str]:
     """Create an un-enrolled ScannerDevice + return the raw enrollment code."""
+    if role not in VALID_ROLES:
+        raise ValueError(f"Invalid role {role!r}. Must be one of: {sorted(VALID_ROLES)}.")
     enrollment_code = generate_token()
     device = ScannerDevice.objects.create(
         organization=organization,
