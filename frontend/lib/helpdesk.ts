@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
 
 import { createEtagCache } from "@/lib/etag-fetch";
 
@@ -44,11 +44,16 @@ const fetcher = (url: string): Promise<ListResponse> =>
 
 export function useTickets(orgSlug: string, eventSlug: string, status: string) {
   const qs = status === "all" ? "" : `?status=${status}`;
-  return useSWR<ListResponse>(
-    `/api/v1/orgs/${orgSlug}/events/${eventSlug}/helpdesk/tickets/${qs}`,
-    fetcher,
-    { refreshInterval: 5000, revalidateOnFocus: true },
-  );
+  return useQuery({
+    queryKey: ["helpdesk-tickets", orgSlug, eventSlug, status],
+    queryFn: () =>
+      ticketsEtagCache.fetchJSON<ListResponse>(
+        `/api/v1/orgs/${orgSlug}/events/${eventSlug}/helpdesk/tickets/${qs}`,
+      ),
+    enabled: !!orgSlug && !!eventSlug,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
 }
 
 export async function claimTicket(orgSlug: string, eventSlug: string, id: number): Promise<Ticket> {
@@ -112,12 +117,13 @@ type ManualReviewListResponse = {
 };
 
 export function useManualReviewGuests(orgSlug: string, eventSlug: string, enabled: boolean) {
-  return useSWR<ManualReviewListResponse>(
-    enabled
-      ? `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/?entry_status=manual_review`
-      : null,
-    async (url) => {
-      const r = await fetch(url, { credentials: "include" });
+  return useQuery({
+    queryKey: ["helpdesk-manual-review", orgSlug, eventSlug],
+    queryFn: async (): Promise<ManualReviewListResponse> => {
+      const r = await fetch(
+        `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/?entry_status=manual_review`,
+        { credentials: "include" },
+      );
       if (!r.ok) throw new Error(`${r.status}`);
       const body = (await r.json()) as ManualReviewListResponse | ManualReviewGuest[];
       if (Array.isArray(body)) {
@@ -125,8 +131,9 @@ export function useManualReviewGuests(orgSlug: string, eventSlug: string, enable
       }
       return body;
     },
-    { refreshInterval: 5000 },
-  );
+    enabled: enabled && !!orgSlug && !!eventSlug,
+    refetchInterval: 5000,
+  });
 }
 
 export async function resolveManualReview(

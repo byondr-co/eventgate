@@ -59,8 +59,8 @@ export default function HelpDeskPage() {
   const selected = items.find((i) => i.key === selectedKey) ?? items[0] ?? null;
 
   const refresh = () => {
-    void ticketsQuery.mutate();
-    void manualQuery.mutate();
+    void ticketsQuery.refetch();
+    void manualQuery.refetch();
   };
 
   return (
