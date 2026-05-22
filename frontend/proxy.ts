@@ -4,7 +4,7 @@ const PUBLIC_PATHS = ["/login", "/auth/callback", "/debug/health"];
 const INVITE_PREFIX = "/invites/";
 const SCANNER_PREFIX = "/scanner/";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   // /scanner/* uses device + session tokens (Authorization header), NOT the
   // user JWT cookie. Skip the auth-redirect for it.
