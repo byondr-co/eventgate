@@ -177,3 +177,9 @@ PUBLIC_BASE_URL = env(
 
 # Invites
 INVITE_TTL_HOURS = 72
+
+# Telegram bot (Plan G W12). All four are optional; absent values disable the feature.
+TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN", default="")
+TELEGRAM_BOT_USERNAME = env("TELEGRAM_BOT_USERNAME", default="")
+TELEGRAM_WEBHOOK_SECRET = env("TELEGRAM_WEBHOOK_SECRET", default="")
+TELEGRAM_WEBHOOK_URL = env("TELEGRAM_WEBHOOK_URL", default="")

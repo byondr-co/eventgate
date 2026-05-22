@@ -12,7 +12,7 @@ primary_region = "sin"
 # keeps serving traffic. --noinput suppresses confirmation prompts for any
 # data-loss migration; review migrations before merging.
 [deploy]
-  release_command = "python manage.py migrate --noinput"
+  release_command = "python manage.py migrate --noinput && python manage.py setup_telegram_webhook"
 
 # Two process groups: the web `app` (gunicorn) and the `worker` (Celery).
 # When [processes] is defined, Fly ignores the Dockerfile's CMD and uses the
