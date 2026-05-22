@@ -139,6 +139,14 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
 CELERY_TASK_EAGER_PROPAGATES = env.bool("CELERY_TASK_EAGER_PROPAGATES", default=False)
 
+# Periodic schedule — requires `celery -A config beat` (or worker --beat) to run.
+CELERY_BEAT_SCHEDULE = {
+    "sweep-preview-imports": {
+        "task": "guests.sweep_preview_imports",
+        "schedule": 60 * 60 * 24,  # daily — deletes CsvImport preview rows older than 24h
+    },
+}
+
 # Auth
 AUTH_USER_MODEL = "accounts.User"
 
