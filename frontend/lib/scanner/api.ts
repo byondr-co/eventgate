@@ -141,14 +141,26 @@ export async function postCheckin(body: CheckinRequest): Promise<CheckinOutcome>
 
 // ---- Walk-in display ----
 
-export type WalkinDisplayResponse = {
+export type WalkinDisplayReady = {
+  status?: "ready";
   guest_id: string;
   entry_token: string;
   claim_url: string;
+  walkin_count: number;
+  walkin_capacity: number;
 };
 
+export type WalkinDisplayFull = {
+  status: "full";
+  walkin_count: number;
+  walkin_capacity: number;
+};
+
+export type WalkinDisplayResponse = WalkinDisplayReady | WalkinDisplayFull;
+
 export type WalkinDisplayOutcome =
-  | { kind: "ready"; data: WalkinDisplayResponse }
+  | { kind: "ready"; data: WalkinDisplayReady }
+  | { kind: "full"; data: WalkinDisplayFull }
   | { kind: "session_expired" }
   | { kind: "error"; detail: string };
 
@@ -176,6 +188,9 @@ export async function postWalkinDisplayNext(input: {
   if (res.status === 401) return { kind: "session_expired" };
   const data = (await res.json().catch(() => ({}))) as WalkinDisplayResponse | { detail?: string };
 
+  if (res.status === 200 && "status" in data && data.status === "full") {
+    return { kind: "full", data };
+  }
   if (res.status === 200 && "entry_token" in data) {
     return { kind: "ready", data };
   }

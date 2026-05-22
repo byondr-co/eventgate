@@ -38,9 +38,22 @@ export default function ScannerWalkinPage() {
 
       if (result.kind === "ready") {
         setData((prev) => {
-          if (prev && prev.entry_token === result.data.entry_token) return prev;
+          // Avoid a re-render if neither the token nor the counter changed —
+          // the QR <svg> is expensive to repaint on every poll tick.
+          if (
+            prev &&
+            "entry_token" in prev &&
+            prev.entry_token === result.data.entry_token &&
+            prev.walkin_count === result.data.walkin_count &&
+            prev.walkin_capacity === result.data.walkin_capacity
+          ) {
+            return prev;
+          }
           return result.data;
         });
+        setError(null);
+      } else if (result.kind === "full") {
+        setData(result.data);
         setError(null);
       } else if (result.kind === "session_expired") {
         router.replace("/scanner/unlock");
@@ -84,5 +97,25 @@ export default function ScannerWalkinPage() {
     );
   }
 
-  return <WalkinDisplay claimUrl={data.claim_url} gate={device.label} scanner={device.label} />;
+  if (data.status === "full") {
+    return (
+      <WalkinDisplay
+        kind="full"
+        gate={device.label}
+        scanner={device.label}
+        walkinCount={data.walkin_count}
+        walkinCapacity={data.walkin_capacity}
+      />
+    );
+  }
+
+  return (
+    <WalkinDisplay
+      claimUrl={data.claim_url}
+      gate={device.label}
+      scanner={device.label}
+      walkinCount={data.walkin_count}
+      walkinCapacity={data.walkin_capacity}
+    />
+  );
 }
