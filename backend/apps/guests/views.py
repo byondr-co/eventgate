@@ -55,7 +55,9 @@ class PublicRegistrationView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except RegistrationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        body = RegistrationSubmitResponseSerializer({"guest_id": guest.id}).data
+        body = RegistrationSubmitResponseSerializer(
+            {"guest_id": guest.id, "entry_token": guest.entry_token}
+        ).data
         return Response(body, status=status.HTTP_201_CREATED)
 
 

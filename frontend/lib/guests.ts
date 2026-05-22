@@ -32,9 +32,12 @@ export function useGuests(orgSlug: string, eventSlug: string) {
 export function useRegisterPublic(orgSlug: string, eventSlug: string) {
   return useMutation({
     mutationFn: (payload: Record<string, string>) =>
-      apiFetch<{ guest_id: string }>(`/api/v1/e/${orgSlug}/${eventSlug}/register/`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
+      apiFetch<{ guest_id: string; entry_token: string }>(
+        `/api/v1/e/${orgSlug}/${eventSlug}/register/`,
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      ),
   });
 }

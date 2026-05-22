@@ -41,8 +41,10 @@ export function RegistrationForm({ orgSlug, eventSlug, eventName, venue, fields 
     e.preventDefault();
     setError(null);
     try {
-      const { guest_id } = await register.mutateAsync(form);
-      router.push(`/e/${orgSlug}/${eventSlug}/registered/${guest_id}`);
+      const { guest_id, entry_token } = await register.mutateAsync(form);
+      router.push(
+        `/e/${orgSlug}/${eventSlug}/registered/${guest_id}?token=${encodeURIComponent(entry_token)}`,
+      );
     } catch (err) {
       setError((err as Error).message);
     }

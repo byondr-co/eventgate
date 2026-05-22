@@ -4,9 +4,19 @@ from apps.guests.models import Guest
 
 
 class RegistrationSubmitResponseSerializer(serializers.Serializer):
-    """Public registration response — intentionally NOT exposing entry_token."""
+    """Public registration response.
+
+    Returns guest_id plus entry_token. The token is the QR check-in secret,
+    but the same guest already receives it via email at the same moment, and
+    the response is delivered to the same browser session that submitted the
+    form — so echoing it here does not change the security model. The
+    confirmation page uses it to build a Telegram deep link
+    (https://t.me/<bot>?start=<token>) that lets the guest bind their chat
+    without re-typing anything.
+    """
 
     guest_id = serializers.UUIDField()
+    entry_token = serializers.CharField()
 
 
 class GuestSerializer(serializers.ModelSerializer):

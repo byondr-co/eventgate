@@ -29,9 +29,13 @@ class TestPublicRegistration:
         assert response.status_code == 201
         body = response.json()
         assert "guest_id" in body
-        assert "entry_token" not in body
+        # entry_token is now exposed so the confirmation page can build a
+        # Telegram deep-link CTA (?start=<token>). Safe because the same
+        # token is emailed to the same guest at the same moment.
+        assert "entry_token" in body
+        assert body["entry_token"]
         g = Guest.objects.get(id=body["guest_id"])
-        assert g.entry_token
+        assert g.entry_token == body["entry_token"]
         assert g.entry_status == "registered_not_arrived"
         assert g.info_status == "info_completed"
         assert g.full_name == "Alice"
