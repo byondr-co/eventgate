@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,17 @@ function resultClasses(result: AuditResult): string {
 export default function AuditPage() {
   const { slug, eventSlug } = useParams<{ slug: string; eventSlug: string }>();
   const [prefix, setPrefix] = useState("all");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { data, isLoading } = useAuditEvents(slug, eventSlug, prefix);
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -53,6 +63,7 @@ export default function AuditPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs uppercase text-muted-foreground">
+                <th className="w-6 py-2 pr-1" aria-label="Expand"></th>
                 <th className="py-2 pr-3">Time</th>
                 <th className="py-2 pr-3">Action</th>
                 <th className="py-2 pr-3">Result</th>
@@ -62,28 +73,54 @@ export default function AuditPage() {
               </tr>
             </thead>
             <tbody>
-              {(data?.results ?? []).map((row) => (
-                <tr key={row.id} className="border-b text-xs">
-                  <td className="py-2 pr-3 font-mono">
-                    {new Date(row.occurred_at).toLocaleString()}
-                  </td>
-                  <td className="py-2 pr-3 font-mono">{row.action}</td>
-                  <td className="py-2 pr-3">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-medium ${resultClasses(row.result)}`}
-                    >
-                      {row.result}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-3 font-mono">
-                    {row.actor_type}:{row.actor_id.slice(0, 8)}
-                  </td>
-                  <td className="py-2 pr-3 font-mono">{row.entry_token.slice(0, 16)}</td>
-                  <td className="py-2 font-mono">
-                    {row.previous_status} → {row.new_status}
-                  </td>
-                </tr>
-              ))}
+              {(data?.results ?? []).map((row) => {
+                const isOpen = expanded.has(row.id);
+                return (
+                  <Fragment key={row.id}>
+                    <tr className="border-b text-xs">
+                      <td className="py-2 pr-1">
+                        <button
+                          type="button"
+                          aria-label={isOpen ? "Collapse details" : "Expand details"}
+                          aria-expanded={isOpen}
+                          onClick={() => toggleExpand(row.id)}
+                          className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+                        >
+                          {isOpen ? "▾" : "▸"}
+                        </button>
+                      </td>
+                      <td className="py-2 pr-3 font-mono">
+                        {new Date(row.occurred_at).toLocaleString()}
+                      </td>
+                      <td className="py-2 pr-3 font-mono">{row.action}</td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] font-medium ${resultClasses(row.result)}`}
+                        >
+                          {row.result}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 font-mono">
+                        {row.actor_type}:{row.actor_id.slice(0, 8)}
+                      </td>
+                      <td className="py-2 pr-3 font-mono">{row.entry_token.slice(0, 16)}</td>
+                      <td className="py-2 font-mono">
+                        {row.previous_status} → {row.new_status}
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="border-b bg-muted/30">
+                        <td></td>
+                        <td colSpan={6} className="py-2 pr-3">
+                          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded bg-background p-2 text-[0.7rem] font-mono">
+                            {JSON.stringify(row.details_json, null, 2)}
+                          </pre>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </CardContent>
