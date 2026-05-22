@@ -1,5 +1,6 @@
 import csv
 import io
+from unittest.mock import patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -68,3 +69,15 @@ class TestProcessCsvImportTask:
         assert rows[0] == ["row_number", "raw_data", "errors"]
         assert len(rows) == 4  # header + 3 failures
         assert any("Duplicate" in r[-1] for r in rows[1:])
+
+    @patch("apps.guests.tasks._csv.reader")
+    def test_unhandled_exception_flips_status_to_failed(self, mock_reader, import_job):
+        ci, _, _ = import_job
+        mock_reader.side_effect = RuntimeError("simulated worker crash")
+        # Should not propagate — task swallows and records the error
+        result = process_csv_import_task(import_id=str(ci.id))
+        ci.refresh_from_db()
+        assert ci.status == "failed"
+        assert "simulated worker crash" in ci.last_error
+        # Result string indicates failure
+        assert "failed" in result.lower()

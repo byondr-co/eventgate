@@ -31,6 +31,8 @@
 
   Expect: tests pass, no type errors, no lint warnings, no format issues.
 
+- [ ] **Restart the Celery worker after any Django settings change.** Workers cache settings on boot — stale `MEDIA_ROOT`, `DATABASES`, etc. can cause mid-task crashes that orphan rows.
+
 - [ ] **Telegram env vars present (staging / pilot env only — local dev can skip)**
   - `TELEGRAM_BOT_TOKEN` (fly secret) — the bot's API token.
   - `TELEGRAM_BOT_USERNAME` (fly secret + frontend `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`) — the bot's @handle minus the @.

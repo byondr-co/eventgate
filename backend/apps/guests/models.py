@@ -88,6 +88,7 @@ class CsvImport(OrgScopedModel):
     imported_rows = models.IntegerField(default=0)
     failed_rows = models.IntegerField(default=0)
     error_report = models.FileField(upload_to="csv_imports/errors/%Y/%m/%d/", blank=True, null=True)
+    last_error = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
