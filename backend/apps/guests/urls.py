@@ -2,6 +2,7 @@ from django.urls import path
 
 from apps.guests.views import (
     CsvImportPreviewView,
+    CsvImportStatusView,
     GuestListView,
     GuestQrView,
     GuestSyncView,
@@ -28,6 +29,11 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/imports/preview/",
         CsvImportPreviewView.as_view(),
         name="csv-import-preview",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/imports/<uuid:import_id>/",
+        CsvImportStatusView.as_view(),
+        name="csv-import-status",
     ),
     path("guests/<uuid:guest_id>/qr.png", GuestQrView.as_view(), name="guest-qr"),
 ]

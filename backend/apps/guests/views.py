@@ -20,6 +20,7 @@ from apps.devices.auth import SessionTokenAuthentication
 from apps.events.models import Event
 from apps.guests.models import CsvImport, Guest
 from apps.guests.serializers import (
+    CsvImportSerializer,
     GuestSerializer,
     GuestSyncSerializer,
     RegistrationSubmitResponseSerializer,
@@ -228,3 +229,18 @@ class CsvImportPreviewView(APIView):
                 "registration_fields": registration_fields,
             }
         )
+
+
+class CsvImportStatusView(APIView):
+    """GET /api/v1/orgs/<org_slug>/events/<event_slug>/imports/<import_id>/
+
+    Progress + error-report URL for a CSV import job. Polled by the UI while
+    the Celery task runs.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated, IsOrgMember]
+
+    def get(self, request: Request, org_slug: str, event_slug: str, import_id) -> Response:
+        event = get_object_or_404(Event, organization__slug=org_slug, slug=event_slug)
+        ci = get_object_or_404(CsvImport, id=import_id, event=event)
+        return Response(CsvImportSerializer(ci, context={"request": request}).data)

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.guests.models import Guest
+from apps.guests.models import CsvImport, Guest
 
 
 class RegistrationSubmitResponseSerializer(serializers.Serializer):
@@ -66,3 +66,27 @@ class GuestSyncSerializer(serializers.ModelSerializer):
             "info_status",
             "updated_at",
         )
+
+
+class CsvImportSerializer(serializers.ModelSerializer):
+    error_report_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CsvImport
+        fields = (
+            "id",
+            "status",
+            "total_rows",
+            "imported_rows",
+            "failed_rows",
+            "error_report_url",
+            "created_at",
+            "completed_at",
+        )
+
+    def get_error_report_url(self, obj) -> str | None:
+        if not obj.error_report:
+            return None
+        request = self.context.get("request")
+        url = obj.error_report.url
+        return request.build_absolute_uri(url) if request else url
