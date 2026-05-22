@@ -1,7 +1,11 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useImportStatus } from "@/lib/csv-imports";
 
@@ -12,6 +16,13 @@ export default function ImportDetailPage() {
     id: string;
   }>();
   const { data, isLoading } = useImportStatus(slug, eventSlug, id);
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (data?.status === "complete" || data?.status === "failed") {
+      void qc.invalidateQueries({ queryKey: ["guests", slug, eventSlug] });
+    }
+  }, [data?.status, qc, slug, eventSlug]);
 
   if (isLoading || !data) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -24,7 +35,14 @@ export default function ImportDetailPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Import {data.id.slice(0, 8)}</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">Import {data.id.slice(0, 8)}</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href={`/orgs/${slug}/events/${eventSlug}/guests`}>Back to guests</Link>}
+        />
+      </div>
 
       <Card>
         <CardHeader>

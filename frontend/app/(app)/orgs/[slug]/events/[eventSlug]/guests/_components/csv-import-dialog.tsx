@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { type PreviewResponse, useCommitMutation, usePreviewMutation } from "@/l
 type Target = "name" | "email" | "phone" | string | null;
 
 export function CsvImportDialog({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [mapping, setMapping] = useState<Record<string, Target>>({});
@@ -29,13 +31,14 @@ export function CsvImportDialog({ orgSlug, eventSlug }: { orgSlug: string; event
 
   const onCommit = async () => {
     if (!preview) return;
-    await commitMut.mutateAsync({
+    const result = await commitMut.mutateAsync({
       preview_id: preview.preview_id,
       column_mapping: mapping,
     });
     setOpen(false);
     setPreview(null);
     setMapping({});
+    router.push(`/orgs/${orgSlug}/events/${eventSlug}/imports/${result.import_id}`);
   };
 
   const targetOptions = () => {
