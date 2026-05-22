@@ -91,17 +91,24 @@
   uv run python manage.py shell -c "
   from django.db import connection
   with connection.cursor() as cur:
-      try:
-          cur.execute('UPDATE audit_auditevent SET action=%s WHERE id=%s', ['hack','00000000-0000-0000-0000-000000000000'])
-      except Exception as e:
-          print('OK blocked:', type(e).__name__, str(e)[:120])
+      cur.execute(\"SELECT tgname FROM pg_trigger WHERE tgname='audit_auditevent_append_only'\")
+      print('trigger present:', bool(cur.fetchone()))
+      cur.execute('SELECT id FROM audit_auditevent LIMIT 1')
+      row = cur.fetchone()
+      if not row:
+          print('SKIP: no audit rows on this env to fire trigger against')
       else:
-          print('TRIGGER MISSING')
+          try:
+              cur.execute('UPDATE audit_auditevent SET action=%s WHERE id=%s', ['hack', row[0]])
+          except Exception as e:
+              print('OK blocked:', type(e).__name__, str(e)[:140])
+          else:
+              print('NOT BLOCKED — trigger present but didn''t fire!')
   "
   exit
   ```
 
-  Expect: `OK blocked: ... audit_auditevent is append-only`.
+  Expect: `trigger present: True` and `OK blocked: IntegrityError audit_auditevent is append-only (TG_OP=UPDATE)`. **Don't use a placeholder UUID** — the trigger is `FOR EACH ROW`, so a zero-row UPDATE gives a false negative.
 
 - [ ] **Celery worker + beat both running** (per `e7d5de7` — beat is a dedicated process group). Confirm beat is alive by tailing logs for the periodic `sweep_preview_imports` job.
 
@@ -471,17 +478,18 @@ A one-paragraph summary for the customer: what worked, what we caught and fixed,
 
 From the cross-device findings ([`2026-05-23-plan-f-cross-device-reverification-findings.md`](./2026-05-23-plan-f-cross-device-reverification-findings.md)) and Plan F verification findings ([`2026-05-22-plan-f-verification-findings.md`](./2026-05-22-plan-f-verification-findings.md)):
 
-- ✅ **`walkin_capacity` model + serializer + hard-cap enforcement** — shipped (`73e5432`, `a386ca0`, `d903464`). Step 2d of cross-device re-verification now testable; re-run in §1.5.
-- ✅ **`fly.toml` release_command for migrations** — re-confirm in §1.3.
-- ✅ **Celery beat process group** — shipped (`e7d5de7`); confirm beat is alive in §1.3.
-- ✅ **`process_csv_import_task` top-level try/except** — shipped (`d3598aa`).
-- ✅ **Device-role validation** — shipped (`bf5a72e`).
+- ✅ **`walkin_capacity` model + serializer + hard-cap enforcement** — shipped (`73e5432`, `a386ca0`, `d903464`). Step 2d of cross-device re-verification now testable; re-run in §1.5. _Migration applied on Fly 2026-05-23 once the deploy pipeline was unwedged (see next bullet)._
+- ✅ **`fly.toml` release_command for migrations** — shipped + corrected. The original `release_command = "python manage.py migrate --noinput && python manage.py setup_telegram_webhook"` was silently broken: Fly runs release_command without a shell, so `&&` and onward were parsed as argv to `python manage.py migrate`. **Every backend deploy from `b363dec` through `e7d5de7` (10+ commits, 11 hours) hard-failed at release_command, leaving prod stranded at version 22.** Caught by §1.2's GHA gate during the first runbook walk-through 2026-05-23. Fix: `release_command = "sh -c '... && ...'"` in `742e061`. **Lesson: §1.2 GHA gate isn't optional — it's the only thing standing between a green-looking repo and a stale prod.**
+- ✅ **Celery beat process group** — shipped (`e7d5de7`); confirm beat is alive in §1.3. _Process actually came online 2026-05-23 once the deploy pipeline was unwedged._
+- ✅ **`process_csv_import_task` top-level try/except** — shipped (`d3598aa`). _In prod 2026-05-23._
+- ✅ **Device-role validation** — shipped (`bf5a72e`). _In prod 2026-05-23._
 - ⏳ **Audit-viewer `details_json` rendering UX gap** — operator sees action + token + actor but not the payload. Workaround: curl `/audit/?...` for the payload. Plan G+ hygiene.
 - ⏳ **Dual `swr` + `@tanstack/react-query`** — both ship. Not a pilot blocker; pick one in a hygiene wave.
 - ⏳ **Pre-commit `prettier --check`** — config gap; CI catches it. Add to `.pre-commit-config.yaml` one-liner.
 - ⏳ **iOS install banner on real iPhone** — Vitest covers it; real-device pass deferred. Recommend running on the Door Operator's actual phone during S1 boot.
 - ⏳ **`checkin.duplicate` + `checkin.conflict` both emitting on replay** — confirm with the brief that two audit rows is intentional; not a pilot blocker (the help-desk inbox handles both gracefully).
 - ⏳ **`ScannerDevice.last_seen_at` not updated on offline-replay sync** — surfaces only in future device-list UI; non-blocking.
+- ⏳ **Celery beat OOM on boot** — observed once on 2026-05-23 immediately after the first successful deploy: Celery beat hit 84 MB anon-rss on init and was killed by the 256 MB budget; auto-restarted and the second boot succeeded. Watch on each redeploy; if it recurs, bump the beat VM `memory = "256mb"` to `"384mb"` in `backend/fly.toml`.
 
 ## Appendix B — Quick links
 
