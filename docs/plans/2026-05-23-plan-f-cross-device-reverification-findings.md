@@ -18,7 +18,7 @@
 **Observations.**
 
 - Scanner A came online first → optimistic UI showed green confirmation → on sync the queued mutation landed → backend recorded `checkin.success`.
-- Scanner B came online second → its replay hit a guest already checked in → backend emitted **both** `checkin.duplicate` AND `checkin.conflict` (overlapping semantics: duplicate = the token is already used by anyone; conflict = the token is already used by a *different* device).
+- Scanner B came online second → its replay hit a guest already checked in → backend emitted **both** `checkin.duplicate` AND `checkin.conflict` (overlapping semantics: duplicate = the token is already used by anyone; conflict = the token is already used by a _different_ device).
 - Scanner B's UI surfaced the conflict result visibly (operator's words: "Scanner B show conflict (not scanner A)") — Scanner A's UI showed no conflict, which is correct because it was the winner.
 
 **Backend cross-references.** The `checkin.conflict` audit row carries `details_json.original_scanner = "Scanner A"`, `original_gate = "Scanner A"`, `original_checked_in_at = "2026-05-22T17:32:38..."`. That gives the help-desk operator everything needed to resolve the dispute without joining tables.
@@ -34,12 +34,12 @@
 
 **Observations.** The audit chain reads end-to-end as designed:
 
-| Step | Audit action | Guest | Notes |
-|---|---|---|---|
-| 2a | `walkin.display.create` (Walter slot) | 2dc1c4ae | Tablet poll-issued the QR on first load |
-| 2b | `walkin.claim` | 2dc1c4ae | "Phone" (another browser tab) hit the claim URL — backend flipped Walter's `entry_status` to `checked_in` |
-| — | `walkin.display.create` (next slot) | e7877fe5 | Tablet auto-cycled to a fresh slot ~2s after Walter's claim |
-| 2c | `walkin.info_completed` | 2dc1c4ae | Form submit landed |
+| Step | Audit action                          | Guest    | Notes                                                                                                     |
+| ---- | ------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------- |
+| 2a   | `walkin.display.create` (Walter slot) | 2dc1c4ae | Tablet poll-issued the QR on first load                                                                   |
+| 2b   | `walkin.claim`                        | 2dc1c4ae | "Phone" (another browser tab) hit the claim URL — backend flipped Walter's `entry_status` to `checked_in` |
+| —    | `walkin.display.create` (next slot)   | e7877fe5 | Tablet auto-cycled to a fresh slot ~2s after Walter's claim                                               |
+| 2c   | `walkin.info_completed`               | 2dc1c4ae | Form submit landed                                                                                        |
 
 Walter's final state: `guest_type=walk_in`, `entry_status=checked_in`, `info_status=info_completed`, `source=walk_in_display`, `checked_in_at` stamped.
 
