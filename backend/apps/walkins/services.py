@@ -100,6 +100,11 @@ def get_or_create_displayed(*, device, gate: str, scanner_label: str) -> tuple[G
     if existing:
         return existing, build_claim_url(event=device.event, token=existing.entry_token)
 
+    # Event-wide lock so two scopes racing at capacity-1 don't both pass the
+    # full-check and each mint a Guest (which would breach the hard cap by K-1
+    # where K = concurrent scopes). Acquired AFTER the per-scope idempotency
+    # lookup so already-displayed slots return without contending for it.
+    advisory_xact_lock(f"walkin-capacity:{device.event_id}")
     full, count = _is_walkin_full(device.event)
     if full:
         raise WalkinCapacityFull(count=count, capacity=device.event.walkin_capacity)
