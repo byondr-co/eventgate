@@ -584,6 +584,6 @@ If any of Sections 2, 4, 5, or 7 fail, **stop and fix before Plan G**. Other sec
 - **"Send to manual review" 400s**: the underlying guest's `entry_status` doesn't permit the transition. Check the guest's state via the dashboard guests list — only `registered_not_arrived` and `displayed` are valid sources for `manual_review`.
 - **Audit viewer empty**: `IsOrgMember` returns 404 if you're not a member of the org. Confirm you're logged in as a user with `OrganizationMembership` to `$ORG_SLUG`.
 - **iOS banner doesn't appear**: confirm `display-mode: browser` (not standalone). If you've already added the PWA to Home Screen and re-opened from there, the banner is correctly suppressed.
-- **Reaper doesn't fire**: confirm the `in_flight` row's `created_at` is genuinely > 5 minutes old (5 _ 60 _ 1000 = 300000 ms). The reaper runs once at startup — reload the page after editing the row.
+- **Reaper doesn't fire**: confirm the `in_flight` row's `created_at` is genuinely > 5 minutes old (`5 * 60 * 1000 = 300000 ms`). The reaper runs once at startup — reload the page after editing the row.
 - **Dual `0003` migrations confusion**: `0004_merge_*.py` reconciles them. If `showmigrations` reports both `0003` as `[ ]` (not applied), run `flyctl ssh console` + `uv run python manage.py migrate` to apply.
 - **Backend GHA fails with `FLY_API_TOKEN: undefined`**: set the secret at https://github.com/vineidev/eventgate/settings/secrets/actions. Re-run the failed workflow from the Actions tab.
