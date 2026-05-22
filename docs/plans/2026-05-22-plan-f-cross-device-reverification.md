@@ -35,18 +35,23 @@ If either flow regressed during Plan F (helpdesk / audit / dashboard polling cha
 - [ ] **Seed an event with two pre-registered guests**
 
   ```bash
-  cd backend
-  <seed-command>
+  cd backend && uv run python manage.py seed_dev_event
   ```
+
+  This creates org `dev-acme` + event `dev-conf` + two pre-registered guests with printable `entry_token`s. Idempotent — re-running yields the same state. If you'd rather seed manually, you can also create the org/event via the staff dashboard and use the public registration page (`/e/<org-slug>/<event-slug>/register`) to register two guests; capture the `entry_token` values from the response payload.
 
   Confirm the event has at least:
   - Guest A: pre-registered, status `not_checked_in`, with a printable `entry_token`
   - Guest B: pre-registered, status `not_checked_in`, with a printable `entry_token`
   - Walk-in capacity > 0
 
+  > 💡 The `entry_token` for each seeded guest is printed by `seed_dev_event` directly to stdout. You can also retrieve it via `GET /api/v1/orgs/<org-slug>/events/<event-slug>/guests/?entry_status=registered_not_arrived` from the staff dashboard.
+
 - [ ] **Two scanner instances**
 
   Open two browser windows (or one window + one incognito) at the scanner URL: `/scanner/scan` (after enrolling at `/scanner/enroll`). Enroll each as a separate device — they should land with different `scanner_id` values. Confirm both have offline support (service worker installed).
+
+  > 💡 To confirm the two scanner instances enrolled as separate devices: open DevTools → Application → Local Storage → look for the `eventgate.scanner.device` key (a JSON object containing `device_id`); the two windows should hold different `device_id` UUIDs. Alternatively, the staff dashboard's device list at `/orgs/<slug>/scanners/` shows enrolled devices.
 
 - [ ] **One tablet display window**
 
@@ -101,6 +106,8 @@ If either flow regressed during Plan F (helpdesk / audit / dashboard polling cha
   - Backend returns 200 with a new guest record (`guest_type="walk_in"`, `entry_status="checked_in"`).
   - An audit row with `action="walkin.info_completed"` lands.
   - Tablet display decrements unclaimed-slot count.
+
+  > 💡 Same audit route as Flow 1 — view at `/orgs/<slug>/events/<event-slug>/audit?action_prefix=walkin.`.
 
 - [ ] **Step 2d: Edge — claim past capacity**
 
