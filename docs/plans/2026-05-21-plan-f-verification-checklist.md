@@ -15,66 +15,84 @@
 **Goal:** Confirm local + remote state matches the Plan F tip, and the backend GHA deploy actually shipped.
 
 - [ ] **Pull latest main locally**
+
   ```bash
   cd /Users/vinei/Projects/eventgate
   git checkout main
   git pull --ff-only
   git log --oneline | head -28
   ```
+
   Expected: top commit `ed50eb1 style(frontend): prettier-format event-stats.ts arrow expression` (or later), with 24 Plan F commits visible above `825b7e6 docs(plan-e): verification complete …`.
 
 - [ ] **Confirm `FLY_API_TOKEN` is set on GitHub repo secrets**
-  https://github.com/vineidev/eventgate/settings/secrets/actions → look for `FLY_API_TOKEN`. If missing, set it now (Token: `flyctl auth token`). Without it, the new `Deploy backend to Fly` workflow fails.
+      https://github.com/vineidev/eventgate/settings/secrets/actions → look for `FLY_API_TOKEN`. If missing, set it now (Token: `flyctl auth token`). Without it, the new `Deploy backend to Fly` workflow fails.
 
 - [ ] **Confirm the backend auto-deploy GHA ran green on the Plan F merge push**
+
   ```bash
   gh run list --workflow deploy-backend.yml --limit 3
   ```
+
   Expected: latest run completed successfully (`completed success`). If failed → click into the run, diagnose, fix, retry.
 
 - [ ] **Confirm backend tests green locally**
+
   ```bash
   cd backend && uv run pytest -q 2>&1 | tail -3
   ```
+
   Expected: `217 passed` (+ possibly 1 pre-existing concurrency flake — ignore if it reproduces alone on `HEAD~1`).
 
 - [ ] **Confirm backend mypy clean**
+
   ```bash
   cd backend && uv run mypy apps/ 2>&1 | tail -2
   ```
+
   Expected: `Success: no issues found in 119 source files`.
 
 - [ ] **Install frontend deps** (idempotent, but required if `pnpm-lock.yaml` changed since your last `pnpm install`; otherwise `tsc` fails with `Cannot find module 'swr'` or similar)
+
   ```bash
   cd frontend && pnpm install --frozen-lockfile 2>&1 | tail -3
   ```
+
   Expected: `Done in <Ns>` with no errors. If `node_modules/swr` was missing, this will install it.
 
 - [ ] **Confirm frontend Vitest green**
+
   ```bash
   cd frontend && pnpm test 2>&1 | tail -3
   ```
+
   Expected: `29 passed (5 files)`.
 
 - [ ] **Confirm frontend prettier + lint + tsc clean**
+
   ```bash
   cd frontend && pnpm prettier --check . 2>&1 | tail -3
   cd frontend && pnpm tsc --noEmit 2>&1 | tail -3
   cd frontend && pnpm lint 2>&1 | tail -5
   ```
+
   Expected: all three clean.
 
 - [ ] **Confirm Fly backend is on the new tip**
+
   ```bash
   flyctl status --app eventgate-backend-staging
   curl -sS https://eventgate-backend-staging.fly.dev/api/health/
   ```
+
   Expected: app deployed, health 200. (The Plan F backend includes the append-only trigger, `apps.helpdesk`, new endpoints — see Section 1.)
 
 - [ ] **Confirm Vercel auto-deployed the frontend tip**
+
   ```bash
   pnpm dlx vercel@latest list --scope vineidev-4891s-projects | head -3
   ```
+
   Expected: top deployment `source=git`, `state=Ready`, `meta.githubCommitSha` matches `ed50eb1` (or whatever your latest push was).
 
 - [ ] **Confirm both `0003` helpdesk migrations + merge `0004` applied on staging**
@@ -97,6 +115,8 @@
 
 ## Section 1 — Backend endpoint smoke tests
 
+> ⚠️ **JWT access tokens TTL = 15 minutes.** If a curl block in this section returns 401, the cookie expired during your verification run. Re-capture the `eventgate_access` cookie value from DevTools and rerun. Sections 2–5 may also need a fresh cookie if you've been working in the UI for >15 minutes.
+
 **Goal:** Every new Plan F endpoint responds against staging.
 
 **Prep:** create a fresh Plan F scratch event with one organizer + at least one pre-registered guest.
@@ -116,48 +136,59 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
   - Carol F (any email, just need her in the DB)
 
   Save Alice's and Bob's raw `entry_token` from the dashboard guest list:
+
   ```bash
   export TOKEN_ALICE_F="<alice's entry_token>"
   export TOKEN_BOB_F="<bob's entry_token>"
   export TOKEN_CAROL_F="<carol's entry_token>"
   ```
 
-- [ ] **Login as the org owner** in the browser, then capture a JWT cookie value into a curl-friendly form. Easiest: open DevTools → Application → Cookies → copy the `access` cookie value:
+- [ ] **Login as the org owner** in the browser, then capture a JWT cookie value into a curl-friendly form. Easiest: open DevTools → Application → Cookies → copy the `eventgate_access` cookie value:
+
   ```bash
   export ACCESS_COOKIE="<paste access cookie value>"
   ```
 
 - [ ] **`GET /helpdesk/tickets/` returns empty list** (no escalations yet)
+
   ```bash
   curl -sS "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/helpdesk/tickets/" \
-    -H "Cookie: access=$ACCESS_COOKIE" | python3 -m json.tool
+    -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool
   ```
+
   Expected: 200 with `{"results": [], "count": 0, "next": null, "previous": null}` and an `ETag` header.
 
 - [ ] **`GET /helpdesk/tickets/` returns 304 on If-None-Match round-trip**
+
   ```bash
   ETAG=$(curl -sS -D - "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/helpdesk/tickets/" \
-    -H "Cookie: access=$ACCESS_COOKIE" -o /dev/null | grep -i '^etag:' | awk '{print $2}' | tr -d '\r')
+    -H "Cookie: eventgate_access=$ACCESS_COOKIE" -o /dev/null | grep -i '^etag:' | awk '{print $2}' | tr -d '\r')
   echo "etag=$ETAG"
   curl -sS -o /dev/null -w "%{http_code}\n" "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/helpdesk/tickets/" \
-    -H "Cookie: access=$ACCESS_COOKIE" \
+    -H "Cookie: eventgate_access=$ACCESS_COOKIE" \
     -H "If-None-Match: $ETAG"
   ```
+
   Expected: `304`.
 
 - [ ] **`GET /audit/` returns event-scoped rows**
+
   ```bash
   curl -sS "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/audit/" \
-    -H "Cookie: access=$ACCESS_COOKIE" | python3 -m json.tool | head -30
+    -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool | head -30
   ```
+
   Expected: 200; `results` array may be empty or contain only registration-side audit rows from the public form. ETag header present.
 
 - [ ] **`GET /stats/` returns zero counts + as_of timestamp**
+
   ```bash
   curl -sS "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/stats/" \
-    -H "Cookie: access=$ACCESS_COOKIE" | python3 -m json.tool
+    -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool
   ```
+
   Expected:
+
   ```json
   {
     "checked_in": 0,
@@ -172,13 +203,16 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
   ```
 
 - [ ] **`GET /guests/?entry_status=manual_review` returns empty for now**
+
   ```bash
   curl -sS "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/guests/?entry_status=manual_review" \
-    -H "Cookie: access=$ACCESS_COOKIE" | python3 -m json.tool | head -10
+    -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool | head -10
   ```
+
   Expected: 200 with `results: []` (no manual-review guests yet — will exercise via UI in Section 5).
 
 - [ ] **Per-IP rate limit on `/devices/enroll/` triggers at 11th request**
+
   ```bash
   for i in $(seq 1 11); do
     curl -sS -o /dev/null -w "%{http_code} " -X POST "$BASE/devices/enroll/" \
@@ -186,9 +220,11 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
       -d '{"enrollment_code":"bogus-stress-test"}'
   done; echo
   ```
+
   Expected: `404 404 404 404 404 404 404 404 404 404 429` — the 11th hits the throttle.
 
 - [ ] **Direct UPDATE on `audit_auditevent` is blocked by the trigger**
+
   ```bash
   flyctl ssh console --app eventgate-backend-staging
   uv run python manage.py shell -c "
@@ -203,10 +239,11 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
   "
   exit
   ```
+
   Expected: `blocked: InternalError audit_auditevent is append-only (TG_OP=UPDATE)` (or similar `append-only` wording).
 
 - [ ] **Direct DELETE on `audit_auditevent` is blocked by the trigger**
-  Same as above but with `DELETE FROM audit_auditevent WHERE id = ...`. Expected: same `append-only` exception.
+      Same as above but with `DELETE FROM audit_auditevent WHERE id = ...`. Expected: same `append-only` exception.
 
 ---
 
@@ -226,7 +263,7 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
   - Confirm via curl that a `checkin.help_desk_escalation` audit row exists:
     ```bash
     curl -sS "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/audit/?action_prefix=checkin.help_desk_escalation" \
-      -H "Cookie: access=$ACCESS_COOKIE" | python3 -m json.tool | head -20
+      -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool | head -20
     ```
 
 - [ ] **Refresh `/helpdesk` — escalation appears under "Open" chip**:
@@ -240,10 +277,12 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
 - [ ] **Click "Claim"**: button changes state, ticket moves to "Claimed" chip. Detail pane now shows "Release" instead of "Claim", and "Claimed by <your email>" appears on the list card.
 
 - [ ] **`checkin` audit chain shows the claim row**:
+
   ```bash
   curl -sS "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/audit/?action_prefix=helpdesk." \
-    -H "Cookie: access=$ACCESS_COOKIE" | python3 -m json.tool | head -20
+    -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool | head -20
   ```
+
   Expected: one row with `action: "helpdesk.ticket_claimed"`, `actor_type: "user"`.
 
 - [ ] **Click "Release"**: ticket returns to "Open" chip; assignee cleared. Audit gets a `helpdesk.ticket_released` row.
@@ -274,7 +313,7 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
 - [ ] **Auto-refresh every 10s**: leave the page open; trigger another action (e.g. resolve a ticket from `/helpdesk` in another tab); within ~10s the row count increments without manual reload.
 
 - [ ] **ETag returns 304 when nothing changed**:
-  Open DevTools → Network → filter `audit/`. Watch the auto-refresh. After the first request returns 200 + ETag, subsequent requests (within the polling window where state hasn't changed) should be **304** with no body, and the cached body is reused. Verify in the Headers tab: the request sends `If-None-Match: W/"<hash>"`.
+      Open DevTools → Network → filter `audit/`. Watch the auto-refresh. After the first request returns 200 + ETag, subsequent requests (within the polling window where state hasn't changed) should be **304** with no body, and the cached body is reused. Verify in the Headers tab: the request sends `If-None-Match: W/"<hash>"`.
 
 ---
 
@@ -299,7 +338,7 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
   - All zero tiles render in the default color
 
 - [ ] **ETag 304 round-trip verified for `/stats/`**:
-  DevTools → Network → filter `stats/`. Watch the 5s poll cadence. After state stabilizes (no scans / no escalations / no resolutions), subsequent requests should be **304**. If the network panel keeps showing 200 with 400+ byte responses every 5s, the ETag round-trip is broken.
+      DevTools → Network → filter `stats/`. Watch the 5s poll cadence. After state stabilizes (no scans / no escalations / no resolutions), subsequent requests should be **304**. If the network panel keeps showing 200 with 400+ byte responses every 5s, the ETag round-trip is broken.
 
 - [ ] **Open `/helpdesk` link** on the event-detail page button row. Confirm the "Help desk" link is present alongside Form / Guests / Devices / Audit / Settings.
 
@@ -312,10 +351,12 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
 **Prep:** you should have one open ticket in `/helpdesk` from Section 2's second escalation (Bob).
 
 - [ ] **Confirm Bob's current `entry_status`** is one of `registered_not_arrived` / `displayed` (NOT `checked_in`, or the transition will be rejected):
+
   ```bash
   curl -sS "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/guests/?entry_status=registered_not_arrived" \
-    -H "Cookie: access=$ACCESS_COOKIE" | python3 -m json.tool | grep -A 1 "Bob"
+    -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool | grep -A 1 "Bob"
   ```
+
   If Bob is `checked_in`, register a fresh guest "Eve F" via the public form + trigger another escalation against her offline scan. Use Eve's token for the rest of this section.
 
 - [ ] **In `/helpdesk` (Open chip)**: click the open ticket whose underlying guest is still in `registered_not_arrived`. Detail pane opens.
@@ -326,10 +367,12 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
   - Underlying guest's `entry_status` flips to `manual_review`
 
 - [ ] **Verify two audit rows fired**:
+
   ```bash
   curl -sS "$BASE/orgs/$ORG_SLUG/events/$EVENT_SLUG/audit/?action_prefix=helpdesk." \
-    -H "Cookie: access=$ACCESS_COOKIE" | python3 -m json.tool | head -40
+    -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool | head -40
   ```
+
   Expected:
   - `helpdesk.ticket_resolved` row with `details.action="escalated_to_manual_review"` and `details.notes="needs human eyes"`
   - `helpdesk.manual_review_escalated` row keyed on the guest, with `new_status="manual_review"`, `previous_status="registered_not_arrived"` (or whatever the prior state was)
@@ -381,6 +424,21 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
 
 ### 6d — Retry-failed affordance
 
+> ℹ️ **DevTools IndexedDB caveat:** the Application → IndexedDB panel does NOT auto-refresh after writes. Right-click the store and "Refresh" between steps, or query directly from the JS console:
+>
+> ```js
+> const db = await new Promise((r) => {
+>   const req = indexedDB.open("eventgate_scanner_v1", 1);
+>   req.onsuccess = () => r(req.result);
+> });
+> const rows = await new Promise((r) => {
+>   const tx = db.transaction("mutation_queue", "readonly");
+>   const req = tx.objectStore("mutation_queue").getAll();
+>   req.onsuccess = () => r(req.result);
+> });
+> console.table(rows);
+> ```
+
 - [ ] **Offline-scan a known-bogus token** (e.g. `bogus-retry-test`). Reconnect. Within 30s the row should flip to `status="failed"`.
 - [ ] **Open `/scanner/escalations`**: a "Failed" section renders below conflicts. Bogus row shows with a "Retry" button.
 - [ ] **Click Retry**: row resets to `status=pending`, `attempts=0`. The drain will re-attempt — for a bogus token it'll fail again, but the affordance is verified.
@@ -402,6 +460,7 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
 **Goal:** Confirm Plan F's ops + security cleanups are durable.
 
 - [ ] **Backend auto-deploy GHA fires on the next backend touch**:
+
   ```bash
   cd /Users/vinei/Projects/eventgate
   git commit --allow-empty -m "chore: verify backend GHA fires" -- backend/
@@ -409,28 +468,34 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
   # Skip this verification if you don't want a noise commit. Instead, just confirm the
   # workflow ran green on the original Plan F push (see Section 0).
   ```
+
   Alternative: in the Actions tab of the GitHub repo, confirm the `Deploy backend to Fly` workflow ran successfully on the Plan F merge push.
 
 - [ ] **GHA does NOT fire on a frontend-only push**:
+
   ```bash
   # Already implicitly verified by the prettier-fix push (ed50eb1) which only touched
   # frontend/lib/event-stats.ts and did NOT trigger deploy-backend.yml.
   gh run list --workflow deploy-backend.yml --limit 5
   ```
+
   Expected: no run associated with `ed50eb1`.
 
 - [ ] **`/devices/enroll/` rate limit clears after the 1-minute window**:
-  Wait ~60 seconds after the Section 1 stress test, then:
+      Wait ~60 seconds after the Section 1 stress test, then:
+
   ```bash
   curl -sS -o /dev/null -w "%{http_code}\n" -X POST "$BASE/devices/enroll/" \
     -H "content-type: application/json" -d '{"enrollment_code":"bogus-stress-test"}'
   ```
+
   Expected: `404` (back to per-request behavior, not 429).
 
 - [ ] **DB append-only trigger survives backend redeploy**:
-  Trigger a new backend deploy via the GHA (push any backend commit). After deploy, repeat the direct UPDATE test from Section 1. Trigger should still block.
+      Trigger a new backend deploy via the GHA (push any backend commit). After deploy, repeat the direct UPDATE test from Section 1. Trigger should still block.
 
 - [ ] **HelpDeskTicketState backfill ran on staging** (the historic Plan E escalation rows now have state):
+
   ```bash
   flyctl ssh console --app eventgate-backend-staging
   uv run python manage.py shell -c "
@@ -442,10 +507,11 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
   "
   exit
   ```
+
   Expected: equal counts (one state row per event-bound escalation row). Plan E left 2 audit rows on staging; Plan F's verification adds however many more you generated above.
 
 - [ ] **Pre-commit hook gap is logged** (parking lot — not a fix, just a note):
-  Confirm `.pre-commit-config.yaml` still lacks a `prettier --check` hook. Track this in `docs/handoff-2026-05-20.md` parking-lot when you next update the handoff doc.
+      Confirm `.pre-commit-config.yaml` still lacks a `prettier --check` hook. Track this in `docs/handoff-2026-05-20.md` parking-lot when you next update the handoff doc.
 
 ---
 
@@ -476,6 +542,7 @@ export DASHBOARD="https://frontend-five-lovat-94.vercel.app"
 - [ ] **Cleanup test guests** (Alice F, Bob F, Carol F, Eve F) — deleting the event cascades.
 
 - [ ] **Cleanup merged Plan F worktrees** (from `agent-*` dispatches):
+
   ```bash
   cd /Users/vinei/Projects/eventgate
   for d in .claude/worktrees/agent-*; do git worktree remove --force --force "$d" 2>&1; done
@@ -517,6 +584,6 @@ If any of Sections 2, 4, 5, or 7 fail, **stop and fix before Plan G**. Other sec
 - **"Send to manual review" 400s**: the underlying guest's `entry_status` doesn't permit the transition. Check the guest's state via the dashboard guests list — only `registered_not_arrived` and `displayed` are valid sources for `manual_review`.
 - **Audit viewer empty**: `IsOrgMember` returns 404 if you're not a member of the org. Confirm you're logged in as a user with `OrganizationMembership` to `$ORG_SLUG`.
 - **iOS banner doesn't appear**: confirm `display-mode: browser` (not standalone). If you've already added the PWA to Home Screen and re-opened from there, the banner is correctly suppressed.
-- **Reaper doesn't fire**: confirm the `in_flight` row's `created_at` is genuinely > 5 minutes old (5 * 60 * 1000 = 300000 ms). The reaper runs once at startup — reload the page after editing the row.
+- **Reaper doesn't fire**: confirm the `in_flight` row's `created_at` is genuinely > 5 minutes old (5 _ 60 _ 1000 = 300000 ms). The reaper runs once at startup — reload the page after editing the row.
 - **Dual `0003` migrations confusion**: `0004_merge_*.py` reconciles them. If `showmigrations` reports both `0003` as `[ ]` (not applied), run `flyctl ssh console` + `uv run python manage.py migrate` to apply.
 - **Backend GHA fails with `FLY_API_TOKEN: undefined`**: set the secret at https://github.com/vineidev/eventgate/settings/secrets/actions. Re-run the failed workflow from the Actions tab.
