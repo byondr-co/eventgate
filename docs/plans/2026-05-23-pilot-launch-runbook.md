@@ -2,14 +2,18 @@
 
 > **Authored:** 2026-05-23 · **Owner:** Vinei (vinei.ro@squeeze-inc.co.jp) · **Synthesizes:** Plan F verification checklist + Plan F findings + Plan F cross-device re-verification methodology + 2026-05-23 cross-device findings + Plan G Section 4 regression smoke.
 >
-> **Pilot window:** **2026-06-05 → 2026-07-03** (W13–14, first paying/pilot event under brief §12 Phase 1 exit criteria). Exact date TBC from the customer; treat anything not shipped by **2026-05-29** as risk-bearing.
+> **Pilot customer:** **The Click Cam** (first committed customer, identified 2026-05-23). Exact event date still soft; falls within the pilot window.
+>
+> **Pilot window:** **2026-06-05 → 2026-07-03** (W13–14, first paying/pilot event under brief §12 Phase 1 exit criteria). Treat anything not shipped by **2026-05-29** as risk-bearing.
 >
 > **Scope of this runbook:** what to verify _before_ ship, who runs the door, what to do when something breaks during the event, how to roll back, how to write up afterwards. Backend lives on Fly (`eventgate-backend-staging` today; rename when prod app lands), frontend on Vercel (`frontend-five-lovat-94` today; same caveat).
+>
+> **Contact details** (phone numbers, emails beyond `@squeeze-inc.co.jp` / `@gmail.com`, anything PII-sensitive) live **outside this doc** — in 1Password / a gitignored `contacts.private.md` / whatever your team uses. The runbook references people by name only.
 >
 > **External blockers tracked here:**
 >
 > - **Brand name** — Phase-0 task per brief §12 footer. Status: ⏳ **pending** (shortlist + `.com`/`.app` check + TM check + pick). Fold the chosen brand into this doc + repo/app/domain renames before pilot. _Last updated: 2026-05-23._
-> - **Khmer copy review** — translator identified per brief §12 row 4. Status: ⏳ **pending** (machine-quality strings in `frontend/lib/i18n/messages/km.json` covering Plan D scanner + Plan D walk-in + Plan E error messages + Plan F help-desk + Plan G Telegram/CSV; needs a one-pass review before pilot). _Last updated: 2026-05-23._
+> - **Khmer copy review** — translator identified per brief §12 row 4: **Vatana** (also Door Operator — see §2). Status: ⏳ **pending** (machine-quality strings in `frontend/lib/i18n/messages/km.json` covering Plan D scanner + Plan D walk-in + Plan E error messages + Plan F help-desk + Plan G Telegram/CSV; needs a one-pass review before pilot). _Last updated: 2026-05-23._
 
 ---
 
@@ -130,14 +134,17 @@
 
 ### 1.4 Pilot environment URLs (fill in once brand lands)
 
+> **First-pilot customer:** The Click Cam. Event will run on the renamed prod app once brand lands; today's staging URLs are the proving ground.
+
 | Resource | Staging today | Pilot (brand TBC) |
 | --- | --- | --- |
 | Backend API | `https://eventgate-backend-staging.fly.dev` | `https://<brand>-backend.fly.dev` |
 | Dashboard | `https://frontend-five-lovat-94.vercel.app` | `https://<brand>.app` |
 | Scanner | `<dashboard>/scanner` | `<dashboard>/scanner` |
 | Walk-in display | `<dashboard>/scanner/walkin` | same |
-| Sentry | `<TBC>` | `<TBC>` |
-| Telegram bot | `@EventgateStagingBot` (or similar) | `@<brand>Bot` |
+| Sentry | `<personal-org>/eventgate` (verified 2026-05-23) | `<org>/<brand>` |
+| Telegram bot | `@eventgate_bot` (verified 2026-05-23) | `@<brand>_bot` |
+| Tigris bucket | `eventgate-backend-staging-media` | `<brand>-backend-media` |
 
 ### 1.5 End-to-end smoke (T-1 day)
 
@@ -160,16 +167,17 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 
 ## 2. On-call staffing
 
-> First pilot has **two named operators on-call**: the **Door Operator** (physically at the venue, runs the scanner + help-desk inbox) and the **Cloud Operator** (Vinei or a delegate; remote; owns the system response).
+> First pilot (The Click Cam) has **two named operators on-call**: the **Door Operator** (physically at the venue, runs the scanner + help-desk inbox, doubles as Khmer translator) and the **Cloud Operator** (Vinei; remote; owns the system response).
 
 ### 2.1 Roles
 
 | Role | Owner | Responsibilities | Channels |
 | --- | --- | --- | --- |
-| **Door Operator** | <name TBC> | Scanner devices, walk-in display, in-person help-desk handling, escalations to Cloud Operator | Phone + Telegram DM (primary). Always-on phone with Telegram open. |
-| **Cloud Operator** | Vinei (vinei.ro@squeeze-inc.co.jp) | Backend + frontend health, deploys, rollbacks, Sentry triage, log diving, communication with customer | Laptop tethered to LTE; Sentry alerts → phone; Slack/Telegram backup |
-| **Customer Contact** | <customer-side organizer name TBC> | Owns the guest list, makes Approve/Void calls on manual-review items where ID isn't obvious | Walkie / radio to Door Operator |
-| **Khmer Translator (on standby)** | <translator name TBC> | Reachable for any string the operator can't interpret on-the-fly | Phone — 1-touch dial only |
+| **Door Operator + Khmer Translator** | **Vatana** (The Click Cam staff) | Scanner devices, walk-in display, in-person help-desk handling, on-the-fly Khmer ↔ English translation for guests, escalations to Cloud Operator | Phone + Telegram DM (primary). Always-on phone with Telegram open. |
+| **Cloud Operator** | **Vinei** (`vinei.ro@squeeze-inc.co.jp`) | Backend + frontend health, deploys, rollbacks, Sentry triage, log diving, communication with customer | Laptop tethered to LTE; Sentry alerts → phone; Slack/Telegram backup |
+| **Customer Contact** | TBC — confirm with The Click Cam who owns the guest list | Owns the guest list, makes Approve/Void calls on manual-review items where ID isn't obvious | Walkie / radio to Door Operator |
+
+> ⚠️ **Single-point-of-failure risk: Vatana wears two hats.** Door Operator and Khmer Translator collapsed into one person. If Vatana is heads-down on a door queue and a tricky Khmer translation question comes in (e.g., an ambiguous error string a guest doesn't understand), there's no fallback translator. **Mitigation options to confirm before T-7 days:** (a) surface a backup Door Op so Vatana can focus on translation when needed, OR (b) confirm Cloud Operator (or another teammate) has working Khmer they can deploy by phone, OR (c) ensure the Khmer copy review pass closes _every_ ambiguous string so on-the-fly translation isn't needed. **If Vatana is unreachable for >5 min** (sick, phone dead), the pilot has no door coverage at all — backup Door Op is the safest hedge.
 
 ### 2.2 Coverage window
 
@@ -178,10 +186,12 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 
 ### 2.3 Pre-event handoff (T-2 h)
 
-- [ ] Door Operator has all scanner devices in hand, PIN known, enrollment codes printed on backup paper.
-- [ ] Cloud Operator has terminal open with `flyctl`, `gh`, `pnpm dlx vercel`, and a fresh `eventgate_access` cookie value captured in a scratch file (15-min JWT — will need to refresh).
-- [ ] Both have this runbook open in a browser tab.
-- [ ] Phone numbers exchanged + test ping confirmed both directions.
+- [ ] **Vatana** has all scanner devices in hand, PIN known, enrollment codes printed on backup paper, phone fully charged + power bank, Telegram open.
+- [ ] **Vinei** has terminal open with `flyctl`, `gh`, `pnpm dlx vercel`, and a fresh `eventgate_access` cookie value captured in a scratch file (15-min JWT — will need to refresh).
+- [ ] **Customer Contact** (The Click Cam) identified + reachable; they know they'll be the Approve/Void caller on manual-review tickets where ID is ambiguous.
+- [ ] Both Vatana + Vinei have this runbook open in a browser tab.
+- [ ] Phone numbers exchanged (kept in 1Password / contacts.private.md per intro) + test ping confirmed both directions.
+- [ ] Backup Door Op decision made (see §2.1 SPOF warning) — name in 1Password or "none, accepting risk" explicitly logged.
 
 ---
 
