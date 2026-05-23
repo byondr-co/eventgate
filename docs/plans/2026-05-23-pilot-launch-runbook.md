@@ -141,6 +141,8 @@
 
 ### 1.5 End-to-end smoke (T-1 day)
 
+> **Test-event pointer.** The seeded `dev-acme/dev-conf` event only exists locally (created by `manage.py seed_dev_event`); it is **not** on staging. The canonical staging test event from Plan F is **`verido-solutions/plan-f-event`** (Plan F Acceptance) with test guests Alan, Bobby, Gwen, Eve and scanner devices Gate F1 + Gate F2 (PIN `4242`). Use that — or spin up a fresh `<your-org>/<your-event-slug>` via the dashboard — when running the smoke against staging.
+
 Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-checklist.md`](./2026-05-21-plan-f-verification-checklist.md)) and **Plan G verification checklist** ([`2026-05-22-plan-g-verification-checklist.md`](./2026-05-22-plan-g-verification-checklist.md)) **Section 4 regression smoke** against the pilot env (not staging):
 
 - [ ] Plan F §§0–9 all pass (no skipped boxes other than the ones explicitly deferred to pre-pilot QA in the findings doc).
