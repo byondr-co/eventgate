@@ -463,21 +463,25 @@ After **any** rollback:
 ### 6.1 Event summary
 
 - **Date:**
-- **Customer / org:**
+- **Customer / org:** (first pilot: The Click Cam)
 - **Event slug:**
 - **Total registered guests:**
 - **Total check-ins (paper + digital):**
 - **Walk-ins:**
+- **Walk-in capacity setting / cap hit?:** (e.g. `cap=50, hit at 18:20` or `cap=0 unlimited`)
 - **Manual reviews / escalations:**
 - **Voided:**
+- **CSV imports run during event:** (count + rows imported)
+- **Telegram bot DMs sent:** (from `notifications.telegram_sent` audit count)
 - **Door Operator:**
 - **Cloud Operator:**
+- **Customer Contact:**
 
 ### 6.2 Phase 1 exit-criteria check (brief §12)
 
 - [ ] Zero data-loss incidents (no audit gaps, no lost check-ins).
-- [ ] p95 check-in latency <400 ms online (sample from Fly metrics or Sentry performance).
-- [ ] p95 check-in latency <80 ms offline (sample from scanner DevTools timing or local logging).
+- [ ] **p95 check-in latency <400 ms online** — sample from Fly metrics (HTTP latency for `/api/v1/scanner/checkins/`) OR Sentry performance (`traces_sample_rate=0.1` is enabled in prod.py).
+- [ ] **p95 check-in latency <80 ms offline** — ⚠️ **soft target until we instrument**. Today the only signal is hand-timing via DevTools Performance recording. If the customer presses on it, take a Performance recording of a sequence of 10 offline scans on a real device and quote the median + p95 from there. Adding automated client-side timing is a Phase 1 follow-up.
 - [ ] All MVP test cases pass as integration tests (re-run after pilot if any code shipped during the day).
 
 ### 6.3 Timeline
@@ -493,21 +497,31 @@ Chronological log. Include T-minus setup, the event itself, and the recovery win
 For each incident (P1, P2, P3 from §4):
 
 - **Symptom** —
-- **Detected by** — (Sentry / operator / customer)
-- **Time to detect** —
-- **Time to mitigate** —
+- **Detected by** — (Sentry / operator / customer / Cloud Op log dive)
+- **Time to detect** — (when did the incident start vs when did someone notice)
+- **Time to mitigate** — (when did door flow resume / impact stop growing)
 - **Root cause** —
-- **Fix shipped during event?** — (yes/no, SHA if yes)
+- **Fix shipped during event?** — (yes/no, SHA if yes, rollback if applicable)
 - **Follow-up tasks** — (file as numbered tasks in `docs/plans/improvement-and-findings-logs.md`)
+
+Surfaces worth specifically checking even if no incident reported (silent failure traps):
+
+- **Tigris reads** — count any 5xx from `/api/v1/orgs/.../imports/...` in Sentry. Today's session showed a silent-success-but-actually-broken pattern (CSV processed nothing, status flipped to "Failed" with no rows touched). If a customer uploaded a CSV and didn't notice it failed, the pilot summary will be wrong.
+- **Telegram webhook URL drift** — `getWebhookInfo` at post-event time still points at the Fly URL (not stale ngrok). Cheap to check.
+- **Append-only audit trigger** — confirm no UPDATE/DELETE attempted against `audit_auditevent` during the event (would be in Sentry as `IntegrityError`).
 
 ### 6.6 Khmer + brand follow-ups
 
 - **Khmer strings flagged by operators or guests** — list verbatim (English + the Khmer that was wrong) → translator queue.
 - **Brand-name / domain inconsistencies surfaced during the event** — anywhere the old name leaked (email signatures, page titles, etc.) → file rename tasks.
 
-### 6.7 Operator feedback
+### 6.7 Operator + customer feedback
 
-Door Operator + Cloud Operator each get a paragraph: what surprised them, what was hard, what they'd want changed before the next pilot.
+Three paragraphs (one per role):
+
+- **Door Operator (Vatana for the first pilot)** — what surprised her, what was hard at the door, which Khmer strings tripped guests up, what she'd want changed before the next pilot.
+- **Cloud Operator (Vinei)** — what was hard about remote triage, was Sentry signal-to-noise OK, did the help-desk inbox surface everything that mattered.
+- **Customer Contact (The Click Cam side)** — was the manual-review handoff smooth? Did they trust the system? Anything they expected to be able to do that they couldn't?
 
 ### 6.8 Action items
 
