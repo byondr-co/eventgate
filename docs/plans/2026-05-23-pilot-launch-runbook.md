@@ -370,27 +370,32 @@ Before pulling the trigger, answer:
 
 If the bug is frontend-only (UI broken, scanner won't render, dashboard 500s) **and** the backend logs are clean:
 
-```bash
-# Identify the last-known-good Vercel deployment SHA
-pnpm dlx vercel@latest list --scope <scope> | head -10
-# Promote it to production
-pnpm dlx vercel@latest promote <deployment-url> --scope <scope>
-```
+**Dashboard (fastest, recommended for P1):** Vercel dashboard → **Deployments** → click the previous-good deployment → **⋯** → **Promote to Production** (or **Rollback**, depending on Vercel UI version).
 
-Or via the Vercel dashboard: **Deployments → click the previous-good deployment → ⋯ → Promote to Production**.
+**CLI alternative** (requires `vercel link` done already, e.g. during the Telegram env setup):
+
+```bash
+source ~/.nvm/nvm.sh && nvm use 22
+cd /Users/vinei/Projects/eventgate/frontend
+pnpm dlx vercel@latest ls --prod | head -10        # list recent prod deployments
+pnpm dlx vercel@latest rollback <deployment-url>   # rollback to a specific deployment
+```
 
 Expect: <60s from click to live.
 
 ### 5.3 Hard rollback — backend (no DB migration since last good deploy)
 
 ```bash
-# List recent releases on Fly
-flyctl releases --app <fly-app> | head -10
-# Roll back to the previous version
-flyctl releases rollback <version> --app <fly-app>
+# List recent releases on Fly (--image flag shows the Docker image ref for each)
+flyctl releases --app eventgate-backend-staging --image | head -10
+# Pick the previous-good version's DOCKER IMAGE column
+# (look for "complete" status; avoid "failed" releases like the v23–v33 broken-release_command run)
+flyctl deploy --app eventgate-backend-staging --image registry.fly.io/eventgate-backend-staging:deployment-<id>
 ```
 
-Expect: ~90s to redeploy the previous image. The release_command runs again so DB stays in sync.
+> ⚠️ **`flyctl releases rollback` is not a valid command.** Earlier versions of this runbook documented one — verified 2026-05-23 against flyctl: `releases` has no `rollback` subcommand; you deploy a previous image by reference instead.
+
+Expect: ~90s to redeploy the previous image. The release_command runs again so DB stays in sync (and watch it — today's session showed the release_command can silently break the deploy chain, see §1.3 lesson).
 
 ### 5.4 Hard rollback — backend with DB migration involved
 
@@ -402,17 +407,30 @@ Decision tree:
 - **Migration was destructive (column rename, type change, dropped table)** → old code crashes. Do **NOT** roll back the app; **fix forward** instead (write a hotfix that handles the new schema, ship a new release).
 - **You can't tell** → assume destructive. Fix forward.
 
-Hotfix flow (fix forward):
+Hotfix flow (fix forward) — **for P1 mid-event, direct-push-to-main is faster than a PR**:
 
 ```bash
-git checkout main
-git checkout -b hotfix/<short-name>
+cd /Users/vinei/Projects/eventgate
+git checkout main && git pull --ff-only
 # patch the bug; minimal diff
+git commit -am "fix(<scope>): <one-line>"
+git push origin main
+# Watch the GHA deploy — TODAY'S SESSION proved green-on-repo ≠ shippable;
+# a release_command crash can fail the deploy silently. Don't trust the push;
+# wait for the workflow run to land green.
+gh run watch
+# After the run completes, verify the new image actually came up:
+flyctl status --app eventgate-backend-staging
+curl -sS https://eventgate-backend-staging.fly.dev/api/health/
+```
+
+For non-P1 fixes (degraded mode that you can sit on for an hour), PR + review is still preferred:
+
+```bash
+git checkout -b hotfix/<short-name>
 git commit -m "fix(<scope>): <one-line>"
-gh pr create --title "hotfix: <one-line>" --body "P1 during pilot event YYYY-MM-DD"
-# get a second pair of eyes if available; otherwise self-approve + merge
+gh pr create --title "hotfix: <one-line>" --body "during pilot event YYYY-MM-DD"
 gh pr merge --squash
-# GHA deploys automatically; watch the run
 gh run watch
 ```
 
@@ -420,14 +438,16 @@ gh run watch
 
 After **any** rollback:
 
-- [ ] Backend health 200: `curl -sS <api>/api/health/`.
+- [ ] **GHA / Fly deploy actually completed green** (`gh run list --workflow deploy-backend.yml --limit 1` shows `completed success`, `flyctl status` shows expected version). Today's session proved you can roll back to a "good" image that still hits a release_command crash — don't trust the rollback until the deploy logs are green.
+- [ ] Backend health 200: `curl -sS https://eventgate-backend-staging.fly.dev/api/health/`.
 - [ ] Frontend loads: open `<dashboard>` in incognito.
 - [ ] Scanner unlocks: try one device.
-- [ ] One known-good QR scans green.
-- [ ] Help-desk inbox loads.
+- [ ] One known-good QR scans green (CHECKED IN card).
+- [ ] Help-desk inbox loads at `<dashboard>/orgs/<slug>/events/<event-slug>/helpdesk`.
 - [ ] Stats widget loads with non-zero values (assuming check-ins have happened).
 - [ ] Audit endpoint returns recent rows.
-- [ ] Tell Door Operator the system is back; resume normal flow.
+- [ ] If the rollback target predates the Tigris commit (`766c6b1`): CSV import will be broken again. Avoid rolling back further than that unless you have to.
+- [ ] Tell Vatana the system is back; resume normal flow.
 
 ### 5.6 Data integrity after rollback
 
