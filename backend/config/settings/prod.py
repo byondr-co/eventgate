@@ -34,3 +34,31 @@ RESEND_API_KEY = env("RESEND_API_KEY", default="")
 if RESEND_API_KEY:
     EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
     ANYMAIL = {"RESEND_API_KEY": RESEND_API_KEY}
+
+# Object storage: Fly Tigris (S3-compatible). Required for multi-machine deploys
+# because each Machine has its own ephemeral filesystem — the `app` Machine
+# writes uploads (CSV imports etc.) but the `worker` Machine can't read them
+# without a shared store. `flyctl storage create` provisions a bucket and
+# injects AWS_*+BUCKET_NAME as Fly secrets. Falls back to local filesystem if
+# BUCKET_NAME is missing (so single-machine dev / staging-without-storage still
+# works).
+BUCKET_NAME = env("BUCKET_NAME", default="")
+if BUCKET_NAME:
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "access_key": env("AWS_ACCESS_KEY_ID"),
+                "secret_key": env("AWS_SECRET_ACCESS_KEY"),
+                "bucket_name": BUCKET_NAME,
+                "endpoint_url": env("AWS_ENDPOINT_URL_S3"),
+                "region_name": env("AWS_REGION", default="auto"),
+                "default_acl": "private",
+                "file_overwrite": False,
+                "querystring_auth": True,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }

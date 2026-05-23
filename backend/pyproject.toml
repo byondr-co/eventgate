@@ -21,6 +21,7 @@ dependencies = [
   "bcrypt>=4.2,<5.0",
   "segno>=1.6,<2.0",
   "django-anymail[resend]>=11.0,<12.0",
+  "django-storages[s3]>=1.14,<2.0",
 ]
 
 [dependency-groups]
