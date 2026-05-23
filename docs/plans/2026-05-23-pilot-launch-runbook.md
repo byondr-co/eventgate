@@ -201,31 +201,42 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 
 ### 3.1 Door Operator scripts
 
+> **Door Operator for this pilot:** Vatana (solo — also covers Khmer translation per §3.3). Pre-pilot brief should emphasize: **never stop scanning to debug**; queue throughput beats individual-guest perfection. Wave any unhappy guest aside and Cloud Operator triages from the dashboard.
+
 #### S1 — Boot the door (T-30 min)
 
 **Open scanner on each device, enroll, unlock, prime cache.**
 
-1. Visit `<dashboard>/scanner` on each device (or launch the PWA if installed).
+1. Visit `<dashboard>/scanner` on each device (or launch the PWA if installed). Confirm device count matches what the customer expects (1 device for a single-gate pilot, 2+ for multi-gate).
 2. Tap **Enroll**, paste enrollment code, label device (`Gate 1`, `Gate 2`, …).
 3. Tap **Unlock**, enter PIN.
 4. On unlock, the scanner pre-caches the guest list into IndexedDB (Plan E). Confirm: scanner header shows "X guests cached" or equivalent.
 5. Walk to physical gate position. Confirm cell + Wi-Fi signal. If signal flaky, **stay in scanner — offline mode is fine** (Plan E + F design).
+6. **(Vatana-specific)** Skim the Khmer strings on the result-card paths (CHECKED IN / ALREADY IN / INVALID / SESSION EXPIRED / ERROR) — if any wording feels off, screenshot now so you can patch `km.json` after the event without scrambling at the door.
 
 #### S2 — Happy path check-in
 
-**Scan QR → green ENTRY CONFIRMED → guest enters.**
+**Scan QR → green CHECKED IN → guest enters.**
 
-- Sound + green card = success.
-- Amber DUPLICATE card = guest already checked in → wave them through, no action.
-- Red CONFLICT card = another device already checked them in → **send to help desk** (next script).
-- Red NOT FOUND = wrong event or expired QR → check guest's QR is for today's event.
+The result card is full-screen, ~1.5s on screen, tap to dismiss:
 
-#### S3 — Send to help desk
+| Card | Color | What it means | What to do |
+| --- | --- | --- | --- |
+| **CHECKED IN** | green ✓ | Success | Guest enters |
+| **ALREADY IN** | amber ! | Guest is already checked in (legitimate scan-twice) | Wave them through, no action |
+| **INVALID** | red ✕ | Wrong event or unknown QR | Check guest's QR is for today's event; if not, point them to the right event |
+| **SESSION EXPIRED** | red ✕ | Your device's session timed out | Re-enter PIN to unlock, retry scan |
+| **ERROR** | red ✕ | Network/server hiccup | Retry once; if it keeps happening, ping Cloud Operator |
 
-**On amber/red card → tap "Escalate to help desk" → enter short reason → submit.**
+Note: a `conflict` (two devices checking in the same guest within an offline-replay window) does **not** appear on the scan card. It surfaces later in the `/scanner/escalations` queue once the offline replay reaches the server — see S3.
 
-- The escalation creates a `helpdesk_ticket` (Plan F). Cloud Operator gets it in the inbox at `<dashboard>/orgs/<slug>/events/<event-slug>/helpdesk`.
-- Tell the guest "one moment, my colleague will help you in" → step them to the side so the queue keeps moving.
+#### S3 — Handle escalations + conflicts
+
+**Watch the small "conflicts pending" pill in the scanner header. When it appears: open `/scanner/escalations` → tap "Send to help desk" on the conflict row.**
+
+- Conflicts arise when an offline scan replays into a guest who's already been checked in by another device. The row shows: guest name, "Original (this device): gate / scanner_label", "Server says: gate / scanner_label". Plenty for Cloud Op to triage from the dashboard.
+- Tapping **Send to help desk** creates a `helpdesk_ticket` (Plan F). Cloud Operator picks it up at `<dashboard>/orgs/<slug>/events/<event-slug>/helpdesk`.
+- For any other unhappy guest (ID mismatch, claim they should be on the list but INVALID card came up, language difficulty): **wave them aside, keep scanning the queue**, message Cloud Operator who'll triage from the dashboard. Do not stop the queue to debug a single guest.
 
 #### S4 — Walk-in flow
 
@@ -252,10 +263,10 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 **Watch `<dashboard>/orgs/<slug>/events/<event-slug>/helpdesk` with the "Open" chip selected.**
 
 - New ticket lands → click → read the embedded "Server says" + "Original (this device)" payload (Plan F detail pane).
-- **Claim** (locks it to you) → talk to Door Operator on radio → pick a resolution:
+- **Claim** (locks it to you) → ping Door Operator (Vatana) over phone/Telegram DM per §2.1 → pick a resolution:
   - **Approve check-in** — operator overrides; guest enters. Audit chain records the override.
   - **Mark resolved (note)** — duplicate scan, no actual conflict; just note it.
-  - **Send to manual review** — needs a customer-side decision (e.g., ID mismatch). Customer Contact reviews → Approve check-in or Mark void.
+  - **Send to manual review** — needs a customer-side decision (e.g., ID mismatch). Hand to The Click Cam's Customer Contact (TBC — see §2.3) → they Approve check-in or Mark void.
   - **Mark void** — bad ticket / known fraud.
 - After resolution, **Release** is not needed (resolve moves to Resolved chip).
 
@@ -264,8 +275,8 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 **Glance at `<dashboard>/orgs/<slug>/events/<event-slug>/` widget.**
 
 - Check the 6 tiles: Checked in, Pending, Walk-in QR shown, Manual review, Open escalations, Conflicts (15m).
-- If **Conflicts (15m)** spikes red (>2 in 15min), investigate — usually means two operators are scanning the same line.
-- If **Manual review** stays amber for more than 10 min, ping the Customer Contact to resolve.
+- If **Conflicts (15m)** spikes red (>2 in 15min), investigate — usually means two operators are scanning the same line, OR a sudden burst of offline-replay drains hitting after a reconnect. With Vatana solo on a single device, sustained >2 conflicts/15min is anomalous and worth a quick check-in.
+- If **Manual review** stays amber for more than 10 min, ping The Click Cam's Customer Contact (TBC) to resolve.
 
 #### C3 — Sentry alert during the event
 
@@ -287,11 +298,12 @@ curl -sS "<api>/orgs/<slug>/events/<event-slug>/audit/" \
 
 ### 3.3 Khmer copy fallback
 
-If a guest can't read a string and the operator can't translate on-the-fly:
+**For this pilot, Vatana doubles as Khmer translator** (see §2.1 SPOF). So the fallback pattern is:
 
-1. Switch the dashboard / scanner language toggle to **English** for that interaction.
-2. If a specific string is the blocker, screenshot it + send to the **Khmer Translator on standby** (S2.1 row 4).
-3. Log the string in the post-mortem (§6) so the translator can patch `km.json`.
+1. **First option** — switch the device language toggle to **English** for that interaction. Many of the curveball strings (`SESSION EXPIRED`, `INVALID`) are short enough that an English-literate guest gets through fine.
+2. **If guest needs Khmer help**: wave the guest aside. Either translate during the next queue gap or, if the queue won't clear, message Cloud Operator who can talk to the guest by phone (if Cloud Op speaks Khmer) or relay through Vatana when ready.
+3. **Always screenshot the confusing string** before dismissing the guest. After the event, the screenshots feed back into the next `km.json` review pass — surface them in the post-mortem (§6.6).
+4. **If Vatana is unreachable for >5 min**: the pilot has no Khmer translator at all. Cloud Operator runs English-only and apologizes to non-English-fluent guests. This is the SPOF risk flagged in §2.1 — backup decision should already be logged in §2.3.
 
 ---
 
