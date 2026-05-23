@@ -120,7 +120,8 @@
 
 - [ ] **Telegram bot configured** (if pilot uses it):
   - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_WEBHOOK_URL` set as Fly secrets.
-  - `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` baked into Vercel build (rebuild after change).
+  - `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` baked into Vercel build — **redeploy after setting** (Next.js inlines `NEXT_PUBLIC_*` vars at build time, including in Server Components, so a fresh build is required).
+  - **After changing `TELEGRAM_WEBHOOK_URL`, manually run `setup_telegram_webhook`** — `flyctl secrets set` does a rolling restart of machines but does NOT run the `release_command`, so the Telegram side still points at whatever URL was last registered (could be a stale ngrok from local E2E). Run: `flyctl ssh console --app <fly-app> --command "python manage.py setup_telegram_webhook"`. Or push any backend commit to trigger a full GHA deploy with release_command.
   - Webhook registered: `curl https://api.telegram.org/bot$TOKEN/getWebhookInfo` → URL matches and `pending_update_count` < 10.
 
 - [ ] **Sentry project receiving events** — trigger a deliberate 500 (e.g., hit an admin URL that doesn't exist) and confirm the issue lands in Sentry within 60s. If Sentry is quiet for >5 min on a known error, the DSN is misconfigured.
