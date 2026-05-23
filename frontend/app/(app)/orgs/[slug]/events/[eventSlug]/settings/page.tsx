@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 
 import { PinManagementCard } from "@/components/events/pin-management-card";
+import { WalkinSettingsCard } from "@/components/events/walkin-settings-card";
 
 export default function EventSettingsPage() {
   const { slug, eventSlug } = useParams<{ slug: string; eventSlug: string }>();
@@ -11,10 +12,11 @@ export default function EventSettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold">Event settings</h1>
         <p className="text-sm text-muted-foreground">
-          Door-day controls: PIN rotation now, more in Plan F.
+          Door-day controls: PIN rotation and walk-in capacity.
         </p>
       </div>
       <PinManagementCard orgSlug={slug} eventSlug={eventSlug} />
+      <WalkinSettingsCard orgSlug={slug} eventSlug={eventSlug} />
     </div>
   );
 }

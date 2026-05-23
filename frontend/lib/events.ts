@@ -17,6 +17,8 @@ export type Event = {
   venue: string;
   registration_open: boolean;
   walkins_enabled: boolean;
+  /** Hard cap on total walk-in guests (counting all non-voided). 0 means unlimited. */
+  walkin_capacity: number;
   created_at: string;
 };
 
@@ -100,12 +102,31 @@ export function useCreateEvent(orgSlug: string) {
       venue?: string;
       starts_at?: string;
       ends_at?: string;
+      walkin_capacity?: number;
     }) =>
       apiFetch<Event>(`/api/v1/orgs/${orgSlug}/events/`, {
         method: "POST",
         body: JSON.stringify(input),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["events", orgSlug] }),
+  });
+}
+
+/** PATCH a subset of event fields. Backend accepts walkin_capacity, venue,
+ *  walkins_enabled, registration_open, etc. (anything not in EventSerializer's
+ *  read_only_fields). */
+export function useUpdateEvent(orgSlug: string, eventSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<Pick<Event, "walkin_capacity" | "walkins_enabled" | "venue">>) =>
+      apiFetch<Event>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events", orgSlug] });
+      qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug] });
+    },
   });
 }
 

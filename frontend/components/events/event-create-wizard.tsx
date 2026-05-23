@@ -22,6 +22,10 @@ export function EventCreateWizard({ orgSlug }: { orgSlug: string }) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [venue, setVenue] = useState("");
+  // 0 = unlimited (matches backend default + `walkins_enabled` toggle being
+  // independent). Store as string so the input can be empty mid-edit; coerce
+  // on submit.
+  const [walkinCapacity, setWalkinCapacity] = useState("0");
   const [error, setError] = useState<string | null>(null);
 
   const onNameChange = (v: string) => {
@@ -32,8 +36,13 @@ export function EventCreateWizard({ orgSlug }: { orgSlug: string }) {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const cap = walkinCapacity.trim() === "" ? 0 : Number(walkinCapacity);
+    if (!Number.isInteger(cap) || cap < 0) {
+      setError("Walk-in capacity must be a non-negative whole number.");
+      return;
+    }
     try {
-      const event = await create.mutateAsync({ name, slug, venue });
+      const event = await create.mutateAsync({ name, slug, venue, walkin_capacity: cap });
       router.push(`/orgs/${orgSlug}/events/${event.slug}`);
     } catch (err) {
       setError((err as Error).message);
@@ -76,6 +85,23 @@ export function EventCreateWizard({ orgSlug }: { orgSlug: string }) {
               onChange={(e) => setVenue(e.target.value)}
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium">Walk-in capacity</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={walkinCapacity}
+              onChange={(e) => setWalkinCapacity(e.target.value)}
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+              placeholder="0"
+            />
+            <span className="block mt-1 text-xs text-muted-foreground">
+              Hard cap on total walk-in guests. <code>0</code> means unlimited. Editable later in
+              event settings.
+            </span>
           </label>
           <Button type="submit" className="w-full" disabled={create.isPending || !name || !slug}>
             {create.isPending ? "Creating…" : "Create event"}
