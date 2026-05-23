@@ -315,17 +315,19 @@ curl -sS "<api>/orgs/<slug>/events/<event-slug>/audit/" \
 
 | Symptom | Owner | First action | Threshold to escalate further |
 | --- | --- | --- | --- |
-| One scanner shows red CONFLICT on a known-good QR | Door | S3 — send to help desk | Two+ conflicts in 60s = pattern, see row below |
-| Multiple conflicts in <60s | Door + Cloud | Cloud checks `/audit/?action_prefix=checkin.conflict`; Door re-coordinates gates | Audit chain shows correct device split → not a bug; otherwise escalate to §4.2 |
-| Scanner won't unlock with PIN | Door | Confirm PIN with Customer Contact; re-enter | Two PIN failures = ask Cloud for the PIN from the event settings |
-| Help-desk inbox empty when Door reported escalations | Cloud | Confirm Door is on the right scanner device (escalation needs a "Send to help desk" tap, not just a red card) | If Door confirms they tapped Send and no row arrived → §4.2 |
+| Conflict row appears on `/scanner/escalations` | Door | S3 — tap "Send to help desk" on the row | Two+ conflicts within a 60s burst = pattern, see row below |
+| Multiple conflicts in <60s | Door + Cloud | Cloud queries `/audit/?action_prefix=checkin.conflict` to see the device split; for Vatana-solo (single device), conflicts can only come from offline-replay drains — usually benign | If audit rows show check-ins from a device that shouldn't exist → §4.2 (possible cross-device leak / shared enrollment code) |
+| Scanner won't unlock with PIN | Door | Re-enter PIN carefully (typo most likely) | Two PIN failures → message Cloud Operator; Vinei reads the PIN from `<dashboard>/orgs/<slug>/events/<event-slug>/settings` (he set it during pre-event) and confirms over phone/Telegram |
+| Result card stays on "ERROR" repeatedly | Door | Retry the scan once; if it persists, check connectivity (cellular vs Wi-Fi); offline mode is fine for check-ins | >5 sequential ERRORs on a known-good QR → message Cloud Operator → §4.2 |
+| Help-desk inbox empty when Door reported escalations | Cloud | Confirm Door tapped "Send to help desk" on `/scanner/escalations` (not just dismissed the row) | If Door confirms tap and no row arrived → §4.2 |
 | Stats widget tiles all zero / "Loading" forever | Cloud | DevTools → Network → check `/stats/` returns 200; if 401, refresh cookie (15-min JWT) | 500 from `/stats/` → §4.2 |
-| Walk-in tablet says "no slots" but cap not reached | Cloud | Check `walkin_capacity` on the event; confirm guests in walk-in state count matches cap | Server-side cap looks wrong → §4.2 (model bug) |
+| Walk-in tablet says "no slots" but cap not reached | Cloud | Check `walkin_capacity` on the event via the new settings card (§ shipped 2026-05-23); confirm guests in walk-in state count matches cap | Server-side cap looks wrong → §4.2 (model bug) |
 | Email QR didn't arrive for a new registration | Cloud | Resend dashboard → check delivery log; confirm address isn't bouncing | Resend domain unverified or Celery worker down → §4.2 |
-| Telegram bot stops replying | Cloud | `getWebhookInfo`; if `last_error_message` set → re-set webhook with `setWebhook` | Persistent failure → §4.2 |
+| Telegram bot stops replying | Cloud | `curl https://api.telegram.org/bot$TOKEN/getWebhookInfo` — check `last_error_message` and `url`; if URL drifted to a stale value, **re-run `flyctl ssh ... python manage.py setup_telegram_webhook`** (per §1.3 note) | Persistent failure → §4.2 |
 | Sentry alert: 500 spike >3 in 5 min | Cloud | Read the trace → identify the endpoint | If endpoint is on the door path (`/scanner/checkins/`, `/helpdesk/tickets/`, `/stats/`, `/walkin/*`) → §4.2 (rollback candidate) |
 | Fly app health check failing / 502 from dashboard | Cloud | `flyctl status` + `flyctl logs`; redeploy if a process crashed | Sustained failure >2 min → §5 rollback |
 | Database connection refused | Cloud | `flyctl postgres status` (if managed Postgres); restart if stuck | Sustained failure >2 min → §5 rollback + Fly support ticket |
+| CSV import status "Failed" with 0 imported (post-deploy) | Cloud | Check `flyctl logs` for `FileNotFoundError`; confirm Tigris secrets present (`flyctl secrets list \| grep BUCKET`). Re-upload should work if Tigris is healthy. | Persistent failure → §4.2; bucket creds or Tigris outage worth Fly support |
 
 ### 4.2 Escalation triggers (when "first action" didn't fix it)
 
@@ -337,7 +339,9 @@ curl -sS "<api>/orgs/<slug>/events/<event-slug>/audit/" \
 
 ### 4.3 Paper fallback (P1 only)
 
-The pilot customer **must arrive with a printed guest list as paper fallback** — confirm at T-1 day. If the system goes hard down, Door Operator checks guests against the printed list, marks attendance on paper. After recovery, Cloud Operator helps reconcile paper → digital via CSV import (Plan G).
+**The Click Cam must arrive with a printed guest list as paper fallback** — confirm at T-1 day. The list should include name + email/phone + a column for manual check-in marks. If the system goes hard down, Vatana checks guests against the printed list and marks attendance on paper. After recovery, Cloud Operator helps reconcile paper → digital via CSV import (Plan G, now Tigris-backed per §1.3).
+
+A printed list is **also useful in non-P1 situations** — Vatana can fall back to it when offline AND the cached guest list is incomplete (rare, but possible for a guest registered after the scanner's last sync). The runbook explicitly considers paper a first-class backup, not a last resort.
 
 ### 4.4 Contact escalation order
 
