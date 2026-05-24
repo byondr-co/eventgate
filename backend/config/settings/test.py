@@ -1,6 +1,7 @@
 """Test settings — fast, isolated."""
 
 import tempfile
+from pathlib import Path
 
 from .base import *  # noqa: F403
 
@@ -8,7 +9,10 @@ DEBUG = False
 SECRET_KEY = "test-insecure-secret"
 
 # Sandbox file uploads so tests never pollute the working tree.
-MEDIA_ROOT = tempfile.mkdtemp(prefix="gatethres-test-media-")
+# Wrap tempfile.mkdtemp (returns str) in Path() to match the MEDIA_ROOT
+# type from base.py (BASE_DIR / "media", a Path). Caught by `mypy apps config`
+# in CI; the prior `mypy apps/` scope didn't include settings.
+MEDIA_ROOT = Path(tempfile.mkdtemp(prefix="gatethres-test-media-"))
 
 # Intentional Plan H holdout: NAME/USER/PASSWORD must match the postgres
 # service credentials in .github/workflows/backend.yml. Rename in lockstep
