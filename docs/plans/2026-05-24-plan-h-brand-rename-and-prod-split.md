@@ -2,7 +2,7 @@
 
 > **Authored:** 2026-05-24 · **Owner:** Vinei (vinei.ro@squeeze-inc.co.jp) · **Anchors:** brief §14 row 1 (Phase-0 brand-name task); pilot launch runbook §1.4 (rename surface) + §intro (external blockers); first-pilot window 2026-06-05 → 2026-07-03 (12 days from today).
 >
-> **Brand pick:** **Gatethres** (pronounced **GATE-thress**, rhymes with "address"). Coined truncation of *gate + thres(hold)*. Came out of a 9-round candidate search (~85 names checked). **All 10 checked TLDs were truly unregistered** at decision time — `.com .app .io .co .net .me .events .dev .org .ai` — unprecedented in the search; no other candidate cleared more than one TLD. **Zero brand collision** in any WebSearch — no existing "Gatethres" company or product anywhere.
+> **Brand pick:** **Gatethres** (pronounced **GATE-thress**, rhymes with "address"; Khmer: **ហ្គេតថ្រេស** per Vatana 2026-05-25). Coined truncation of *gate + thres(hold)*. Came out of a 9-round candidate search (~85 names checked). **All 10 checked TLDs were truly unregistered** at decision time — `.com .app .io .co .net .me .events .dev .org .ai` — unprecedented in the search; no other candidate cleared more than one TLD. **Zero brand collision** in any WebSearch — no existing "Gatethres" company or product anywhere.
 >
 > **Scope:** (a) lock in Gatethres pending TM checks; (b) inventory every place "eventgate" appears as a brand-bearing string and rename it; (c) provision a new **prod environment** alongside the existing staging env (which keeps running for shakedown); (d) update runbook + brief + README to reflect the new brand. Implementation waves break out via writing-plans after this design is approved.
 >
