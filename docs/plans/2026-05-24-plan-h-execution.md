@@ -447,7 +447,7 @@
 - [ ] **Step 4: Verify all migrations applied**
 
   ```bash
-  flyctl ssh console --app gatethres-backend --command "python manage.py showmigrations | grep -v '\[X\]' | head"
+  flyctl ssh console --app gatethres-backend --command "/app/.venv/bin/python manage.py showmigrations | grep -v '\[X\]' | head"
   ```
 
   Expected: empty (no unapplied migrations).
@@ -456,7 +456,7 @@
 
   Run the snippet from runbook §1.3 (audit-trigger smoke) against the new app:
   ```bash
-  flyctl ssh console --app gatethres-backend --command 'python manage.py shell -c "from django.db import connection
+  flyctl ssh console --app gatethres-backend --command '/app/.venv/bin/python manage.py shell -c "from django.db import connection
   with connection.cursor() as cur:
       cur.execute(\"SELECT tgname FROM pg_trigger WHERE tgname='\''audit_auditevent_append_only'\''\")
       print('\''trigger present:'\'', bool(cur.fetchone()))"'
@@ -571,10 +571,10 @@
   Per runbook §1.3 lesson — `flyctl secrets set` does a rolling restart but does NOT re-run `release_command`. The new bot has no webhook configured yet, so this manual step is required:
 
   ```bash
-  flyctl ssh console --app eventgate-backend-staging --command "python manage.py setup_telegram_webhook"
+  flyctl ssh console --app eventgate-backend-staging --command "/app/.venv/bin/python manage.py setup_telegram_webhook"
   ```
 
-  Expected output: `Webhook set to: https://eventgate-backend-staging.fly.dev/api/v1/telegram/webhook/`.
+  Expected output: `Webhook registered: https://eventgate-backend-staging.fly.dev/api/v1/telegram/webhook/`. Use the full venv-python path explicitly — Fly SSH doesn't inherit the Docker `ENV PATH` so bare `python` resolves to the system Python (no Django) and bare `uv` is not in PATH at all. (See runbook §1.3 gotcha.)
 
 - [ ] **Step 4: Verify via Telegram getWebhookInfo**
 

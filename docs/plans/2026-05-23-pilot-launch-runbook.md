@@ -84,17 +84,19 @@
 
   ```bash
   flyctl ssh console --app <fly-app>
-  uv run python manage.py showmigrations | grep -v '\[X\]' | head
+  /app/.venv/bin/python manage.py showmigrations | grep -v '\[X\]' | head
   exit
   ```
 
   Expect: no unapplied migrations. If any are missing, fix `fly.toml` to add `release_command = "python manage.py migrate --noinput"` (or run migrate manually before proceeding).
 
+  > ⚠️ **Gotcha discovered 2026-05-25:** inside `flyctl ssh` (both interactive `console` and `--command`), the Dockerfile's `ENV PATH=/app/.venv/bin:$PATH` is NOT inherited by the bash shell — Fly's SSH session starts bash with its own PATH. Bare `python` resolves to the system Python (no Django installed); bare `uv` is not in PATH at all (uv was used at Docker build time only). **Use `/app/.venv/bin/python manage.py …` explicitly for all SSH-into-Fly commands** in this runbook. Inside `release_command` (which Fly runs with the Docker ENV applied) bare `python` works correctly.
+
 - [ ] **Append-only audit trigger active**
 
   ```bash
   flyctl ssh console --app <fly-app>
-  uv run python manage.py shell -c "
+  /app/.venv/bin/python manage.py shell -c "
   from django.db import connection
   with connection.cursor() as cur:
       cur.execute(\"SELECT tgname FROM pg_trigger WHERE tgname='audit_auditevent_append_only'\")
@@ -127,7 +129,7 @@
 - [ ] **Telegram bot configured** (if pilot uses it):
   - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_WEBHOOK_URL` set as Fly secrets.
   - `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` baked into Vercel build — **redeploy after setting** (Next.js inlines `NEXT_PUBLIC_*` vars at build time, including in Server Components, so a fresh build is required).
-  - **After changing `TELEGRAM_WEBHOOK_URL`, manually run `setup_telegram_webhook`** — `flyctl secrets set` does a rolling restart of machines but does NOT run the `release_command`, so the Telegram side still points at whatever URL was last registered (could be a stale ngrok from local E2E). Run: `flyctl ssh console --app <fly-app> --command "python manage.py setup_telegram_webhook"`. Or push any backend commit to trigger a full GHA deploy with release_command.
+  - **After changing `TELEGRAM_WEBHOOK_URL`, manually run `setup_telegram_webhook`** — `flyctl secrets set` does a rolling restart of machines but does NOT run the `release_command`, so the Telegram side still points at whatever URL was last registered (could be a stale ngrok from local E2E). Run: `flyctl ssh console --app <fly-app> --command "/app/.venv/bin/python manage.py setup_telegram_webhook"`. Or push any backend commit to trigger a full GHA deploy with release_command. (See §1.3 gotcha — Fly SSH doesn't inherit Docker ENV; use the venv python path explicitly.)
   - Webhook registered: `curl https://api.telegram.org/bot$TOKEN/getWebhookInfo` → URL matches and `pending_update_count` < 10.
 
 - [ ] **Sentry project receiving events** — trigger a deliberate 500 (e.g., hit an admin URL that doesn't exist) and confirm the issue lands in Sentry within 60s. If Sentry is quiet for >5 min on a known error, the DSN is misconfigured.
@@ -325,7 +327,7 @@ curl -sS "<api>/orgs/<slug>/events/<event-slug>/audit/" \
 | Stats widget tiles all zero / "Loading" forever | Cloud | DevTools → Network → check `/stats/` returns 200; if 401, refresh cookie (15-min JWT) | 500 from `/stats/` → §4.2 |
 | Walk-in tablet says "no slots" but cap not reached | Cloud | Check `walkin_capacity` on the event via the new settings card (§ shipped 2026-05-23); confirm guests in walk-in state count matches cap | Server-side cap looks wrong → §4.2 (model bug) |
 | Email QR didn't arrive for a new registration | Cloud | Resend dashboard → check delivery log; confirm address isn't bouncing | Resend domain unverified or Celery worker down → §4.2 |
-| Telegram bot stops replying | Cloud | `curl https://api.telegram.org/bot$TOKEN/getWebhookInfo` — check `last_error_message` and `url`; if URL drifted to a stale value, **re-run `flyctl ssh ... python manage.py setup_telegram_webhook`** (per §1.3 note) | Persistent failure → §4.2 |
+| Telegram bot stops replying | Cloud | `curl https://api.telegram.org/bot$TOKEN/getWebhookInfo` — check `last_error_message` and `url`; if URL drifted to a stale value, **re-run `flyctl ssh ... /app/.venv/bin/python manage.py setup_telegram_webhook`** (per §1.3 note) | Persistent failure → §4.2 |
 | Sentry alert: 500 spike >3 in 5 min | Cloud | Read the trace → identify the endpoint | If endpoint is on the door path (`/scanner/checkins/`, `/helpdesk/tickets/`, `/stats/`, `/walkin/*`) → §4.2 (rollback candidate) |
 | Fly app health check failing / 502 from dashboard | Cloud | `flyctl status` + `flyctl logs`; redeploy if a process crashed | Sustained failure >2 min → §5 rollback |
 | Database connection refused | Cloud | `flyctl postgres status` (if managed Postgres); restart if stuck | Sustained failure >2 min → §5 rollback + Fly support ticket |
