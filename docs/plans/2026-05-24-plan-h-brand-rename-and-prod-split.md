@@ -7,6 +7,11 @@
 > **Scope:** (a) lock in Gatethres pending TM checks; (b) inventory every place "eventgate" appears as a brand-bearing string and rename it; (c) provision a new **prod environment** alongside the existing staging env (which keeps running for shakedown); (d) update runbook + brief + README to reflect the new brand. Implementation waves break out via writing-plans after this design is approved.
 >
 > **Status:** ⏳ Design phase. TM/handle deep-checks outstanding (§1.2 — expected fast given the coined word has no existing namesakes). Rename + prod-split execution to follow as a plan-execution doc with per-wave worktrees per the user's standard workflow.
+>
+> **Decisions locked 2026-05-24:**
+> - **Primary URL:** `gatethres.com` (per user decision — §6 Q4 ANSWERED). API at `api.gatethres.com`. Email from `mail.gatethres.com`. The `.app` TLD remains available but is NOT registered for pilot ("for now" — revisit post-pilot).
+> - **Defensive TLD claim:** minimal — register `gatethres.com` only for pilot (§6 Q3 ANSWERED). Other TLDs stay free and we can claim later if needed.
+> - **Pronunciation:** **GATE-thress** (rhymes with "address") — surfaced in README, brief, runbook, and Vatana's Khmer-transliteration packet.
 
 ---
 
@@ -44,7 +49,7 @@ User-driven, ~10–15 min total — expected faster than typical because the coi
 - [ ] **GitHub org `gatethres`** — check at [github.com/gatethres](https://github.com/gatethres). Expected free.
 - [ ] **X/Twitter `@gatethres`** — handle availability. Expected free.
 - [ ] **npm `gatethres`** scope — check at [npmjs.com/~gatethres](https://www.npmjs.com/~gatethres) and [npmjs.com/package/gatethres](https://www.npmjs.com/package/gatethres).
-- [ ] **Register `gatethres.com` AND `gatethres.app`** at Cloudflare Registrar (~$28/yr total). Defensive registration of other TLDs (`.io`, `.events`, `.dev`) optional — see §6 Q3.
+- [ ] **Register `gatethres.com`** at Cloudflare Registrar (~$10/yr) — primary URL per §6 Q4. `.app` and other TLDs deferred ("for now" per user decision) — they remain free and can be claimed later if defensive need arises.
 
 ### 1.3 Fallback
 
@@ -114,7 +119,7 @@ The real rename scope is ~35 occurrences across ~30 active files. Inventory belo
 | Resend domain | current sender on staging | `mail.gatethres.app` (or `mail.gatethres.com`) | Medium — DNS records (DKIM, SPF, return-path), domain reverification cycle. |
 | Telegram bot username | `@eventgate_bot` | `@gatethres_bot` | Low — BotFather supports username rename (token stays). Webhook URL must be re-pointed via `setup_telegram_webhook` against the prod backend (per runbook §1.3). |
 | Tigris bucket | `eventgate-backend-staging-media` | `gatethres-backend-media` | Medium — new bucket; no data to migrate if prod env starts fresh. |
-| Domain (apex) | none | `gatethres.app` → Vercel; `api.gatethres.app` → Fly. Optionally `gatethres.com` as redirect-only or primary. | Medium — DNS provisioning + SSL cert issuance. |
+| Domain (apex) | none | `gatethres.com` → Vercel (primary, per §6 Q4); `api.gatethres.com` → Fly. | Medium — DNS provisioning + SSL cert issuance. |
 
 ### 2.4 Khmer strings touching the brand
 
@@ -131,14 +136,14 @@ Today only **staging** infrastructure exists. The pilot needs a separate prod en
 | Resource | Staging (keep) | Prod (new) | Provisioning notes |
 |---|---|---|---|
 | Fly backend app | `eventgate-backend-staging` | `gatethres-backend` | Singapore region (`sin`), same `fly.toml` template, same secrets but with prod values. Use `fly launch --copy-config` from staging. |
-| Vercel frontend | `frontend-five-lovat-94` | `gatethres-app` (or `gatethres`) | Production branch = `main`. Connect to same GitHub repo (renamed). Set `NEXT_PUBLIC_*` env vars to point at `api.gatethres.app`. |
+| Vercel frontend | `frontend-five-lovat-94` | `gatethres-app` (or `gatethres`) | Production branch = `main`. Connect to same GitHub repo (renamed). Set `NEXT_PUBLIC_*` env vars to point at `api.gatethres.com`. |
 | Postgres | Neon staging branch | Neon prod branch | Fresh empty DB — no migration of staging test data. Apply all migrations via `release_command` on first deploy. Run audit trigger seed (per runbook §1.3). |
 | Redis | Upstash staging | Upstash prod | Same Singapore region. Connection URL into Fly secrets. |
 | Sentry | personal-org / `eventgate` (verified 2026-05-23) | personal-org / `gatethres` (new project) | New project. Prod env tag = `prod`. Pre-emptively mute audit-trigger-blocked-write test exceptions. Separate DSN. |
-| Resend | staging sender | sender from `mail.gatethres.app` | New domain in Resend dashboard; add DNS to `gatethres.app`. Send a test QR to a deliverable address before pilot. |
+| Resend | staging sender | sender from `mail.gatethres.com` | New domain in Resend dashboard; add DNS to `gatethres.com`. Send a test QR to a deliverable address before pilot. |
 | Tigris (media bucket) | `eventgate-backend-staging-media` | `gatethres-backend-media` | New bucket. Bucket creds into Fly secrets. CSV imports start fresh. |
 | Telegram bot | `@eventgate_bot` (verified 2026-05-23) | `@gatethres_bot` | Two options: (a) rename existing bot via BotFather (token preserved, username changes) and point webhook at prod backend; (b) create a new bot for prod. **Recommend (a)** — preserves the bot identity and any allow-listed test chats. |
-| Domain DNS | n/a | `gatethres.app` → Vercel; `api.gatethres.app` → Fly. Optionally `gatethres.com` → Vercel (apex 301 to `.app` or vice versa). | Cloudflare DNS (default with Cloudflare Registrar) or Vercel-managed DNS. Open question — see §6. |
+| Domain DNS | n/a | `gatethres.com` → Vercel (primary); `api.gatethres.com` → Fly. | Cloudflare DNS (default with Cloudflare Registrar) or Vercel-managed DNS. |
 | GitHub Actions deploy | targets `eventgate-backend-staging` | targets `gatethres-backend` | `.github/workflows/deploy-backend.yml` `--app` flag changes. |
 
 ### 3.2 Secrets to provision fresh on prod
@@ -179,9 +184,9 @@ Staging URLs **must not** appear in any pilot-facing materials post-cutover. The
 ### 4.1 Wave ordering (writing-plans will expand)
 
 1. **Wave 0 — User-side TM + handle checks (BLOCKER).** Nothing else starts until §1.2 clears. Expected fast (~10–15 min) since Gatethres has no existing namesakes.
-2. **Wave 1 — Domain + handle land-grab.** Register `gatethres.com` + `gatethres.app` at Cloudflare Registrar. Optionally claim defensive TLDs (`.io`, `.dev`, `.events`) per §6 Q3. Reserve GitHub org `gatethres`, X handle `@gatethres`, npm namespace `gatethres`.
+2. **Wave 1 — Domain + handle land-grab.** Register `gatethres.com` at Cloudflare Registrar (primary URL per §6 Q4). Reserve GitHub org `gatethres`, X handle `@gatethres`, npm namespace `gatethres`. Defensive TLDs deferred per §6 Q3 ("for now").
 3. **Wave 2 — Prod infrastructure provisioning.** New Fly app, new Vercel project, new Neon branch, new Upstash, new Sentry project, new Resend domain, new Tigris bucket. None of this touches the existing staging env.
-4. **Wave 3 — DNS + SSL.** Point `gatethres.app` and `api.gatethres.app` at the new resources. Optionally configure `gatethres.com` (apex redirect or primary). Wait for SSL issuance and cache propagation.
+4. **Wave 3 — DNS + SSL.** Point `gatethres.com` (apex) and `api.gatethres.com` at the new resources. Wait for SSL issuance and cache propagation.
 5. **Wave 4 — Telegram bot rename + webhook re-point.** BotFather rename + `setup_telegram_webhook` against the new prod backend URL.
 6. **Wave 5 — Repo internal rename.** Find + replace `eventgate` → `gatethres` in active code/config (see §2.1). Bump service worker cache key + Dexie keeps its name (§2.1 note). Run full backend pytest + frontend vitest + tsc + lint locally. Open as a PR to main.
 7. **Wave 6 — Documentation rename.** README, brief §14 row 1, runbook §1.4 + §intro. (Historical plans + handoffs left untouched.)
@@ -241,8 +246,8 @@ Staging URLs **must not** appear in any pilot-facing materials post-cutover. The
 
 1. **Domain registrar preference?** Cloudflare Registrar (wholesale pricing, no upsell, includes Cloudflare DNS — recommend), Namecheap, Porkbun, or GoDaddy.
 2. **Sentry: rename existing project or create new prod project?** Recommend new prod project — clean signal-to-noise from day one; staging keeps eating its own noise.
-3. **Defensive TLD claim?** All 10 checked TLDs are free. Options: (a) register only `.com` + `.app` (~$28/yr — minimum viable); (b) register `.com + .app + .io + .dev` (~$80/yr — covers common typosquatting + alt-positioning); (c) register all 10 (~$200/yr — maximum defensive). Recommend (b) for a SaaS brand at this stage.
-4. **Use `gatethres.com` as primary or as redirect to `.app`?** Recommend `.app` as primary (Vercel default, modern SaaS norm) with `.com` 301-redirecting to `.app`. `.com` exists for credibility / email signature use.
+3. **Defensive TLD claim?** ✅ **ANSWERED 2026-05-24:** minimal — register `.com` only "for now." Other TLDs remain free, can be defensive-claimed later if competitive pressure or typosquatting surfaces.
+4. **Use `gatethres.com` as primary or as redirect to `.app`?** ✅ **ANSWERED 2026-05-24:** `.com` is primary. `.app` not registered for pilot — revisit post-pilot if SaaS-modern positioning calls for it.
 5. **Rename `eventgate-backend-staging` Fly app post-cutover, or leave it?** Recommend leave it — staging name doesn't need to match brand; renaming risks downtime on a working env.
 6. **Telegram bot: rename existing `@eventgate_bot` or create new `@gatethres_bot`?** Recommend rename — preserves bot token and any allow-listed test chats.
 7. **Cookie rename cutover style — atomic with logout, or dual-read for 24h?** Recommend atomic with logout — simpler; all logged-in users get redirected to login on next request. Pilot operators re-enroll devices fresh anyway.
@@ -255,14 +260,13 @@ Staging URLs **must not** appear in any pilot-facing materials post-cutover. The
 Plan H is done when **all of the following** hold:
 
 - [ ] §1.2 TM/handle deep-checks all green (or fallback to Slidegate / Soglia executed).
-- [ ] `gatethres.app` resolves to the prod dashboard with valid SSL.
-- [ ] `api.gatethres.app` resolves to the prod backend with valid SSL and a 200 from `/api/health/`.
-- [ ] `gatethres.com` resolves (either as primary or as 301 to `.app` per §6 Q4 decision).
+- [ ] `gatethres.com` resolves to the prod dashboard with valid SSL (primary URL per §6 Q4).
+- [ ] `api.gatethres.com` resolves to the prod backend with valid SSL and a 200 from `/api/health/`.
 - [ ] GitHub repo renamed; CI green on the new repo name.
 - [ ] All §2.1 active code/config references to "eventgate" replaced (or explicitly retained with reason).
 - [ ] All §2.2 documentation updated (README, brief, runbook §1.4 + §intro).
 - [ ] Sentry receiving events from the new prod backend; old `eventgate` project muted or marked staging-only.
-- [ ] Resend sending from `mail.gatethres.app`; test QR delivered to an allow-listed address within 30s.
+- [ ] Resend sending from `mail.gatethres.com`; test QR delivered to an allow-listed address within 30s.
 - [ ] Telegram bot responding under `@gatethres_bot` (or whatever username lands); `getWebhookInfo` shows the prod backend URL.
 - [ ] Tigris bucket `gatethres-backend-media` exists; CSV import test against prod env succeeds.
 - [ ] Runbook §1.5 Plan F + Plan G regression smoke passes against prod env (not staging).
