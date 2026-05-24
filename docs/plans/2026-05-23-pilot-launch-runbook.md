@@ -6,13 +6,15 @@
 >
 > **Pilot window:** **2026-06-05 → 2026-07-03** (W13–14, first paying/pilot event under brief §12 Phase 1 exit criteria). Treat anything not shipped by **2026-05-29** as risk-bearing.
 >
-> **Scope of this runbook:** what to verify _before_ ship, who runs the door, what to do when something breaks during the event, how to roll back, how to write up afterwards. Backend lives on Fly (`eventgate-backend-staging` today; rename when prod app lands), frontend on Vercel (`frontend-five-lovat-94` today; same caveat).
+> **Scope of this runbook:** what to verify _before_ ship, who runs the door, what to do when something breaks during the event, how to roll back, how to write up afterwards. Backend lives on Fly (`eventgate-backend-staging`; prod split deferred per Plan H scope amendment — pilot runs here), frontend on Vercel (`frontend-five-lovat-94`; same — deferred).
 >
 > **Contact details** (phone numbers, emails beyond `@squeeze-inc.co.jp` / `@gmail.com`, anything PII-sensitive) live **outside this doc** — in 1Password / a gitignored `contacts.private.md` / whatever your team uses. The runbook references people by name only.
 >
+> **Pronunciation:** Gatethres is pronounced **GATE-thress** (rhymes with "address").
+>
 > **External blockers tracked here:**
 >
-> - **Brand name** — Phase-0 task per brief §12 footer. Status: ⏳ **pending** (shortlist + `.com`/`.app` check + TM check + pick). Fold the chosen brand into this doc + repo/app/domain renames before pilot. _Last updated: 2026-05-23._
+> - **Brand name** — Phase-0 task per brief §14 row 1. Status: ✅ **resolved 2026-05-24 → Gatethres** (pronounced GATE-thress). Internal rename landed in Plan H wave 5; prod env split deferred per scope amendment — pilot runs on existing staging infrastructure under the new brand. See [Plan H spec](./2026-05-24-plan-h-brand-rename-and-prod-split.md). _Last updated: 2026-05-24._
 > - **Khmer copy review** — translator identified per brief §12 row 4: **Vatana** (also Door Operator — see §2). Status: ⏳ **pending** (machine-quality strings in `frontend/lib/i18n/messages/km.json` covering Plan D scanner + Plan D walk-in + Plan E error messages + Plan F help-desk + Plan G Telegram/CSV; needs a one-pass review before pilot). _Last updated: 2026-05-23._
 
 ---
@@ -23,7 +25,7 @@
 
 ### 1.1 External-readiness gates
 
-- [ ] **Brand name landed.** Repo, Fly app, Vercel project, Sentry project, Resend domain, Telegram bot username all match the chosen brand. Update §intro of this runbook, plus the URL stubs in §1.4 below.
+- [x] **Brand name landed — Gatethres** (resolved 2026-05-24). Internal repo rename: Plan H wave 5. Telegram bot renamed to `@gatethres_bot`: T4. Prod infra renames (Fly app, Vercel project, Sentry project, Resend domain, Tigris bucket, DNS cutover) deferred per Plan H scope amendment — pilot runs on staging infrastructure. §intro + §1.4 updated 2026-05-24.
 - [ ] **Khmer copy review pass complete.** Translator has signed off on:
   - `frontend/lib/i18n/messages/km.json` — scanner + walk-in + error messages.
   - Help-desk inbox strings (Plan F).
@@ -132,19 +134,19 @@
 
 - [ ] **GHA secret `FLY_API_TOKEN` present** — without it the deploy workflow can't ship a hotfix during the event.
 
-### 1.4 Pilot environment URLs (fill in once brand lands)
+### 1.4 Pilot environment URLs
 
-> **First-pilot customer:** The Click Cam. Event will run on the renamed prod app once brand lands; today's staging URLs are the proving ground.
+> **First-pilot customer:** The Click Cam. Brand is **Gatethres** (resolved 2026-05-24). Prod env split (new Fly app, new Vercel project, new Neon prod branch, DNS cutover to `gatethres.com` / `api.gatethres.com`) was **deferred per Plan H scope amendment** — the pilot runs on the existing staging infrastructure under the Gatethres brand.
 
-| Resource | Staging today | Pilot (brand TBC) |
+| Resource | Staging today | Pilot (Gatethres — scope amendment applied) |
 | --- | --- | --- |
-| Backend API | `https://eventgate-backend-staging.fly.dev` | `https://<brand>-backend.fly.dev` |
-| Dashboard | `https://frontend-five-lovat-94.vercel.app` | `https://<brand>.app` |
-| Scanner | `<dashboard>/scanner` | `<dashboard>/scanner` |
-| Walk-in display | `<dashboard>/scanner/walkin` | same |
-| Sentry | `<personal-org>/eventgate` (verified 2026-05-23) | `<org>/<brand>` |
-| Telegram bot | `@eventgate_bot` (verified 2026-05-23) | `@<brand>_bot` |
-| Tigris bucket | `eventgate-backend-staging-media` | `<brand>-backend-media` |
+| Backend API | `https://eventgate-backend-staging.fly.dev` | `https://eventgate-backend-staging.fly.dev` **(same as staging — prod split deferred per Plan H scope amendment)** |
+| Dashboard | `https://frontend-five-lovat-94.vercel.app` | `https://frontend-five-lovat-94.vercel.app` **(same as staging — prod split deferred per Plan H scope amendment)** |
+| Scanner | `<dashboard>/scanner` | `<dashboard>/scanner` (same) |
+| Walk-in display | `<dashboard>/scanner/walkin` | `<dashboard>/scanner/walkin` (same) |
+| Sentry | `<personal-org>/eventgate` (verified 2026-05-23) | `<personal-org>/eventgate` **(same — Sentry project rename deferred)** |
+| Telegram bot | `@eventgate_bot` (verified 2026-05-23) | `@gatethres_bot` **(rename via BotFather is T4; webhook URL stays pointed at staging)** |
+| Tigris bucket | `eventgate-backend-staging-media` | `eventgate-backend-staging-media` **(same — bucket rename deferred)** |
 
 ### 1.5 End-to-end smoke (T-1 day)
 

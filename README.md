@@ -1,4 +1,6 @@
-# Eventgate
+# Gatethres
+
+*Pronounced **GATE-thress** (rhymes with "address").*
 
 SaaS for fast, paperless event entrance — Southeast Asia first.
 
