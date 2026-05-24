@@ -29,7 +29,7 @@ class TestQrEmailTask:
         assert msg.to == ["alice@example.com"]
         assert (
             "register" in msg.subject.lower()
-            or "eventgate" in msg.subject.lower()
+            or "gatethres" in msg.subject.lower()
             or msg.subject.lower().startswith("you're")
         )
         assert len(msg.attachments) == 1
@@ -55,14 +55,14 @@ class TestQrEmailTask:
 
 @pytest.mark.django_db
 def test_email_body_includes_telegram_link_when_bot_username_set(event, settings):
-    settings.TELEGRAM_BOT_USERNAME = "EventgateBot"
+    settings.TELEGRAM_BOT_USERNAME = "GatethresBot"
     mail.outbox.clear()
     guest = register_guest(
         event=event,
         payload={"name": "Alice", "email": "alice@example.com", "phone_or_chat": "+1"},
     )
     msg = mail.outbox[0]
-    assert f"https://t.me/EventgateBot?start={guest.entry_token}" in msg.body
+    assert f"https://t.me/GatethresBot?start={guest.entry_token}" in msg.body
 
 
 @pytest.mark.django_db

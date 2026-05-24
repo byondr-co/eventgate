@@ -21,7 +21,7 @@ def send_magic_link_email_task(*, email: str, raw_token: str) -> str:
     try:
         link = f"{settings.MAGIC_LINK_FRONTEND_URL}/auth/callback?token={raw_token}"
         send_mail(
-            subject="Sign in to Eventgate",
+            subject="Sign in to Gatethres",
             message=(
                 "Click the link below to sign in. It works once and expires in 15 minutes.\n\n"
                 f"{link}\n\n"

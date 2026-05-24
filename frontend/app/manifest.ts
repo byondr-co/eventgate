@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Eventgate Scanner",
-    short_name: "Scanner",
-    description: "Door-day check-in for Eventgate events",
+    name: "Gatethres Scanner",
+    short_name: "Gatethres",
+    description: "Door-day check-in for Gatethres events",
     start_url: "/scanner/",
     display: "standalone",
     orientation: "portrait",
