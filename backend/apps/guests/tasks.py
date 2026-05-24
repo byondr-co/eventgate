@@ -55,7 +55,7 @@ def send_qr_email_task(self, *, guest_id: str) -> str:
             "Keep it private; do not share."
             f"{telegram_line}\n\n"
             "See you there!\n"
-            "— Eventgate"
+            "— Gatethres"
         )
         msg = EmailMessage(
             subject=f"You're registered for {guest.event.name}",
@@ -63,7 +63,7 @@ def send_qr_email_task(self, *, guest_id: str) -> str:
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[guest.email],
         )
-        msg.attach(f"eventgate-{guest.id}.png", png, "image/png")
+        msg.attach(f"gatethres-{guest.id}.png", png, "image/png")
         msg.send(fail_silently=False)
 
         dispatch.status = "sent"

@@ -86,7 +86,7 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": env.db_url(
         "DATABASE_URL",
-        default="postgres://eventgate:eventgate@localhost:5432/eventgate",
+        default="postgres://gatethres:gatethres@localhost:5432/gatethres",
     ),
 }
 
@@ -106,7 +106,7 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Eventgate API",
+    "TITLE": "Gatethres API",
     "DESCRIPTION": "SaaS for fast paperless event entrance",
     "VERSION": "0.1.0",
 }
@@ -152,7 +152,7 @@ AUTH_USER_MODEL = "accounts.User"
 
 # Console email backend at MVP — magic links print to logs. Real email in Plan C.
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Eventgate <noreply@eventgate.dev>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Gatethres <noreply@gatethres.com>")
 
 # SimpleJWT
 SIMPLE_JWT = {
@@ -169,8 +169,8 @@ SIMPLE_JWT = {
 # Production hardening: set JWT_COOKIE_SECURE=True and JWT_COOKIE_SAMESITE=Strict
 # (or None+Secure for cross-site SPA flows) via env vars. Defaults below are
 # dev-friendly only.
-JWT_ACCESS_COOKIE = "eventgate_access"
-JWT_REFRESH_COOKIE = "eventgate_refresh"
+JWT_ACCESS_COOKIE = "gatethres_access"
+JWT_REFRESH_COOKIE = "gatethres_refresh"
 JWT_COOKIE_SECURE = env.bool("JWT_COOKIE_SECURE", default=False)
 JWT_COOKIE_SAMESITE = env("JWT_COOKIE_SAMESITE", default="Lax")
 JWT_COOKIE_DOMAIN = env("JWT_COOKIE_DOMAIN", default=None)
