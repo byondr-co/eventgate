@@ -1,6 +1,6 @@
 # Gatethres
 
-*Pronounced **GATE-thress** (rhymes with "address").*
+*Pronounced **GATE-thress** (rhymes with "address"). Khmer: **ហ្គេតថ្រេស**.*
 
 SaaS for fast, paperless event entrance — Southeast Asia first.
 

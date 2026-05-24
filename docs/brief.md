@@ -1,7 +1,7 @@
 # Paperless Pre-check-in — SaaS Brief
 
 > **Status:** Brainstorm output. No implementation. Architecture/product brief intended to seed a future implementation plan.
-> **Brand:** Gatethres (pronounced GATE-thress — resolved 2026-05-24; was working name "Eventgate")
+> **Brand:** Gatethres (pronounced GATE-thress · Khmer: ហ្គេតថ្រេស — resolved 2026-05-24; was working name "Eventgate")
 > **Date:** 2026-05-19
 
 ---
