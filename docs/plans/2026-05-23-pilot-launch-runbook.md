@@ -10,7 +10,7 @@
 >
 > **Contact details** (phone numbers, emails beyond `@squeeze-inc.co.jp` / `@gmail.com`, anything PII-sensitive) live **outside this doc** — in 1Password / a gitignored `contacts.private.md` / whatever your team uses. The runbook references people by name only.
 >
-> **Pronunciation:** Gatethres is pronounced **GATE-thress** (rhymes with "address").
+> **Pronunciation:** Gatethres is pronounced **GATE-thress** (rhymes with "address"). Khmer transliteration (confirmed by Vatana 2026-05-25): **ហ្គេតថ្រេស**.
 >
 > **External blockers tracked here:**
 >
