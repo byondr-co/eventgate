@@ -116,7 +116,7 @@ The real rename scope is ~35 occurrences across ~30 active files. Inventory belo
 | Backend Fly app | `eventgate-backend-staging` (staging only) | `gatethres-backend` (new prod app — see §3) | High — net-new app + DNS + SSL + secrets re-create. |
 | Frontend Vercel project | `frontend-five-lovat-94` (staging) | `gatethres-app` (new prod project — see §3) | Medium — net-new project + DNS + env vars. |
 | Sentry project slug | `eventgate` | `gatethres` | Low — new prod project recommended (see §3). |
-| Resend domain | current sender on staging | `mail.gatethres.app` (or `mail.gatethres.com`) | Medium — DNS records (DKIM, SPF, return-path), domain reverification cycle. |
+| Resend domain | current sender on staging | `mail.gatethres.com` | Medium — DNS records (DKIM, SPF, return-path), domain reverification cycle. |
 | Telegram bot username | `@eventgate_bot` | `@gatethres_bot` | Low — BotFather supports username rename (token stays). Webhook URL must be re-pointed via `setup_telegram_webhook` against the prod backend (per runbook §1.3). |
 | Tigris bucket | `eventgate-backend-staging-media` | `gatethres-backend-media` | Medium — new bucket; no data to migrate if prod env starts fresh. |
 | Domain (apex) | none | `gatethres.com` → Vercel (primary, per §6 Q4); `api.gatethres.com` → Fly. | Medium — DNS provisioning + SSL cert issuance. |
@@ -194,7 +194,7 @@ Staging URLs **must not** appear in any pilot-facing materials post-cutover. The
 9. **Wave 8 — Khmer brand-bearing strings.** Vatana re-translation packet covers the new brand strings (login, email subject lines, PWA install, Telegram replies) **plus the Khmer transliteration of "Gatethres" itself**.
 10. **Wave 9 — Prod env smoke.** Run runbook §1.5 Plan F + Plan G regression smoke against the prod env (not staging). Spin up a throwaway `gatethres-acceptance` org + event for the smoke; archive/delete after.
 11. **Wave 10 — Runbook + Plan H closeout.** Mark `Brand name` row in runbook §intro from ⏳ to ✅. Capture any leaked staging URLs / leftover strings in §6.6 of the runbook.
-12. **Pilot launch.** First-pilot event runs on prod (`gatethres.app`, `api.gatethres.app`).
+12. **Pilot launch.** First-pilot event runs on prod (`gatethres.com`, `api.gatethres.com`).
 
 ### 4.2 Critical-path risks
 
@@ -232,7 +232,7 @@ Staging URLs **must not** appear in any pilot-facing materials post-cutover. The
 
 ## 5. Out of scope
 
-- **Custom domain branding beyond `gatethres.app`/`.com`.** Use of `.io` / `.events` / etc. deferred unless §6 Q3 selects defensive-claim.
+- **Custom domain branding beyond `gatethres.com`.** Use of `.app` / `.io` / `.events` / etc. deferred per §6 Q3 ANSWERED — `.com` only for pilot.
 - **Brand identity (logo, color palette, type system).** Separate workstream, post-pilot.
 - **Marketing site / landing page.** Plan I or later.
 - **Legal: corporate entity name change.** Out — that's Squeeze Inc.'s decision separate from the product brand.
