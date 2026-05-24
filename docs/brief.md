@@ -1,7 +1,7 @@
 # Paperless Pre-check-in — SaaS Brief
 
 > **Status:** Brainstorm output. No implementation. Architecture/product brief intended to seed a future implementation plan.
-> **Working name:** Eventgate (placeholder — open question)
+> **Brand:** Gatethres (pronounced GATE-thress — resolved 2026-05-24; was working name "Eventgate")
 > **Date:** 2026-05-19
 
 ---
@@ -40,7 +40,7 @@ The Apps Script implementation has reached its ceiling: shared staff code, no of
 
 ## 1. SaaS Product Concept
 
-**Eventgate** is a SaaS for fast, paperless event entrance. It packages the original product insight — separate the fast door interaction from the slow information collection — as a multi-tenant web product.
+**Gatethres** is a SaaS for fast, paperless event entrance. It packages the original product insight — separate the fast door interaction from the slow information collection — as a multi-tenant web product.
 
 **Tagline candidate:** *"Move the queue, not the questions."*
 
@@ -98,7 +98,7 @@ The Apps Script implementation has reached its ceiling: shared staff code, no of
 | Analytics / reporting | Phase 2 | Throughput, peak windows, gate utilization, exports |
 | Native staff identity | Phase 2 | Magic-link login per staff, named attribution (replacing event PIN) |
 | Paid ticketing | Phase 3 | Stripe + ABA PayWay, refunds, seat inventory |
-| Branded subdomains | Phase 3 | `eventname.eventgate.app` or custom domain |
+| Branded subdomains | Phase 3 | `eventname.gatethres.app` or custom domain |
 | Public API + webhooks | Phase 3 | Integrations with HubSpot, Mailchimp, Slack notifications |
 
 ---
@@ -107,7 +107,7 @@ The Apps Script implementation has reached its ceiling: shared staff code, no of
 
 | Role | Scope | Permissions |
 |---|---|---|
-| **Platform admin (staff at Eventgate)** | Global | Impersonate, support tools, billing management, plan management |
+| **Platform admin (staff at Gatethres)** | Global | Impersonate, support tools, billing management, plan management |
 | **Organization owner** | Org | Full control of org, billing, member management, transfer ownership |
 | **Organization admin** | Org | Manage members (except owner), create/edit/delete events, view all data |
 | **Event manager** | Per event | Create/edit one event, manage guest list, configure form, view dashboard |
@@ -730,7 +730,7 @@ All twelve open questions were resolved in the brainstorm session:
 
 | # | Question | Decision |
 |---|---|---|
-| 1 | Brand / product name | **Direction: abstract & global** (e.g., Gateway, Threshold, Linea, Doorline). Working name "Eventgate" retained until a specific candidate is picked + domain/trademark cleared. Treat as a Phase-0 task before launch. |
+| 1 | Brand / product name | ✅ **Resolved 2026-05-24 → Gatethres** (pronounced GATE-thress, coined truncation of *gate + thres(hold)*). All 10 checked TLDs were truly unregistered at decision time; `gatethres.com` registered. See [Plan H spec](./plans/2026-05-24-plan-h-brand-rename-and-prod-split.md). |
 | 2 | Hosting region / data residency | **Singapore is fine for all MVP customers.** No Cambodia-resident requirement. Re-evaluate only if a specific customer asks. |
 | 3 | Telegram bot architecture | **Single global bot, deep-linked per event.** `@<placeholder>Bot` with `/start <event_token>` flow. Per-org bots deferred to Phase 2+. |
 | 4 | Khmer translation | **Translator identified.** Involve them at form-builder, scanner, walk-in, and email-template stages. Plan a copy-review pass before each pilot event. |
