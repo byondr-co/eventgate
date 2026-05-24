@@ -189,7 +189,7 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 ### 2.3 Pre-event handoff (T-2 h)
 
 - [ ] **Vatana** has all scanner devices in hand, PIN known, enrollment codes printed on backup paper, phone fully charged + power bank, Telegram open.
-- [ ] **Vinei** has terminal open with `flyctl`, `gh`, `pnpm dlx vercel`, and a fresh `eventgate_access` cookie value captured in a scratch file (15-min JWT — will need to refresh).
+- [ ] **Vinei** has terminal open with `flyctl`, `gh`, `pnpm dlx vercel`, and a fresh `gatethres_access` cookie value captured in a scratch file (15-min JWT — will need to refresh).
 - [ ] **Customer Contact** (The Click Cam) identified + reachable; they know they'll be the Approve/Void caller on manual-review tickets where ID is ambiguous.
 - [ ] Both Vatana + Vinei have this runbook open in a browser tab.
 - [ ] Phone numbers exchanged (kept in 1Password / contacts.private.md per intro) + test ping confirmed both directions.
@@ -293,7 +293,7 @@ Note: a `conflict` (two devices checking in the same guest within an offline-rep
 
 ```bash
 curl -sS "<api>/orgs/<slug>/events/<event-slug>/audit/" \
-  -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool | head -80
+  -H "Cookie: gatethres_access=$ACCESS_COOKIE" | python3 -m json.tool | head -80
 ```
 
 - Confirm row count ≈ (check-ins + walk-ins + escalations + ticket actions). A wildly low count = audit pipeline broken; flag for post-mortem.
