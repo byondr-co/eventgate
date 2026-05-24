@@ -18,8 +18,8 @@ from apps.orgs.models import Organization
 DEV_ORG_SLUG = "dev-acme"
 DEV_EVENT_SLUG = "dev-conf"
 DEV_GUESTS = (
-    {"name": "Alice Demo", "email": "alice@dev.eventgate.local", "phone_or_chat": "+1-555-0101"},
-    {"name": "Bob Demo", "email": "bob@dev.eventgate.local", "phone_or_chat": "+1-555-0102"},
+    {"name": "Alice Demo", "email": "alice@dev.gatethres.local", "phone_or_chat": "+1-555-0101"},
+    {"name": "Bob Demo", "email": "bob@dev.gatethres.local", "phone_or_chat": "+1-555-0102"},
 )
 
 

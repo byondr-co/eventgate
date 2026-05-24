@@ -2,9 +2,9 @@
  * Scanner identity + session-token storage.
  *
  * Two artifacts live in localStorage:
- *   - `eventgate.scanner.device` — long-lived ScannerIdentity (device_token,
+ *   - `gatethres.scanner.device` — long-lived ScannerIdentity (device_token,
  *     event/org/role metadata). Survives PIN re-unlocks. Cleared on revoke.
- *   - `eventgate.scanner.session` — short-lived ScannerSession (8h TTL).
+ *   - `gatethres.scanner.session` — short-lived ScannerSession (8h TTL).
  *     Cleared on expiry or 401.
  *
  * Plan D scope: synchronous localStorage access (online-only). Plan E will
@@ -18,11 +18,11 @@
 import { useSyncExternalStore } from "react";
 
 const KEYS = {
-  device: "eventgate.scanner.device",
-  session: "eventgate.scanner.session",
+  device: "gatethres.scanner.device",
+  session: "gatethres.scanner.session",
 } as const;
 
-const SAME_TAB_EVENT = "eventgate.scanner.changed";
+const SAME_TAB_EVENT = "gatethres.scanner.changed";
 
 export type ScannerRole = "scanner" | "walkin_display" | "helpdesk";
 

@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: eventgate
-      POSTGRES_PASSWORD: eventgate
-      POSTGRES_DB: eventgate
+      POSTGRES_USER: gatethres
+      POSTGRES_PASSWORD: gatethres
+      POSTGRES_DB: gatethres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eventgate"]
+      test: ["CMD-SHELL", "pg_isready -U gatethres"]
       interval: 3s
       retries: 10
 

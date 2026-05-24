@@ -8,7 +8,7 @@ DEBUG = False
 SECRET_KEY = "test-insecure-secret"
 
 # Sandbox file uploads so tests never pollute the working tree.
-MEDIA_ROOT = tempfile.mkdtemp(prefix="eventgate-test-media-")
+MEDIA_ROOT = tempfile.mkdtemp(prefix="gatethres-test-media-")
 
 DATABASES = {
     "default": {
