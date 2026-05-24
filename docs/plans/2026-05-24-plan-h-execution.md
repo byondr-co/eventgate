@@ -26,7 +26,7 @@
 > | T1 — domain/handles | user-driven | ✅ done — `gatethres.com` registered, GitHub `gatethres` org created |
 > | **T2 — Prod infra (Fly/Vercel/Neon/Upstash/Sentry/Resend/Tigris)** | provision new prod resources | **🅓 DEFERRED — track as separate plan** |
 > | **T3 — DNS + SSL** | point `gatethres.com` + `api.gatethres.com` at new prod | **🅓 DEFERRED — `gatethres.com` registered but not pointed anywhere; revisit when prod split lands** |
-> | T4 — Telegram bot | rename + re-point webhook at prod backend | **AMENDED** — rename `@eventgate_bot` → `@gatethres_bot` via BotFather; **webhook URL stays at staging** (`https://eventgate-backend-staging.fly.dev/api/v1/telegram/webhook/`); no `setup_telegram_webhook` re-run needed |
+> | T4 — Telegram bot | rename + re-point webhook at prod backend | **AMENDED** — BotFather does NOT support username changes; **create a fresh `@gatethres_bot`** instead; webhook URL stays at staging (`https://eventgate-backend-staging.fly.dev/api/v1/telegram/webhook/`); `setup_telegram_webhook` must run once to register the new bot's webhook; leave `@eventgate_bot` alone as a safety net for old links |
 > | T5 — Repo internal rename | as written | **AS-IS** — bulk of work; ~30 files |
 > | T6 — Docs rename | runbook §1.4 placeholders filled with prod URLs | **AMENDED** — runbook §1.4 explicitly notes "prod URLs deferred"; brand fields fill in (Sentry slug, Tigris bucket placeholder), URL fields stay at staging until future plan |
 > | T7 — GitHub repo rename | rename + flip workflow `--app` flag to `gatethres-backend` | **AMENDED** — rename repo `eventgate` → `gatethres`; **workflow `--app` flag stays at `eventgate-backend-staging`** (no prod app to point at yet) |
@@ -541,59 +541,73 @@
 
 ---
 
-## Task 4: Telegram bot rename + webhook re-point
+## Task 4: Telegram bot — create new `@gatethres_bot` (rename not supported)
 
-> **Owner:** Vinei. Manual BotFather chat + one `manage.py` command run against prod. Per spec §3.1 Decision: rename existing `@eventgate_bot` (preserves token). Blocks final pilot smoke but not the code rename.
+> **Owner:** Vinei. **Amended 2026-05-?? after T0+T1+T5+T6 landed:** BotFather does NOT support changing a bot's username after creation (Telegram restriction — only the display name and other attributes are editable via `/editbot`). Per scope amendment, webhook still points at staging (`eventgate-backend-staging.fly.dev`), not a new prod app. **New approach: create a fresh bot `@gatethres_bot`, leave `@eventgate_bot` alone as a safety net for old test links.**
 
-- [ ] **Step 1: Rename bot via BotFather**
+- [ ] **Step 1: Create new bot via BotFather**
 
   Open Telegram → chat with `@BotFather`:
-  - `/mybots` → select `@eventgate_bot`
-  - "Edit Bot" → "Edit Username" → enter `gatethres_bot` (must end in `_bot`)
-  - BotFather confirms. Username is changed. Token stays.
+  - `/newbot`
+  - Name: `Gatethres`
+  - Username: `gatethres_bot` — must end in `_bot` or `bot`.
+  - If `gatethres_bot` is taken, try `GatethresBot`, `gatethres_app_bot`, or `official_gatethres_bot`.
 
-  Bot display name (`/setname`) can also be updated to "Gatethres" for the user-visible bot name.
+  BotFather replies with the bot token. Save it securely.
 
-- [ ] **Step 2: Capture the (unchanged) bot token**
-
-  Token from BotFather is what was already in staging's `TELEGRAM_BOT_TOKEN` secret. Reuse for prod:
-
-  ```bash
-  # Pull staging value and re-set on prod
-  STAGING_TOKEN=$(flyctl secrets list --app eventgate-backend-staging | grep TELEGRAM_BOT_TOKEN)
-  # (staging output won't show actual value; use the value from your password manager or BotFather chat)
-  flyctl secrets set --app gatethres-backend TELEGRAM_BOT_TOKEN="<token-from-botfather>"
-  ```
-
-- [ ] **Step 3: Re-set webhook URL on prod**
-
-  Per runbook §1.3 lesson — secrets-set does NOT run release_command, so `setup_telegram_webhook` must be run manually after changing the URL:
+- [ ] **Step 2: Update staging Fly secrets with the new bot values**
 
   ```bash
-  flyctl ssh console --app gatethres-backend --command "python manage.py setup_telegram_webhook"
+  flyctl secrets set --app eventgate-backend-staging \
+    TELEGRAM_BOT_TOKEN="<new-token-from-botfather>" \
+    TELEGRAM_BOT_USERNAME="gatethres_bot" \
+    TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 32)"
   ```
 
-  Expected output: `Webhook set to: https://api.gatethres.com/api/v1/telegram/webhook/`.
+  Webhook URL secret stays at the existing staging URL — `https://eventgate-backend-staging.fly.dev/api/v1/telegram/webhook/` — per scope amendment.
+
+- [ ] **Step 3: Register webhook on the new bot**
+
+  Per runbook §1.3 lesson — `flyctl secrets set` does a rolling restart but does NOT re-run `release_command`. The new bot has no webhook configured yet, so this manual step is required:
+
+  ```bash
+  flyctl ssh console --app eventgate-backend-staging --command "python manage.py setup_telegram_webhook"
+  ```
+
+  Expected output: `Webhook set to: https://eventgate-backend-staging.fly.dev/api/v1/telegram/webhook/`.
 
 - [ ] **Step 4: Verify via Telegram getWebhookInfo**
 
   ```bash
-  TOKEN="<token-from-botfather>"
+  TOKEN="<new-bot-token>"
   curl -sS "https://api.telegram.org/bot${TOKEN}/getWebhookInfo" | python3 -m json.tool
   ```
 
-  Expected: `url` matches `https://api.gatethres.com/api/v1/telegram/webhook/`, `pending_update_count` < 10, no `last_error_message`.
+  Expected: `url` matches the staging webhook URL, `pending_update_count` < 10, no `last_error_message`. `pending_update_count` should be 0 since this is a fresh bot with no updates queued.
 
-- [ ] **Step 5: End-to-end Telegram test**
+- [ ] **Step 5: Update Vercel env var + redeploy frontend**
+
+  `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` is inlined at Next.js build time (per runbook §1.3 — including in Server Components), so a redeploy is required for the new value to take effect.
+
+  Vercel dashboard → `frontend-five-lovat-94` project → Settings → Environment Variables. Set:
+  - `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` = `gatethres_bot` (Production scope)
+
+  Then trigger a redeploy: Vercel dashboard → Deployments → "Redeploy" the latest. Or push any commit to `main` to trigger an auto-deploy.
+
+- [ ] **Step 6: End-to-end Telegram test**
 
   Open Telegram → search `@gatethres_bot` → start a chat → send `/start`. Bot should respond per `backend/apps/notifications/telegram_*` templates.
 
-  If no response: check Sentry, check `flyctl logs --app gatethres-backend | grep -i telegram`.
+  If no response: check Sentry, check `flyctl logs --app eventgate-backend-staging | grep -i telegram`.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Leave `@eventgate_bot` alone (do NOT delete)**
+
+  Old bot stays. Its webhook still points at the staging Fly app, so any legacy `/start` links in old test emails or chats keep functioning. Post-pilot, archive or delete via BotFather if no longer needed.
+
+- [ ] **Step 8: Commit (empty commit just to log the wave)**
 
   ```bash
-  git commit --allow-empty -m "infra(plan-h): telegram bot renamed @eventgate_bot → @gatethres_bot; webhook re-pointed to prod"
+  git commit --allow-empty -m "infra(plan-h): wave 4 — new bot @gatethres_bot live on staging (rename not supported by BotFather)"
   ```
 
 ---
