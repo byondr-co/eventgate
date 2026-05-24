@@ -10,6 +10,9 @@ SECRET_KEY = "test-insecure-secret"
 # Sandbox file uploads so tests never pollute the working tree.
 MEDIA_ROOT = tempfile.mkdtemp(prefix="gatethres-test-media-")
 
+# Intentional Plan H holdout: NAME/USER/PASSWORD must match the postgres
+# service credentials in .github/workflows/backend.yml. Rename in lockstep
+# with the CI workflow when the prod env split (Plan H deferred half) lands.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
