@@ -14,6 +14,30 @@
 
 ---
 
+## 📌 Scope amendment 2026-05-24 — defer prod env split
+
+> **User decision after T0+T1 sign-off:** keep the pilot running on the **existing staging infrastructure** (`eventgate-backend-staging.fly.dev` + `frontend-five-lovat-94.vercel.app`) and execute only the brand-rename portion of Plan H now. The full prod env split is deferred to a future plan.
+>
+> **Effect on tasks:**
+>
+> | Task | Original | Amended |
+> |---|---|---|
+> | T0 — TM/handle | user-driven | ✅ done — Gatethres clean |
+> | T1 — domain/handles | user-driven | ✅ done — `gatethres.com` registered, GitHub `gatethres` org created |
+> | **T2 — Prod infra (Fly/Vercel/Neon/Upstash/Sentry/Resend/Tigris)** | provision new prod resources | **🅓 DEFERRED — track as separate plan** |
+> | **T3 — DNS + SSL** | point `gatethres.com` + `api.gatethres.com` at new prod | **🅓 DEFERRED — `gatethres.com` registered but not pointed anywhere; revisit when prod split lands** |
+> | T4 — Telegram bot | rename + re-point webhook at prod backend | **AMENDED** — rename `@eventgate_bot` → `@gatethres_bot` via BotFather; **webhook URL stays at staging** (`https://eventgate-backend-staging.fly.dev/api/v1/telegram/webhook/`); no `setup_telegram_webhook` re-run needed |
+> | T5 — Repo internal rename | as written | **AS-IS** — bulk of work; ~30 files |
+> | T6 — Docs rename | runbook §1.4 placeholders filled with prod URLs | **AMENDED** — runbook §1.4 explicitly notes "prod URLs deferred"; brand fields fill in (Sentry slug, Tigris bucket placeholder), URL fields stay at staging until future plan |
+> | T7 — GitHub repo rename | rename + flip workflow `--app` flag to `gatethres-backend` | **AMENDED** — rename repo `eventgate` → `gatethres`; **workflow `--app` flag stays at `eventgate-backend-staging`** (no prod app to point at yet) |
+> | T8 — Khmer strings | as written | **AS-IS** — Vatana review packet |
+> | **T9 — Prod env smoke** | Plan F + G checklists vs new prod | **AMENDED** — regression smoke vs **staging** post-rename (verify nothing broke; not pilot-readiness for new prod, since prod doesn't exist yet) |
+> | T10 — Closeout | mark brand row ✅ in runbook | **AMENDED** — brand row ✅; prod-URL row stays ⏳ with note "deferred to Plan H-prod-split or successor" |
+>
+> **What this means for the pilot:** First-pilot event (The Click Cam, 2026-06-05) runs on the **staging** infrastructure under the new "Gatethres" brand. This is acceptable because (a) staging has been through all the runbook gates (Plan F + Plan G + cross-device re-verification all green as of 2026-05-23), (b) staging is in the same Singapore region with the same Neon DB + Upstash + Sentry + Resend + Tigris configuration, (c) the prod split is more about long-term hygiene (clean prod env, isolated from dev/test churn) than pilot-day necessity. The risk is that any test churn during the pilot window contaminates the pilot data — mitigation: **avoid making test events in staging between 2026-06-04 and 2026-07-04**.
+
+---
+
 ## Task 0: TM + handle verification (BLOCKER for all subsequent tasks)
 
 > **Owner:** Vinei (user-driven). No code changes. **Cannot start any other task until this signs off clean.** Expected ~10–15 min — Gatethres is a coined truncation with no existing namesakes, so searches should return zero hits.
