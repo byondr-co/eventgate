@@ -20,3 +20,7 @@ Important note: Everything in this docuument should not be autonomously implemen
 - No user role management feature for everything
 - No permission management feature for everything
 - No activity log feature for everything
+
+## Operational findings / gotchas
+
+- **2026-05-25 — Fly SSH does not inherit the Docker ENV.** Backend Dockerfile sets `ENV PATH=/app/.venv/bin:${PATH}` so the container's `release_command` (run by Fly with the Docker ENV applied) can use bare `python manage.py X`. But `flyctl ssh console` (interactive and `--command` mode) starts a fresh bash shell that does NOT inherit that Docker ENV — bare `python` resolves to the system Python (no Django), and `uv` is not in PATH at all (uv was only used at Docker build time). **Inside any `flyctl ssh ...` invocation, use `/app/.venv/bin/python manage.py …` explicitly.** Discovered during Plan H T4 webhook setup. Runbook §1.3 + Plan H execution plan updated.
