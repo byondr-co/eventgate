@@ -15,7 +15,7 @@ from apps.events.models import Event, RegistrationField
 
 ALLOWED_EVENT_TRANSITIONS: dict[str, frozenset[str]] = {
     "draft": frozenset({"open"}),
-    "open": frozenset({"draft", "live"}),
+    "open": frozenset({"draft", "live", "closed"}),
     "live": frozenset({"closed"}),
     "closed": frozenset({"open", "archived"}),
     "archived": frozenset(),

@@ -180,6 +180,7 @@ export const EVENT_TRANSITIONS: Record<
   draft: [{ target: "open", label: "Publish" }],
   open: [
     { target: "live", label: "Go live" },
+    { target: "closed", label: "Close" },
     { target: "draft", label: "Unpublish" },
   ],
   live: [{ target: "closed", label: "Close" }],

@@ -48,7 +48,7 @@ describe("EventStatusCard badge", () => {
 describe("EventStatusCard transition buttons", () => {
   const cases: Array<{ status: EventStatus; expectedLabels: string[] }> = [
     { status: "draft", expectedLabels: ["Publish"] },
-    { status: "open", expectedLabels: ["Go live", "Unpublish"] },
+    { status: "open", expectedLabels: ["Go live", "Close", "Unpublish"] },
     { status: "live", expectedLabels: ["Close"] },
     { status: "closed", expectedLabels: ["Reopen", "Archive"] },
     { status: "archived", expectedLabels: [] },
@@ -153,9 +153,9 @@ describe("EVENT_TRANSITIONS constant", () => {
     expect(targets).toEqual(["open"]);
   });
 
-  it("open allows draft and live", () => {
+  it("open allows draft, live, and closed", () => {
     const targets = EVENT_TRANSITIONS.open.map((t) => t.target).sort();
-    expect(targets).toEqual(["draft", "live"].sort());
+    expect(targets).toEqual(["closed", "draft", "live"].sort());
   });
 
   it("live allows only closed", () => {
