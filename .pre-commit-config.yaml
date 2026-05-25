@@ -30,3 +30,9 @@ repos:
         language: system
         files: ^frontend/.*\.(ts|tsx|js|jsx|json|md|css)$
         pass_filenames: false
+      - id: backend-mypy
+        name: backend mypy (apps + config)
+        entry: bash -c 'cd backend && uv run mypy apps config'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
