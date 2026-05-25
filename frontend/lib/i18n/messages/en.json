@@ -1,4 +1,14 @@
 {
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "form": "Form",
+    "guests": "Guests",
+    "devices": "Devices",
+    "helpdesk": "Help desk",
+    "audit": "Audit",
+    "settings": "Settings"
+  },
   "register": {
     "title": "Register for {eventName}",
     "subtitle": "Fill in your details — you'll get a QR code by email.",
