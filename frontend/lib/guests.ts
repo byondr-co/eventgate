@@ -29,6 +29,18 @@ export function useGuests(orgSlug: string, eventSlug: string) {
   });
 }
 
+export function useGuestsCount(orgSlug: string, eventSlug: string) {
+  return useQuery({
+    queryKey: ["guests-count", orgSlug, eventSlug],
+    queryFn: () =>
+      apiFetch<Paginated<Guest>>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/?page_size=1`),
+    select: (data: Paginated<Guest>) => data.count,
+    enabled: !!orgSlug && !!eventSlug,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useRegisterPublic(orgSlug: string, eventSlug: string) {
   return useMutation({
     mutationFn: (payload: Record<string, string>) =>

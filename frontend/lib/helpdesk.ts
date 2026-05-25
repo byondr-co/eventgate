@@ -56,6 +56,20 @@ export function useTickets(orgSlug: string, eventSlug: string, status: string) {
   });
 }
 
+export function useOpenTicketsCount(orgSlug: string, eventSlug: string) {
+  return useQuery({
+    queryKey: ["helpdesk-open-count", orgSlug, eventSlug],
+    queryFn: () =>
+      ticketsEtagCache.fetchJSON<ListResponse>(
+        `/api/v1/orgs/${orgSlug}/events/${eventSlug}/helpdesk/tickets/?status=open&page_size=1`,
+      ),
+    select: (data: ListResponse) => data.count,
+    enabled: !!orgSlug && !!eventSlug,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export async function claimTicket(orgSlug: string, eventSlug: string, id: number): Promise<Ticket> {
   const r = await fetch(
     `/api/v1/orgs/${orgSlug}/events/${eventSlug}/helpdesk/tickets/${id}/claim/`,
