@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { EventStatusCard } from "@/components/events/event-status-card";
 import { StatsWidget } from "@/components/events/stats-widget";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEvent } from "@/lib/events";
 
@@ -20,51 +18,11 @@ export default function EventDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{event.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {event.slug} · {event.status} · {event.venue || "—"}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href={`/orgs/${slug}/events/${eventSlug}/form`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Form
-          </Link>
-          <Link
-            href={`/orgs/${slug}/events/${eventSlug}/guests`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Guests
-          </Link>
-          <Link
-            href={`/orgs/${slug}/events/${eventSlug}/devices`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Devices
-          </Link>
-          <Link
-            href={`/orgs/${slug}/events/${eventSlug}/helpdesk`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Help desk
-          </Link>
-          <Link
-            href={`/orgs/${slug}/events/${eventSlug}/audit`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Audit
-          </Link>
-          <Link
-            href={`/orgs/${slug}/events/${eventSlug}/settings`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Settings
-          </Link>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold">{event.name}</h1>
+        <p className="text-sm text-muted-foreground">
+          {event.slug} · {event.status} · {event.venue || "—"}
+        </p>
       </div>
 
       <EventStatusCard event={event} orgSlug={slug} eventSlug={eventSlug} />
