@@ -128,6 +128,19 @@ describe("EventStatusCard mutation", () => {
       expect(btn).toBeDisabled();
     });
   });
+
+  it("renders an inline error message when the mutation fails", async () => {
+    mockApiFetch.mockRejectedValue(
+      new Error("400 Bad Request: Transition from 'draft' to 'live' is not allowed."),
+    );
+
+    wrap(<EventStatusCard event={makeEvent("draft")} orgSlug="acme" eventSlug="test-event" />);
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/not allowed/i)).toBeInTheDocument();
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
