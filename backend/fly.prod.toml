@@ -1,0 +1,91 @@
+# Prod Fly app config — gatethres-backend (Singapore).
+#
+# Companion to fly.toml (which targets eventgate-backend-staging). The only
+# difference between this file and fly.toml is the `app` name on line 7.
+# Process groups, VM sizing, health checks, release_command — all identical to
+# staging by design (per Plan I §5.1).
+#
+# Used by:
+#   - `flyctl deploy --config fly.prod.toml --app gatethres-backend`
+#   - .github/workflows/deploy-backend-prod.yml (manual-dispatch / release)
+#
+# Provisioning order (one-time, per Plan I §6.2):
+#   1. flyctl apps create gatethres-backend --org personal
+#   2. flyctl secrets set --app gatethres-backend --stage <secret list — see Plan I §6.4>
+#   3. flyctl deploy --config fly.prod.toml --remote-only --app gatethres-backend
+
+app = "gatethres-backend"
+primary_region = "sin"
+
+[build]
+
+[env]
+  DJANGO_SETTINGS_MODULE = "config.settings.prod"
+  PORT = "8000"
+
+# Runs once per deploy in a one-off Machine BEFORE the new release becomes
+# active. If migrations fail, the deploy is rolled back and the old version
+# keeps serving traffic. --noinput suppresses confirmation prompts for any
+# data-loss migration; review migrations before merging.
+#
+# Wrapped in `sh -c` because Fly runs release_command without a shell, so
+# `&&` would otherwise be parsed as argv to `python manage.py migrate`.
+[deploy]
+  release_command = "sh -c 'python manage.py migrate --noinput && python manage.py setup_telegram_webhook'"
+
+# Three process groups: the web `app` (gunicorn), the `worker` (Celery task
+# consumer), and `beat` (Celery periodic scheduler). When [processes] is
+# defined, Fly ignores the Dockerfile's CMD and uses the commands here for
+# each Machine, picked by process group name.
+#
+# `beat` MUST be exactly one Machine — multiple beat instances would double-
+# emit periodic tasks. Worker can scale horizontally; beat cannot.
+[processes]
+  app = "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -"
+  worker = "celery -A config worker --loglevel=INFO --concurrency=4"
+  beat = "celery -A config beat --loglevel=INFO"
+
+# HTTP listener is bound to the `app` process group only.
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/api/health/"
+
+# A VM per process group. The worker doesn't expose any port so it does NOT
+# get an http_service block.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["worker"]
+
+# Beat is lightweight (a sleep-and-emit loop) but must always be running for
+# scheduled tasks to fire. Single 256MB Machine is plenty.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+  processes = ["beat"]
+
+# Force the worker AND beat Machines to deploy with restart=always so they
+# don't end up in standby mode (started only on demand by the app process).
+[[restart]]
+  policy = "always"
+  processes = ["worker"]
+
+[[restart]]
+  policy = "always"
+  processes = ["beat"]
