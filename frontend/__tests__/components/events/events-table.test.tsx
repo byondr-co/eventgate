@@ -5,11 +5,11 @@ import type { EventStatus } from "@/lib/events";
 
 describe("eventStatusVariant", () => {
   const cases: Array<[EventStatus, string]> = [
-    ["draft", "secondary"],
-    ["open", "default"],
+    ["draft", "outline"],
+    ["open", "secondary"],
     ["live", "default"],
-    ["closed", "outline"],
-    ["archived", "outline"],
+    ["closed", "destructive"],
+    ["archived", "ghost"],
   ];
 
   it.each(cases)("status '%s' → variant '%s'", (status, expectedVariant) => {

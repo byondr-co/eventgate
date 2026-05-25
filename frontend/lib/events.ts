@@ -168,3 +168,39 @@ export function useDeleteField(orgSlug: string, eventSlug: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug, "fields"] }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Status transition state machine (must mirror backend ALLOWED_EVENT_TRANSITIONS)
+// ---------------------------------------------------------------------------
+
+export const EVENT_TRANSITIONS: Record<
+  EventStatus,
+  ReadonlyArray<{ target: EventStatus; label: string }>
+> = {
+  draft: [{ target: "open", label: "Publish" }],
+  open: [
+    { target: "live", label: "Go live" },
+    { target: "draft", label: "Unpublish" },
+  ],
+  live: [{ target: "closed", label: "Close" }],
+  closed: [
+    { target: "open", label: "Reopen" },
+    { target: "archived", label: "Archive" },
+  ],
+  archived: [],
+};
+
+export function useTransitionEvent(orgSlug: string, eventSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (status: EventStatus) =>
+      apiFetch<Event>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/transition/`, {
+        method: "POST",
+        body: JSON.stringify({ status }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events", orgSlug] });
+      qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug] });
+    },
+  });
+}

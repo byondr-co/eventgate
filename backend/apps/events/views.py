@@ -5,14 +5,20 @@ from typing import ClassVar
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.events.models import Event, RegistrationField
-from apps.events.serializers import EventSerializer, RegistrationFieldSerializer
-from apps.events.services import PinTooShort, seed_preset_fields, set_event_pin
+from apps.events.serializers import (
+    EventSerializer,
+    EventTransitionSerializer,
+    RegistrationFieldSerializer,
+)
+from apps.events.services import PinTooShort, seed_preset_fields, set_event_pin, transition_event
 from apps.orgs.views import StandardPagination
 
 
@@ -37,6 +43,23 @@ class EventViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         event = serializer.save(organization=self.request.organization)
         seed_preset_fields(event)
+
+    @action(detail=True, methods=["post"], url_path="transition")
+    def transition(self, request, org_slug=None, slug=None):
+        """POST /api/v1/orgs/<org_slug>/events/<event_slug>/transition/
+
+        Body: {"status": "<target>"}
+        Allowed only for owner / admin / manager roles.
+        """
+        self.required_org_roles = ("owner", "admin", "manager")
+        if not HasOrgRole().has_permission(request, self):
+            raise PermissionDenied()
+
+        event = get_object_or_404(Event, organization=request.organization, slug=slug)
+        serializer = EventTransitionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        updated = transition_event(event, serializer.validated_data["status"])
+        return Response(EventSerializer(updated).data)
 
 
 class RegistrationFieldViewSet(viewsets.ModelViewSet):

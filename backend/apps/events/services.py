@@ -1,12 +1,51 @@
-"""Event services: preset field seeding + event PIN management."""
+"""Event services: preset field seeding + event PIN management + status transitions."""
 
 from __future__ import annotations
 
 import bcrypt
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from apps.events.models import Event, RegistrationField
+
+# ---------------------------------------------------------------------------
+# Status-transition state machine
+# ---------------------------------------------------------------------------
+
+ALLOWED_EVENT_TRANSITIONS: dict[str, frozenset[str]] = {
+    "draft": frozenset({"open"}),
+    "open": frozenset({"draft", "live"}),
+    "live": frozenset({"closed"}),
+    "closed": frozenset({"open", "archived"}),
+    "archived": frozenset(),
+}
+
+
+def transition_event(event: Event, target_status: str) -> Event:
+    """Validate the requested status transition and save.
+
+    Raises ``ValidationError`` (DRF) on invalid or same-status transitions.
+    Uses SELECT FOR UPDATE + atomic block to prevent race conditions.
+    """
+    with transaction.atomic():
+        # Re-fetch inside the transaction with a row lock.
+        locked = Event.objects.select_for_update().get(pk=event.pk)
+        current = locked.status
+
+        if current == target_status:
+            raise ValidationError({"detail": f"Event is already in '{current}' status."})
+
+        allowed = ALLOWED_EVENT_TRANSITIONS.get(current, frozenset())
+        if target_status not in allowed:
+            raise ValidationError(
+                {"detail": (f"Transition from '{current}' to '{target_status}' is not allowed.")}
+            )
+
+        locked.status = target_status
+        locked.save(update_fields=["status", "updated_at"])
+        return locked
+
 
 PRESETS = (
     {

@@ -3,6 +3,12 @@ from rest_framework import serializers
 from apps.events.models import Event, RegistrationField
 
 
+class EventTransitionSerializer(serializers.Serializer):
+    """Validates a single ``status`` field against Event.STATUSES choices."""
+
+    status = serializers.ChoiceField(choices=Event.STATUSES)
+
+
 class RegistrationFieldSerializer(serializers.ModelSerializer):
     class Meta:
         model = RegistrationField
