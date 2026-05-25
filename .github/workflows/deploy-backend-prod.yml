@@ -1,0 +1,41 @@
+# Prod backend deploy.
+#
+# Manual gate only — NOT auto-triggered on push (that's the staging workflow
+# `.github/workflows/deploy-backend.yml`). Trigger from the GH Actions UI
+# (workflow_dispatch button) or by publishing a release tag.
+#
+# Why split from staging deploy:
+#   - Staging deploys fire on every push to main → fast iteration
+#   - Prod deploys require human gate → no accidental ship from a PR merge
+#
+# Required repo secret:
+#   - FLY_API_TOKEN_PROD — separate from FLY_API_TOKEN (staging) so prod
+#     can't be deployed with the staging token by accident. Provision via:
+#       flyctl tokens create deploy --app gatethres-backend --expiry 720h
+#
+# See Plan I (docs/plans/2026-05-25-plan-i-prod-env-split.md) §5.2 + §6.6
+# for setup.
+
+name: Deploy backend to Fly (prod)
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+concurrency:
+  group: deploy-backend-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_PROD }}
+        run: flyctl deploy --config fly.prod.toml --remote-only --app gatethres-backend
