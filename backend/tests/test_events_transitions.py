@@ -95,6 +95,14 @@ class TestAllowedTransitions:
         assert resp.status_code == 200, resp.json()
         assert resp.json()["status"] == "live"
 
+    def test_open_to_closed(self, org):
+        client = APIClient()
+        _login(client, "owner@example.com")
+        event = make_event(org, status="open")
+        resp = transition(client, event, "closed")
+        assert resp.status_code == 200, resp.json()
+        assert resp.json()["status"] == "closed"
+
     def test_live_to_closed(self, org):
         client = APIClient()
         _login(client, "owner@example.com")
@@ -153,13 +161,6 @@ class TestForbiddenTransitions:
         _login(client, "owner@example.com")
         event = make_event(org, status="draft")
         resp = transition(client, event, "archived")
-        assert resp.status_code == 400
-
-    def test_open_to_closed(self, org):
-        client = APIClient()
-        _login(client, "owner@example.com")
-        event = make_event(org, status="open")
-        resp = transition(client, event, "closed")
         assert resp.status_code == 400
 
     def test_open_to_archived(self, org):
