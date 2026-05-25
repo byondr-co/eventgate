@@ -6,7 +6,6 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -31,7 +30,7 @@ class EventViewSet(viewsets.ModelViewSet):
     lookup_value_regex = "[a-z0-9-]+"
 
     def get_permissions(self):
-        if self.action in ("create", "update", "partial_update", "destroy"):
+        if self.action in ("create", "update", "partial_update", "destroy", "transition"):
             self.required_org_roles = ("owner", "admin", "manager")
             return [IsAuthenticated(), IsOrgMember(), HasOrgRole()]
         return [IsAuthenticated(), IsOrgMember()]
@@ -49,12 +48,8 @@ class EventViewSet(viewsets.ModelViewSet):
         """POST /api/v1/orgs/<org_slug>/events/<event_slug>/transition/
 
         Body: {"status": "<target>"}
-        Allowed only for owner / admin / manager roles.
+        Role-gated via ``get_permissions()`` (owner/admin/manager).
         """
-        self.required_org_roles = ("owner", "admin", "manager")
-        if not HasOrgRole().has_permission(request, self):
-            raise PermissionDenied()
-
         event = get_object_or_404(Event, organization=request.organization, slug=slug)
         serializer = EventTransitionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
