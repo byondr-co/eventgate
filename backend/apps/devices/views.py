@@ -44,7 +44,7 @@ class OrgDeviceViewSet(viewsets.ViewSet):
 
     def create(self, request, org_slug, event_slug):
         event = self._event(request, event_slug)
-        ser = DeviceCreateSerializer(data=request.data)
+        ser = DeviceCreateSerializer(data=request.data, context={"event": event})
         ser.is_valid(raise_exception=True)
         device, enrollment_code = create_device(
             organization=request.organization,

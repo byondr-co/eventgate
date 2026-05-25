@@ -12,9 +12,10 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from apps.common.tokens import generate_token, hash_token
 from apps.devices.models import EventPinSession, ScannerDevice
@@ -37,14 +38,19 @@ def create_device(
     if role not in VALID_ROLES:
         raise ValueError(f"Invalid role {role!r}. Must be one of: {sorted(VALID_ROLES)}.")
     enrollment_code = generate_token()
-    device = ScannerDevice.objects.create(
-        organization=organization,
-        event=event,
-        label=label,
-        role=role,
-        gate=gate,
-        enrollment_code_hash=hash_token(enrollment_code),
-    )
+    try:
+        device = ScannerDevice.objects.create(
+            organization=organization,
+            event=event,
+            label=label,
+            role=role,
+            gate=gate,
+            enrollment_code_hash=hash_token(enrollment_code),
+        )
+    except IntegrityError as exc:
+        raise ValidationError(
+            {"label": "A device with this label and role already exists for this event."}
+        ) from exc
     return device, enrollment_code
 
 

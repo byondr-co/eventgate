@@ -2,9 +2,28 @@
 
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { EventStatus } from "@/lib/events";
 import { useEvents } from "@/lib/events";
+
+export function eventStatusVariant(
+  status: EventStatus,
+): "default" | "secondary" | "outline" | "destructive" | "ghost" | "link" {
+  switch (status) {
+    case "draft":
+      return "secondary";
+    case "open":
+      return "default";
+    case "live":
+      return "default";
+    case "closed":
+      return "outline";
+    case "archived":
+      return "outline";
+  }
+}
 
 export function EventsTable({ orgSlug }: { orgSlug: string }) {
   const { data, isLoading } = useEvents(orgSlug);
@@ -40,7 +59,7 @@ export function EventsTable({ orgSlug }: { orgSlug: string }) {
                 >
                   {e.name}
                 </Link>
-                <span className="text-xs text-muted-foreground">{e.status}</span>
+                <Badge variant={eventStatusVariant(e.status)}>{e.status}</Badge>
               </li>
             ))}
           </ul>

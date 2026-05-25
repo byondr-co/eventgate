@@ -107,3 +107,42 @@ def test_list_devices(setup):
     for row in r.data:
         assert "device_token" not in row
         assert "enrollment_code" not in row
+
+
+def test_create_duplicate_label_role_returns_400(setup):
+    """Duplicate (event, label, role) must return 400, not 500."""
+    c, org, event = setup
+    r1 = c.post(
+        f"/api/v1/orgs/{org.slug}/events/{event.slug}/devices/",
+        {"label": "DupGate", "role": "scanner"},
+        format="json",
+    )
+    assert r1.status_code == 201
+
+    r2 = c.post(
+        f"/api/v1/orgs/{org.slug}/events/{event.slug}/devices/",
+        {"label": "DupGate", "role": "scanner"},
+        format="json",
+    )
+    assert r2.status_code == 400
+    assert "label" in r2.data
+
+
+def test_create_same_label_different_event_succeeds(setup, django_user_model):
+    """Same label+role on a different event must still succeed."""
+    c, org, event = setup
+    event2 = Event.objects.create(organization=org, name="E2", slug="e2")
+
+    r1 = c.post(
+        f"/api/v1/orgs/{org.slug}/events/{event.slug}/devices/",
+        {"label": "SharedLabel", "role": "scanner"},
+        format="json",
+    )
+    assert r1.status_code == 201
+
+    r2 = c.post(
+        f"/api/v1/orgs/{org.slug}/events/{event2.slug}/devices/",
+        {"label": "SharedLabel", "role": "scanner"},
+        format="json",
+    )
+    assert r2.status_code == 201
