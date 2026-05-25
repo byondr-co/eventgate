@@ -17,6 +17,7 @@ event_detail = EventViewSet.as_view(
         "delete": "destroy",
     }
 )
+event_transition = EventViewSet.as_view({"post": "transition"})
 field_list = RegistrationFieldViewSet.as_view({"get": "list", "post": "create"})
 field_detail = RegistrationFieldViewSet.as_view(
     {
@@ -30,6 +31,11 @@ field_detail = RegistrationFieldViewSet.as_view(
 urlpatterns = [
     path("orgs/<slug:org_slug>/events/", event_list, name="event-list"),
     path("orgs/<slug:org_slug>/events/<slug:slug>/", event_detail, name="event-detail"),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:slug>/transition/",
+        event_transition,
+        name="event-transition",
+    ),
     path("orgs/<slug:org_slug>/events/<slug:event_slug>/fields/", field_list, name="field-list"),
     path(
         "orgs/<slug:org_slug>/events/<slug:event_slug>/fields/<slug:field_key>/",

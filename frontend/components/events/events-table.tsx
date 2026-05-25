@@ -2,25 +2,31 @@
 
 import Link from "next/link";
 
+import type { VariantProps } from "class-variance-authority";
+
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EventStatus } from "@/lib/events";
 import { useEvents } from "@/lib/events";
 
-export function eventStatusVariant(
-  status: EventStatus,
-): "default" | "secondary" | "outline" | "destructive" | "ghost" | "link" {
+type BadgeVariant = NonNullable<
+  VariantProps<typeof import("@/components/ui/badge").badgeVariants>["variant"]
+>;
+
+export function eventStatusVariant(status: EventStatus): BadgeVariant {
   switch (status) {
     case "draft":
-      return "secondary";
+      return "outline";
     case "open":
-      return "default";
+      return "secondary";
     case "live":
       return "default";
     case "closed":
-      return "outline";
+      return "destructive";
     case "archived":
+      return "ghost";
+    default:
       return "outline";
   }
 }
