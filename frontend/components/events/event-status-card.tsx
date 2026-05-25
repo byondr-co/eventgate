@@ -52,6 +52,10 @@ export function EventStatusCard({ event, orgSlug, eventSlug }: Props) {
         {event.status === "archived" && (
           <p className="mt-2 text-xs text-muted-foreground">Archived events cannot be modified.</p>
         )}
+
+        {mutation.isError && (
+          <p className="mt-2 text-xs text-destructive">{(mutation.error as Error).message}</p>
+        )}
       </CardContent>
     </Card>
   );
