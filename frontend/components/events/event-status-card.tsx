@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +25,13 @@ export function EventStatusCard({ event, orgSlug, eventSlug }: Props) {
   const mutation = useTransitionEvent(orgSlug, eventSlug);
   const transitions = EVENT_TRANSITIONS[event.status];
 
+  const onClick = (target: EventStatus, label: string) => {
+    mutation.mutate(target, {
+      onSuccess: () => toast.success(`Event status changed: ${label}`),
+      onError: (err) => toast.error((err as Error).message),
+    });
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -40,7 +49,7 @@ export function EventStatusCard({ event, orgSlug, eventSlug }: Props) {
                   variant="outline"
                   size="sm"
                   disabled={mutation.isPending}
-                  onClick={() => mutation.mutate(target)}
+                  onClick={() => onClick(target, label)}
                 >
                   {label}
                 </Button>
@@ -51,10 +60,6 @@ export function EventStatusCard({ event, orgSlug, eventSlug }: Props) {
 
         {event.status === "archived" && (
           <p className="mt-2 text-xs text-muted-foreground">Archived events cannot be modified.</p>
-        )}
-
-        {mutation.isError && (
-          <p className="mt-2 text-xs text-destructive">{(mutation.error as Error).message}</p>
         )}
       </CardContent>
     </Card>

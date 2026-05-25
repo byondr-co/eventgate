@@ -11,8 +11,15 @@ vi.mock("@/lib/api", () => ({
   apiFetch: vi.fn(),
 }));
 
+// Stub sonner toast so we can assert on calls without rendering a Toaster
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
+
 import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 const mockApiFetch = vi.mocked(apiFetch);
+const mockToast = vi.mocked(toast);
 
 function wrap(ui: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -129,7 +136,18 @@ describe("EventStatusCard mutation", () => {
     });
   });
 
-  it("renders an inline error message when the mutation fails", async () => {
+  it("fires a success toast with the transition label after a successful mutation", async () => {
+    mockApiFetch.mockResolvedValue({ status: "open", id: "1", name: "T", slug: "t" } as never);
+
+    wrap(<EventStatusCard event={makeEvent("draft")} orgSlug="acme" eventSlug="test-event" />);
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+
+    await waitFor(() => {
+      expect(mockToast.success).toHaveBeenCalledWith(expect.stringMatching(/Publish/i));
+    });
+  });
+
+  it("fires an error toast with the backend message when the mutation fails", async () => {
     mockApiFetch.mockRejectedValue(
       new Error("400 Bad Request: Transition from 'draft' to 'live' is not allowed."),
     );
@@ -138,7 +156,7 @@ describe("EventStatusCard mutation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Publish" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/not allowed/i)).toBeInTheDocument();
+      expect(mockToast.error).toHaveBeenCalledWith(expect.stringMatching(/not allowed/i));
     });
   });
 });
