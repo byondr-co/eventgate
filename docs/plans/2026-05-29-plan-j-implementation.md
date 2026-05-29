@@ -59,9 +59,9 @@ This wave is already done. Spec at `docs/plans/2026-05-29-plan-j-byondr-umbrella
 
 **STOP. The impl agent must surface this checklist to the dispatcher and wait for explicit "Wave 2 done, resume" confirmation.** None of these can be automated from inside the agent's worktree.
 
-- [ ] **2.1 — Create `byondr` GitHub org.** github.com/organizations/new → org name `byondr` → free tier. Note: do not transfer the repo yet (Wave 4).
-- [ ] **2.2 — Create new Fly app skeleton.** `flyctl apps create eventgate-backend --org personal`. Don't deploy yet — secrets land in Wave 6.
-- [ ] **2.3 — Create new Tigris bucket.** `flyctl storage create --app eventgate-backend`. Capture the injected `AWS_*` + `BUCKET_NAME` Fly secrets (Fly auto-injects them on the new app).
+- [ ] **2.1 — Create `byondr-co` GitHub org.** github.com/organizations/new → org name `byondr` → free tier. Note: do not transfer the repo yet (Wave 4).
+- [ ] **2.2 — Create new Fly app skeleton.** `flyctl apps create eventgate-backend-prod --org personal`. Don't deploy yet — secrets land in Wave 6.
+- [ ] **2.3 — Create new Tigris bucket.** `flyctl storage create --app eventgate-backend-prod`. Capture the injected `AWS_*` + `BUCKET_NAME` Fly secrets (Fly auto-injects them on the new app).
 - [ ] **2.4 — Create new Neon prod branch.** Neon dashboard → `eventgate` project (or whatever your existing project is called) → Branches → New branch → name `prod` → region Singapore. Capture the new `DATABASE_URL`.
 - [ ] **2.5 — Create new Upstash prod Redis.** Upstash dashboard → New Database → region `ap-southeast-1` (Singapore) → name `eventgate-prod`. Capture `REDIS_URL`.
 - [ ] **2.6 — Create new Sentry prod project.** Sentry dashboard → personal-org → New Project → Django → name `eventgate-prod`. Capture the new DSN. Mute audit-trigger-blocked-write test exception pre-emptively (project Settings → Filters & Sampling → custom filter).
@@ -314,18 +314,18 @@ These tests assert on brand-bearing strings in email templates / health check ou
 
 - [ ] **Step 3.5.1 — Rewrite `backend/fly.prod.toml`.**
 
-  Replace `gatethres-backend` → `eventgate-backend` in the file:
+  Replace `gatethres-backend` → `eventgate-backend-prod` in the file:
   ```bash
   cd backend && grep -n "gatethres" fly.prod.toml
   ```
-  Update line 1 comment, the `--app` references in the comment block (lines 9, 13, 14, 15), and the `app = "gatethres-backend"` line (line 17). All become `eventgate-backend`. Also update the comment text "Plan I §6.4" → "Plan J §4.5" (the secret list is now in Plan J).
+  Update line 1 comment, the `--app` references in the comment block (lines 9, 13, 14, 15), and the `app = "gatethres-backend"` line (line 17). All become `eventgate-backend-prod`. Also update the comment text "Plan I §6.4" → "Plan J §4.5" (the secret list is now in Plan J).
 
 - [ ] **Step 3.5.2 — Rewrite `.github/workflows/deploy-backend-prod.yml`.**
 
   ```bash
   grep -n "gatethres" .github/workflows/deploy-backend-prod.yml
   ```
-  Replace every `gatethres-backend` → `eventgate-backend`. Comment block references to "Plan I" → "Plan J".
+  Replace every `gatethres-backend` → `eventgate-backend-prod`. Comment block references to "Plan I" → "Plan J".
 
 ### Task 3.6 — Verify zero residual + run full frontend gates
 
@@ -413,9 +413,9 @@ These tests assert on brand-bearing strings in email templates / health check ou
 
   ### Out of scope (later waves)
 
-  - Wave 4: GitHub repo transfer to byondr/eventgate (your hands)
+  - Wave 4: GitHub repo transfer to byondr-co/eventgate (your hands)
   - Wave 5: DNS records at GoDaddy (your hands)
-  - Wave 6: Provisioning + first deploy of eventgate-backend Fly app
+  - Wave 6: Provisioning + first deploy of eventgate-backend-prod Fly app
   - Wave 7: Vercel prod project + staging domain attach
   - Wave 8: Smoke
   - Wave 9: Docs sweep + memory + handoff
@@ -438,13 +438,13 @@ These tests assert on brand-bearing strings in email templates / health check ou
 
 **STOP. Surface this checklist; wait for "Wave 4 done, resume" before Wave 6.**
 
-- [ ] **4.1 — Transfer repo to `byondr/eventgate`.** github.com/vineidev/gatethres → Settings → bottom → Transfer ownership → org `byondr`, new repo name `eventgate`. GitHub keeps redirects from the old URL.
+- [ ] **4.1 — Transfer repo to `byondr-co/eventgate`.** github.com/vineidev/gatethres → Settings → bottom → Transfer ownership → org `byondr-co`, new repo name `eventgate`. GitHub keeps redirects from the old URL.
 - [ ] **4.2 — Update local git remote.** From the worktree root:
   ```bash
-  git remote set-url origin git@github.com:byondr/eventgate.git
+  git remote set-url origin git@github.com:byondr-co/eventgate.git
   git fetch origin --quiet
   ```
-- [ ] **4.3 — Re-create the Vercel staging project link.** Vercel dashboard → existing `frontend-five-lovat-94` project → Settings → Git → re-connect to `byondr/eventgate` (transfer broke the connection).
+- [ ] **4.3 — Re-create the Vercel staging project link.** Vercel dashboard → existing `frontend-five-lovat-94` project → Settings → Git → re-connect to `byondr-co/eventgate` (transfer broke the connection).
 - [ ] **4.4 — Token rotation done?** You should have a fresh `@eventgate_bot` token from Wave 2 step 2.7. Hold onto it for Wave 6.
 
 When done, paste back: confirmed new repo URL + Vercel re-connect + bot token in hand.
@@ -460,7 +460,7 @@ Paste these 4 CNAME records in the byondr.co zone at GoDaddy DNS (Resend records
 | Type | Name | Value | TTL |
 |---|---|---|---|
 | `CNAME` | `eventgate` | `cname.vercel-dns.com.` | 1 hour |
-| `CNAME` | `api.eventgate` | `eventgate-backend.fly.dev.` | 1 hour |
+| `CNAME` | `api.eventgate` | `eventgate-backend-prod.fly.dev.` | 1 hour |
 | `CNAME` | `eventgate-staging` | `cname.vercel-dns.com.` | 1 hour |
 | `CNAME` | `api.eventgate-staging` | `eventgate-backend-staging.fly.dev.` | 1 hour |
 
@@ -483,14 +483,14 @@ When all four resolve, paste back: "Wave 5 DNS done."
 
 This wave runs after Waves 2, 4, 5 are confirmed. Agent has: new DATABASE_URL, REDIS_URL, SENTRY_DSN, TELEGRAM_BOT_TOKEN, and confirmation Tigris is provisioned.
 
-### Task 6.1 — Set Fly secrets on `eventgate-backend`
+### Task 6.1 — Set Fly secrets on `eventgate-backend-prod`
 
 - [ ] **Step 6.1.1 — Stage all prod secrets in one batch.**
 
   Run from worktree root. Replace `<...>` with the captured values from Wave 2:
 
   ```bash
-  flyctl secrets set --app eventgate-backend --stage \
+  flyctl secrets set --app eventgate-backend-prod --stage \
     DATABASE_URL="<from Wave 2.4>" \
     REDIS_URL="<from Wave 2.5>" \
     CELERY_BROKER_URL="<same as REDIS_URL>" \
@@ -501,7 +501,7 @@ This wave runs after Waves 2, 4, 5 are confirmed. Agent has: new DATABASE_URL, R
     RESEND_FROM_EMAIL="noreply@mail.byondr.co" \
     DEFAULT_FROM_EMAIL="Eventgate <noreply@mail.byondr.co>" \
     SECRET_KEY="$(openssl rand -hex 64)" \
-    ALLOWED_HOSTS="api.eventgate.byondr.co,eventgate-backend.fly.dev" \
+    ALLOWED_HOSTS="api.eventgate.byondr.co,eventgate-backend-prod.fly.dev" \
     CSRF_TRUSTED_ORIGINS="https://eventgate.byondr.co,https://api.eventgate.byondr.co" \
     CORS_ALLOWED_ORIGINS="https://eventgate.byondr.co" \
     TELEGRAM_BOT_TOKEN="<from Wave 2.7>" \
@@ -521,7 +521,7 @@ This wave runs after Waves 2, 4, 5 are confirmed. Agent has: new DATABASE_URL, R
 - [ ] **Step 6.1.2 — Verify secrets staged.**
 
   ```bash
-  flyctl secrets list --app eventgate-backend
+  flyctl secrets list --app eventgate-backend-prod
   ```
   Expected: 22+ secrets listed (~17 from the batch above + 5 Tigris from auto-inject). All with `Status: Staged` or `Status: Pending`.
 
@@ -530,7 +530,7 @@ This wave runs after Waves 2, 4, 5 are confirmed. Agent has: new DATABASE_URL, R
 - [ ] **Step 6.2.1 — Deploy.**
 
   ```bash
-  cd backend && flyctl deploy --config fly.prod.toml --remote-only --app eventgate-backend
+  cd backend && flyctl deploy --config fly.prod.toml --remote-only --app eventgate-backend-prod
   ```
 
   Watch for the `release_command` log line confirming `migrate --noinput` ran and `setup_telegram_webhook` registered the webhook. Build + deploy typically 2–4 min.
@@ -538,21 +538,21 @@ This wave runs after Waves 2, 4, 5 are confirmed. Agent has: new DATABASE_URL, R
 - [ ] **Step 6.2.2 — Verify health.**
 
   ```bash
-  curl -I https://eventgate-backend.fly.dev/api/health/
+  curl -I https://eventgate-backend-prod.fly.dev/api/health/
   ```
   Expected: 200 OK.
 
 - [ ] **Step 6.2.3 — Verify migrations applied.**
 
   ```bash
-  flyctl ssh console --app eventgate-backend --command "/app/.venv/bin/python manage.py showmigrations | grep -v '\[X\]' | head"
+  flyctl ssh console --app eventgate-backend-prod --command "/app/.venv/bin/python manage.py showmigrations | grep -v '\[X\]' | head"
   ```
   Expected: app names only, no unapplied entries. (Per the Plan H gotcha: use `/app/.venv/bin/python`, NOT bare `python`, since Fly SSH doesn't inherit Docker ENV.)
 
 - [ ] **Step 6.2.4 — Verify audit trigger present on prod DB.**
 
   ```bash
-  flyctl ssh console --app eventgate-backend --command '/app/.venv/bin/python manage.py shell -c "from django.db import connection; cur = connection.cursor(); cur.execute(\"SELECT tgname FROM pg_trigger WHERE tgname='\''audit_auditevent_append_only'\''\"); print('\''trigger present:'\'', bool(cur.fetchone()))"'
+  flyctl ssh console --app eventgate-backend-prod --command '/app/.venv/bin/python manage.py shell -c "from django.db import connection; cur = connection.cursor(); cur.execute(\"SELECT tgname FROM pg_trigger WHERE tgname='\''audit_auditevent_append_only'\''\"); print('\''trigger present:'\'', bool(cur.fetchone()))"'
   ```
   Expected: `trigger present: True`.
 
@@ -561,14 +561,14 @@ This wave runs after Waves 2, 4, 5 are confirmed. Agent has: new DATABASE_URL, R
 - [ ] **Step 6.3.1 — Trigger cert issuance.**
 
   ```bash
-  flyctl certs add api.eventgate.byondr.co --app eventgate-backend
+  flyctl certs add api.eventgate.byondr.co --app eventgate-backend-prod
   ```
   Expected: Fly enqueues cert provisioning. Wait ~30s.
 
 - [ ] **Step 6.3.2 — Verify cert active.**
 
   ```bash
-  flyctl certs show api.eventgate.byondr.co --app eventgate-backend
+  flyctl certs show api.eventgate.byondr.co --app eventgate-backend-prod
   ```
   Expected: `Status: configured` AND `Issued: ...` (filled in).
 
@@ -618,13 +618,13 @@ This wave runs after Waves 2, 4, 5 are confirmed. Agent has: new DATABASE_URL, R
 - [ ] **Step 6.6.1 — Read webhook info.**
 
   ```bash
-  flyctl ssh console --app eventgate-backend --command "/app/.venv/bin/python manage.py shell -c \"import os, urllib.request, json; tok = os.environ['TELEGRAM_BOT_TOKEN']; print(json.dumps(json.loads(urllib.request.urlopen(f'https://api.telegram.org/bot{tok}/getWebhookInfo').read()), indent=2))\""
+  flyctl ssh console --app eventgate-backend-prod --command "/app/.venv/bin/python manage.py shell -c \"import os, urllib.request, json; tok = os.environ['TELEGRAM_BOT_TOKEN']; print(json.dumps(json.loads(urllib.request.urlopen(f'https://api.telegram.org/bot{tok}/getWebhookInfo').read()), indent=2))\""
   ```
   Expected: `"url": "https://api.eventgate.byondr.co/api/v1/telegram/webhook/"`, `"pending_update_count": 0`, no `last_error_message`.
 
   If webhook URL is wrong or empty, manually re-run:
   ```bash
-  flyctl ssh console --app eventgate-backend --command "/app/.venv/bin/python manage.py setup_telegram_webhook"
+  flyctl ssh console --app eventgate-backend-prod --command "/app/.venv/bin/python manage.py setup_telegram_webhook"
   ```
 
 ### Task 6.7 — Commit Plan I scaffolding refresh (Wave 6 PR)
@@ -646,7 +646,7 @@ This wave runs after Waves 2, 4, 5 are confirmed. Agent has: new DATABASE_URL, R
 
 **STOP. User does this in the Vercel dashboard; wait for "Wave 7.1 done" before agent runs Task 7.2.**
 
-- [ ] **7.1.1 — New Vercel project.** Vercel dashboard → New Project → Import from GitHub → `byondr/eventgate`. Project name `eventgate`. Production branch `main`.
+- [ ] **7.1.1 — New Vercel project.** Vercel dashboard → New Project → Import from GitHub → `byondr-co/eventgate`. Project name `eventgate`. Production branch `main`.
 - [ ] **7.1.2 — Set env vars on the new project:**
   - `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` = `eventgate_bot`
   - Mirror any other `NEXT_PUBLIC_*` vars currently set on the existing staging project (Settings → Environment Variables on `frontend-five-lovat-94`)
@@ -671,7 +671,7 @@ Verifies prod is genuinely usable end-to-end. Run after Wave 7 is confirmed.
 - [ ] **Step 8.1.1 — Send a test email to a non-owner address.**
 
   ```bash
-  flyctl ssh console --app eventgate-backend --command "/app/.venv/bin/python manage.py shell -c \"from django.core.mail import send_mail; r = send_mail('Eventgate prod deliverability test', 'If you see this, mail.byondr.co + Resend wiring on prod works.', None, ['vinei.ro@squeeze-inc.co.jp'], fail_silently=False); print('result:', r)\""
+  flyctl ssh console --app eventgate-backend-prod --command "/app/.venv/bin/python manage.py shell -c \"from django.core.mail import send_mail; r = send_mail('Eventgate prod deliverability test', 'If you see this, mail.byondr.co + Resend wiring on prod works.', None, ['vinei.ro@squeeze-inc.co.jp'], fail_silently=False); print('result:', r)\""
   ```
   Expected: `result: 1` (Resend accepted). Verify the email arrives at `vinei.ro@squeeze-inc.co.jp` within 30s, with FROM `"Eventgate <noreply@mail.byondr.co>"`.
 
@@ -682,7 +682,7 @@ Verifies prod is genuinely usable end-to-end. Run after Wave 7 is confirmed.
 - [ ] **Step 8.2.1 — Capture a deliberate Sentry message from prod.**
 
   ```bash
-  flyctl ssh console --app eventgate-backend --command "/app/.venv/bin/python manage.py shell -c \"import sentry_sdk; eid = sentry_sdk.capture_message('Plan J Wave 8 smoke — deliberate test event from prod', level='warning'); print('event_id:', eid); sentry_sdk.flush(timeout=5)\""
+  flyctl ssh console --app eventgate-backend-prod --command "/app/.venv/bin/python manage.py shell -c \"import sentry_sdk; eid = sentry_sdk.capture_message('Plan J Wave 8 smoke — deliberate test event from prod', level='warning'); print('event_id:', eid); sentry_sdk.flush(timeout=5)\""
   ```
   Expected: prints event_id; verify the event lands in Sentry prod project within 60s, tagged `environment=prod`.
 
@@ -691,7 +691,7 @@ Verifies prod is genuinely usable end-to-end. Run after Wave 7 is confirmed.
 - [ ] **Step 8.3.1 — Re-confirm webhook (sanity check after smoke runs).**
 
   ```bash
-  flyctl ssh console --app eventgate-backend --command "/app/.venv/bin/python manage.py shell -c \"import os, urllib.request, json; tok = os.environ['TELEGRAM_BOT_TOKEN']; print(json.dumps(json.loads(urllib.request.urlopen(f'https://api.telegram.org/bot{tok}/getWebhookInfo').read()), indent=2))\""
+  flyctl ssh console --app eventgate-backend-prod --command "/app/.venv/bin/python manage.py shell -c \"import os, urllib.request, json; tok = os.environ['TELEGRAM_BOT_TOKEN']; print(json.dumps(json.loads(urllib.request.urlopen(f'https://api.telegram.org/bot{tok}/getWebhookInfo').read()), indent=2))\""
   ```
   Expected: `"url": "https://api.eventgate.byondr.co/api/v1/telegram/webhook/"`, no `last_error_message`.
 
@@ -797,17 +797,17 @@ Final pass: update all the operator-facing docs to point at the byondr URLs and 
   ```markdown
   ## Plan J — wrap-up summary (2026-05-29)
 
-  **Goal:** Rename `gatethres` → `eventgate`, migrate to `eventgate.byondr.co` + `api.eventgate.byondr.co`, with staging mirror at `eventgate-staging.byondr.co` / `api.eventgate-staging.byondr.co`. Fold in Plan I prod env split (new Fly app `eventgate-backend`, fresh Neon prod branch + Upstash prod + Sentry prod project + Tigris bucket, verified Resend domain `mail.byondr.co` shared across future byondr products).
+  **Goal:** Rename `gatethres` → `eventgate`, migrate to `eventgate.byondr.co` + `api.eventgate.byondr.co`, with staging mirror at `eventgate-staging.byondr.co` / `api.eventgate-staging.byondr.co`. Fold in Plan I prod env split (new Fly app `eventgate-backend-prod`, fresh Neon prod branch + Upstash prod + Sentry prod project + Tigris bucket, verified Resend domain `mail.byondr.co` shared across future byondr products).
 
   **Pilot window (revised):** 2026-06-19 → 2026-07-17 (slipped +2 weeks from original 2026-06-05; Click Cam confirmed).
 
   **What landed:**
   - Internal code rename (Wave 3) including cookie name, SW cache v2→v3, Celery app name, pyproject, manifest, all brand strings
-  - GitHub repo transfer to `byondr/eventgate`
+  - GitHub repo transfer to `byondr-co/eventgate`
   - 4 new GoDaddy DNS records (eventgate, api.eventgate, eventgate-staging, api.eventgate-staging)
-  - New Fly app `eventgate-backend` (Singapore) with 22 prod secrets + first deploy + cert
+  - New Fly app `eventgate-backend-prod` (Singapore) with 22 prod secrets + first deploy + cert
   - Staging mirror Fly secrets diff + cert
-  - New Vercel project `eventgate` linked to byondr/eventgate
+  - New Vercel project `eventgate` linked to byondr-co/eventgate
   - Resend domain `mail.byondr.co` verified (Wave 0; pre-Plan-J)
   - Telegram bot `@eventgate_bot` reused with rotated token + repointed webhook
   - Khmer transliteration: `អ៊ីវ៉ិនហ្គេត` (user-provided, no Vatana round-trip needed)
@@ -898,7 +898,7 @@ Final pass: update all the operator-facing docs to point at the byondr URLs and 
 - [ ] **Step 9.6.2 — Open PR #2 (or amend PR #1 if still open).**
 
   ```bash
-  gh -R byondr/eventgate pr create \
+  gh -R byondr-co/eventgate pr create \
     --head <branch-name> \
     --base main \
     --title "Plan J Wave 9 — docs sweep + handoff + memory" \
@@ -944,7 +944,7 @@ No spec gaps.
 - `Gatethres` → `Eventgate` capitalized throughout (display strings, brand) ✓
 - Cookie names `gatethres_access` / `gatethres_refresh` → `eventgate_access` / `eventgate_refresh` consistent in Task 3.1.2 and Task 3.4.6 ✓
 - SW cache keys `gatethres-shell-v2` → `eventgate-shell-v3` and `gatethres-next-static-v2` → `eventgate-next-static-v3` (bump v2→v3) consistent ✓
-- Fly app names: `eventgate-backend` (prod, new) vs `eventgate-backend-staging` (staging, unchanged) consistent ✓
+- Fly app names: `eventgate-backend-prod` (prod, new) vs `eventgate-backend-staging` (staging, unchanged) consistent ✓
 - URL pairs: `eventgate.byondr.co` / `api.eventgate.byondr.co` (prod) vs `eventgate-staging.byondr.co` / `api.eventgate-staging.byondr.co` (staging) consistent ✓
 - Khmer: `អ៊ីវ៉ិនហ្គេត` consistent in Task 3.7.3 + 9.1.1 + 9.2.1 + 9.5.1 ✓
 

@@ -32,9 +32,9 @@ Rename the active codebase from Gatethres → Eventgate, migrate it from staging
 | Backend URL (staging mirror) | `https://api.eventgate-staging.byondr.co` |
 | Email sender domain | `mail.byondr.co` (shared across all future byondr products; single Resend verification) |
 | Email FROM display | `"Eventgate <noreply@mail.byondr.co>"` |
-| GitHub home | new `byondr` org → `byondr/eventgate` |
+| GitHub home | new `byondr-co` org → `byondr-co/eventgate` |
 | Telegram bot | reuse `@eventgate_bot` (preserved as Plan H Wave 4 safety net) |
-| Fly app (prod) | `eventgate-backend` (Singapore region) |
+| Fly app (prod) | `eventgate-backend-prod` (Singapore region) |
 | Fly app (staging) | `eventgate-backend-staging` (kept as-is; rename requires destroy+recreate, not worth it) |
 | Vercel project (prod) | `eventgate` (under your Vercel scope; transferable to a future byondr team) |
 | Vercel project (staging) | `frontend-five-lovat-94` (kept as-is) |
@@ -60,7 +60,7 @@ The `.vercel.app` and `.fly.dev` URLs continue to work as platform-provided orig
 
 | Surface | Gatethres (now) | Eventgate (post Plan J) |
 |---|---|---|
-| GitHub repo | `vineidev/gatethres` | `byondr/eventgate` |
+| GitHub repo | `vineidev/gatethres` | `byondr-co/eventgate` |
 | Cookie name | `gatethres_access` | `eventgate_access` |
 | SW cache keys | `gatethres-shell-v2`, `gatethres-next-static-v2` | `eventgate-shell-v3`, `eventgate-next-static-v3` (bump to v3 to force PWA invalidation) |
 | Celery app name | `gatethres` | `eventgate` |
@@ -72,12 +72,12 @@ The `.vercel.app` and `.fly.dev` URLs continue to work as platform-provided orig
 
 | Resource | New name | Region | Owner |
 |---|---|---|---|
-| Fly backend app | `eventgate-backend` | `sin` | Fly |
+| Fly backend app | `eventgate-backend-prod` | `sin` | Fly |
 | Vercel project | `eventgate` | n/a | Vercel |
 | Neon Postgres branch | new `prod` branch (fresh empty DB) | Singapore (matches staging) | Neon |
 | Upstash Redis | new prod instance | Singapore | Upstash |
 | Sentry project | `eventgate-prod` (new project distinct from existing `eventgate`) | personal-org | Sentry |
-| Tigris bucket | `eventgate-backend-media` | n/a | Fly Tigris (via `flyctl storage create`) |
+| Tigris bucket | `eventgate-backend-prod-media` | n/a | Fly Tigris (via `flyctl storage create`) |
 | Resend domain | `mail.byondr.co` | `us-east-1` | Resend — **already verified ✅** |
 
 ### 4.4 DNS records to add at GoDaddy
@@ -87,16 +87,16 @@ Resend records are already added by the user 2026-05-29 (`MX mail` + `TXT mail` 
 | Type | Name | Value | Notes |
 |---|---|---|---|
 | `CNAME` | `eventgate` | `cname.vercel-dns.com.` | Prod frontend → Vercel; exact value from Vercel's Domains tab |
-| `CNAME` | `api.eventgate` | `eventgate-backend.fly.dev.` | Prod backend → Fly; create AFTER `flyctl certs add api.eventgate.byondr.co` |
+| `CNAME` | `api.eventgate` | `eventgate-backend-prod.fly.dev.` | Prod backend → Fly; create AFTER `flyctl certs add api.eventgate.byondr.co` |
 | `CNAME` | `eventgate-staging` | `cname.vercel-dns.com.` | Staging mirror frontend → existing Vercel project `frontend-five-lovat-94` |
 | `CNAME` | `api.eventgate-staging` | `eventgate-backend-staging.fly.dev.` | Staging mirror backend → existing Fly staging app |
 
 No proxy/CDN config — GoDaddy DNS doesn't proxy. SSL is issued by Vercel (apex/sub) and Fly (api subdomains) automatically once the CNAMEs resolve.
 
-### 4.5 Fly secrets (prod app `eventgate-backend`)
+### 4.5 Fly secrets (prod app `eventgate-backend-prod`)
 
 ```bash
-flyctl secrets set --app eventgate-backend --stage \
+flyctl secrets set --app eventgate-backend-prod --stage \
   DATABASE_URL="<new Neon prod branch URL>" \
   REDIS_URL="<new Upstash prod URL>" \
   SENTRY_DSN="<new Sentry eventgate-prod DSN>" \
@@ -105,20 +105,20 @@ flyctl secrets set --app eventgate-backend --stage \
   RESEND_FROM_EMAIL="noreply@mail.byondr.co" \
   DEFAULT_FROM_EMAIL="Eventgate <noreply@mail.byondr.co>" \
   SECRET_KEY="$(openssl rand -hex 64)" \
-  ALLOWED_HOSTS="api.eventgate.byondr.co,eventgate-backend.fly.dev" \
+  ALLOWED_HOSTS="api.eventgate.byondr.co,eventgate-backend-prod.fly.dev" \
   CSRF_TRUSTED_ORIGINS="https://eventgate.byondr.co,https://api.eventgate.byondr.co" \
   TELEGRAM_BOT_TOKEN="<reuse @eventgate_bot token from BotFather>" \
   TELEGRAM_BOT_USERNAME="eventgate_bot" \
   TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 32)" \
   TELEGRAM_WEBHOOK_URL="https://api.eventgate.byondr.co/api/v1/telegram/webhook/" \
-  BUCKET_NAME="eventgate-backend-media" \
+  BUCKET_NAME="eventgate-backend-prod-media" \
   AWS_ACCESS_KEY_ID="<from flyctl storage create>" \
   AWS_SECRET_ACCESS_KEY="<from flyctl storage create>" \
   AWS_ENDPOINT_URL_S3="<from flyctl storage create>" \
   AWS_REGION="auto"
 ```
 
-Tigris creds + bucket name auto-inject if `flyctl storage create --app eventgate-backend` runs BEFORE the secrets-set batch.
+Tigris creds + bucket name auto-inject if `flyctl storage create --app eventgate-backend-prod` runs BEFORE the secrets-set batch.
 
 ### 4.6 Staging Fly secrets — additions
 
@@ -134,7 +134,7 @@ flyctl secrets set --app eventgate-backend-staging --stage \
 
 ### 4.7 Vercel project config
 
-- **New prod project `eventgate`** — connect to `byondr/eventgate` GitHub repo (post-transfer), production branch `main`. Custom domain `eventgate.byondr.co`. Env vars: `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=eventgate_bot`, plus any other `NEXT_PUBLIC_*` currently set on the staging project (mirror them over).
+- **New prod project `eventgate`** — connect to `byondr-co/eventgate` GitHub repo (post-transfer), production branch `main`. Custom domain `eventgate.byondr.co`. Env vars: `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=eventgate_bot`, plus any other `NEXT_PUBLIC_*` currently set on the staging project (mirror them over).
 - **Existing staging project `frontend-five-lovat-94`** — add `eventgate-staging.byondr.co` as an additional custom domain. No re-deploy needed beyond Vercel's automatic domain attachment.
 
 ## 5. Wave structure (~5 days focused work + async DNS waits)
@@ -143,11 +143,11 @@ flyctl secrets set --app eventgate-backend-staging --stage \
 |---|---|---|---|
 | **0** | You | ✅ done | Resend `mail.byondr.co` verified; Khmer = `អ៊ីវ៉ិនហ្គេត` from Vatana; Click Cam +2-week slip confirmed; byondr.co DNS state mapped |
 | **1** | You + me | in progress | Plan J spec (this doc) + impl plan; PR #1 of Plan J |
-| **2** | You | pending | Create GitHub `byondr` org; create new Fly app + Neon prod branch + Upstash prod + Sentry prod project + Tigris bucket. Capture all credentials |
+| **2** | You | pending | Create GitHub `byondr-co` org; create new Fly app + Neon prod branch + Upstash prod + Sentry prod project + Tigris bucket. Capture all credentials |
 | **3** | Me (agent in worktree) | pending | Internal code rename `gatethres` → `eventgate` (cookie, SW cache, Celery name, manifest, package metadata, brand strings, brief, README, runbook §1.4) |
-| **4** | You | pending | Transfer repo to `byondr/eventgate`; update local remote; rotate `@eventgate_bot` token; (webhook re-point happens after Wave 6 deploys) |
+| **4** | You | pending | Transfer repo to `byondr-co/eventgate`; update local remote; rotate `@eventgate_bot` token; (webhook re-point happens after Wave 6 deploys) |
 | **5** | You | pending | Paste 4 DNS records at GoDaddy (`eventgate`, `api.eventgate`, `eventgate-staging`, `api.eventgate-staging`) |
-| **6** | Me (agent) | pending | Rewrite `fly.prod.toml` + `deploy-backend-prod.yml` from `gatethres-backend` → `eventgate-backend`; set prod Fly secrets + staging Fly secrets diff; first deploy of `eventgate-backend`; run `setup_telegram_webhook` against prod |
+| **6** | Me (agent) | pending | Rewrite `fly.prod.toml` + `deploy-backend-prod.yml` from `gatethres-backend` → `eventgate-backend-prod`; set prod Fly secrets + staging Fly secrets diff; first deploy of `eventgate-backend-prod`; run `setup_telegram_webhook` against prod |
 | **7** | Me (agent) | pending | Vercel: create prod project, add custom domain; staging: add `eventgate-staging.byondr.co` as additional domain. Both via dashboard handoff (cannot fully automate without vercel CLI auth) |
 | **8** | Me + You | pending | Prod env smoke: Plan F regression + Plan G smoke + Resend deliverability test (to a non-owner address; verified domain now allows) + Sentry test event + Telegram webhook health |
 | **9** | Me | pending | Docs sweep — README + brief + runbook + improvement log + handoff. Bake in Khmer `អ៊ីវ៉ិនហ្គេត`. Mark Plan J complete |
@@ -155,7 +155,7 @@ flyctl secrets set --app eventgate-backend-staging --stage \
 PRs land in ~3 groups:
 
 - **PR #1** — Plan J docs (this spec + impl plan) + internal code rename (Waves 1, 3)
-- **PR #2** — `eventgate-backend` Fly config + staging Fly secrets diff + Vercel notes (Waves 6, 7) — most of Wave 2 + Wave 4 + Wave 5 happen outside PRs as user actions
+- **PR #2** — `eventgate-backend-prod` Fly config + staging Fly secrets diff + Vercel notes (Waves 6, 7) — most of Wave 2 + Wave 4 + Wave 5 happen outside PRs as user actions
 - **PR #3** — Smoke results + docs sweep + closeout (Waves 8, 9)
 
 ## 6. Risk + reversibility
@@ -176,9 +176,9 @@ PRs land in ~3 groups:
 
 | Action | Reversal |
 |---|---|
-| Create `byondr` GitHub org | Delete org (GitHub keeps it free indefinitely) |
-| Transfer repo to `byondr/eventgate` | Transfer back to `vineidev/...`; redirects from old URL keep working both directions |
-| Provision new Fly app | `flyctl apps destroy eventgate-backend` |
+| Create `byondr-co` GitHub org | Delete org (GitHub keeps it free indefinitely) |
+| Transfer repo to `byondr-co/eventgate` | Transfer back to `vineidev/...`; redirects from old URL keep working both directions |
+| Provision new Fly app | `flyctl apps destroy eventgate-backend-prod` |
 | New Neon prod branch | Delete branch |
 | New Upstash | Delete instance |
 | New Sentry project | Delete project |

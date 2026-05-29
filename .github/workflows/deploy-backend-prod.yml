@@ -11,7 +11,7 @@
 # Required repo secret:
 #   - FLY_API_TOKEN_PROD — separate from FLY_API_TOKEN (staging) so prod
 #     can't be deployed with the staging token by accident. Provision via:
-#       flyctl tokens create deploy --app eventgate-backend --expiry 720h
+#       flyctl tokens create deploy --app eventgate-backend-prod --expiry 720h
 #
 # See Plan J (docs/plans/2026-05-29-plan-j-byondr-umbrella-rename.md) §4.5
 # for setup.
@@ -38,4 +38,4 @@ jobs:
         working-directory: backend
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_PROD }}
-        run: flyctl deploy --config fly.prod.toml --remote-only --app eventgate-backend
+        run: flyctl deploy --config fly.prod.toml --remote-only --app eventgate-backend-prod

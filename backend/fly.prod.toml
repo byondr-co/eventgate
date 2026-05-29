@@ -1,4 +1,4 @@
-# Prod Fly app config — eventgate-backend (Singapore).
+# Prod Fly app config — eventgate-backend-prod (Singapore).
 #
 # Companion to fly.toml (which targets eventgate-backend-staging). The only
 # difference between this file and fly.toml is the `app` name on line 7.
@@ -6,15 +6,15 @@
 # staging by design (per Plan I §5.1).
 #
 # Used by:
-#   - `flyctl deploy --config fly.prod.toml --app eventgate-backend`
+#   - `flyctl deploy --config fly.prod.toml --app eventgate-backend-prod`
 #   - .github/workflows/deploy-backend-prod.yml (manual-dispatch / release)
 #
 # Provisioning order (one-time, per Plan J §4.5):
-#   1. flyctl apps create eventgate-backend --org personal
-#   2. flyctl secrets set --app eventgate-backend --stage <secret list — see Plan J §4.5>
-#   3. flyctl deploy --config fly.prod.toml --remote-only --app eventgate-backend
+#   1. flyctl apps create eventgate-backend-prod --org personal
+#   2. flyctl secrets set --app eventgate-backend-prod --stage <secret list — see Plan J §4.5>
+#   3. flyctl deploy --config fly.prod.toml --remote-only --app eventgate-backend-prod
 
-app = "eventgate-backend"
+app = "eventgate-backend-prod"
 primary_region = "sin"
 
 [build]
