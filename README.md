@@ -1,6 +1,6 @@
-# Gatethres
+# Eventgate
 
-*Pronounced **GATE-thress** (rhymes with "address"). Khmer: **ហ្គេតថ្រេស**.*
+*Pronounced **EVENT-gate**. Khmer: **អ៊ីវ៉ិនហ្គេត**.*
 
 SaaS for fast, paperless event entrance — Southeast Asia first.
 
