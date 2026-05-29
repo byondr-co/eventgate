@@ -12,7 +12,7 @@ SECRET_KEY = "test-insecure-secret"
 # Wrap tempfile.mkdtemp (returns str) in Path() to match the MEDIA_ROOT
 # type from base.py (BASE_DIR / "media", a Path). Caught by `mypy apps config`
 # in CI; the prior `mypy apps/` scope didn't include settings.
-MEDIA_ROOT = Path(tempfile.mkdtemp(prefix="gatethres-test-media-"))
+MEDIA_ROOT = Path(tempfile.mkdtemp(prefix="eventgate-test-media-"))
 
 # Intentional Plan H holdout: NAME/USER/PASSWORD must match the postgres
 # service credentials in .github/workflows/backend.yml. Rename in lockstep

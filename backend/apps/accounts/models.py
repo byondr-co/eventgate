@@ -20,7 +20,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     which `consume_magic_link` sets explicitly.
 
     Permission framework: `PermissionsMixin` is included so Django admin works,
-    but `groups` and `user_permissions` are NOT used for Gatethres authorization.
+    but `groups` and `user_permissions` are NOT used for Eventgate authorization.
     All product-level roles live on `OrganizationMembership.role` (Plan B Task 10+).
     """
 

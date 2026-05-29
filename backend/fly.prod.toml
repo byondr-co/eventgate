@@ -1,4 +1,4 @@
-# Prod Fly app config — gatethres-backend (Singapore).
+# Prod Fly app config — eventgate-backend (Singapore).
 #
 # Companion to fly.toml (which targets eventgate-backend-staging). The only
 # difference between this file and fly.toml is the `app` name on line 7.
@@ -6,15 +6,15 @@
 # staging by design (per Plan I §5.1).
 #
 # Used by:
-#   - `flyctl deploy --config fly.prod.toml --app gatethres-backend`
+#   - `flyctl deploy --config fly.prod.toml --app eventgate-backend`
 #   - .github/workflows/deploy-backend-prod.yml (manual-dispatch / release)
 #
-# Provisioning order (one-time, per Plan I §6.2):
-#   1. flyctl apps create gatethres-backend --org personal
-#   2. flyctl secrets set --app gatethres-backend --stage <secret list — see Plan I §6.4>
-#   3. flyctl deploy --config fly.prod.toml --remote-only --app gatethres-backend
+# Provisioning order (one-time, per Plan J §4.5):
+#   1. flyctl apps create eventgate-backend --org personal
+#   2. flyctl secrets set --app eventgate-backend --stage <secret list — see Plan J §4.5>
+#   3. flyctl deploy --config fly.prod.toml --remote-only --app eventgate-backend
 
-app = "gatethres-backend"
+app = "eventgate-backend"
 primary_region = "sin"
 
 [build]

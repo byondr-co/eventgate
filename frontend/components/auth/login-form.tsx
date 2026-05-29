@@ -48,7 +48,7 @@ export function LoginForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sign in to Gatethres</CardTitle>
+        <CardTitle>Sign in to Eventgate</CardTitle>
         <CardDescription>Enter your email — we&apos;ll send a one-time link.</CardDescription>
       </CardHeader>
       <CardContent>
