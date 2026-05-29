@@ -74,7 +74,7 @@ The `.vercel.app` and `.fly.dev` URLs continue to work as platform-provided orig
 |---|---|---|---|
 | Fly backend app | `eventgate-backend` | `sin` | Fly |
 | Vercel project | `eventgate` | n/a | Vercel |
-| Neon Postgres branch | new `prod` branch (fresh empty DB) | TBD (Neon region of staging) | Neon |
+| Neon Postgres branch | new `prod` branch (fresh empty DB) | Singapore (matches staging) | Neon |
 | Upstash Redis | new prod instance | Singapore | Upstash |
 | Sentry project | `eventgate-prod` (new project distinct from existing `eventgate`) | personal-org | Sentry |
 | Tigris bucket | `eventgate-backend-media` | n/a | Fly Tigris (via `flyctl storage create`) |
