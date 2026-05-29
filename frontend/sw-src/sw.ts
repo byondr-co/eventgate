@@ -1,5 +1,5 @@
 /**
- * Gatethres scanner — Workbox-composed service worker (Plan E).
+ * Eventgate scanner — Workbox-composed service worker (Plan E).
  *
  * Two jobs:
  *
@@ -49,14 +49,14 @@ registerRoute(
     url.pathname === "/manifest.webmanifest" ||
     url.pathname === "/favicon.ico" ||
     url.pathname.startsWith("/icons/"),
-  new CacheFirst({ cacheName: "gatethres-shell-v2" }),
+  new CacheFirst({ cacheName: "eventgate-shell-v3" }),
 );
 
 // Next.js static chunks — network-first with a short cache fallback.
 registerRoute(
   ({ url }) => url.pathname.startsWith("/_next/static/"),
   new NetworkFirst({
-    cacheName: "gatethres-next-static-v2",
+    cacheName: "eventgate-next-static-v3",
     networkTimeoutSeconds: 3,
   }),
 );

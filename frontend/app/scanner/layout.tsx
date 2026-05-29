@@ -57,7 +57,7 @@ export default function ScannerLayout({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
       <header className="flex items-center justify-between border-b border-neutral-800 px-4 py-2 text-xs">
-        <span className="font-mono">Gatethres Scanner</span>
+        <span className="font-mono">Eventgate Scanner</span>
         <div className="flex items-center gap-3">
           <InstallButton />
           {conflicts > 0 ? (

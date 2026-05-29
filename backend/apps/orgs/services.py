@@ -61,7 +61,7 @@ def send_invite(*, organization: Organization, email: str, role: str, invited_by
 
     link = f"{settings.MAGIC_LINK_FRONTEND_URL}/invites/{raw}"
     send_mail(
-        subject=f"You're invited to {organization.name} on Gatethres",
+        subject=f"You're invited to {organization.name} on Eventgate",
         message=(
             f"{invited_by.email if invited_by else 'Someone'} invited you to join "
             f"{organization.name} as {role}.\n\nAccept the invite within "

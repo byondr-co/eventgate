@@ -14,7 +14,7 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/e/") ||
     pathname.startsWith(SCANNER_PREFIX);
 
-  const hasAccess = req.cookies.get("gatethres_access");
+  const hasAccess = req.cookies.get("eventgate_access");
   if (!hasAccess && !isPublic) {
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/login";

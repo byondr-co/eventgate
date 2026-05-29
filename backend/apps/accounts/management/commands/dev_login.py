@@ -5,7 +5,7 @@ worker logs. Refuses to run when DEBUG is False — this command exists for
 local iteration only.
 
 Usage:
-    uv run python manage.py dev_login admin@dev.gatethres.local
+    uv run python manage.py dev_login admin@dev.eventgate.local
 """
 
 from __future__ import annotations

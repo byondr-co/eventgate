@@ -1,7 +1,7 @@
 [project]
-name = "gatethres-backend"
+name = "eventgate-backend"
 version = "0.1.0"
-description = "Gatethres — fast, paperless event entrance for Southeast Asia"
+description = "Eventgate — fast, paperless event entrance for Southeast Asia"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "django>=5.0,<5.2",

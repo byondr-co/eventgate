@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gatethres",
+  title: "Eventgate",
   description: "Fast paperless event entrance",
 };
 

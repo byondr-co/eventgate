@@ -19,7 +19,7 @@ def test_prod_settings_import_without_sentry_dsn(monkeypatch) -> None:
     monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings.prod")
     monkeypatch.setenv("SECRET_KEY", "test")
     monkeypatch.setenv("ALLOWED_HOSTS", "test.example.com")
-    monkeypatch.setenv("DATABASE_URL", "postgres://gatethres:gatethres@localhost:5432/gatethres")
+    monkeypatch.setenv("DATABASE_URL", "postgres://eventgate:eventgate@localhost:5432/eventgate")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
 
     import config.settings.prod
