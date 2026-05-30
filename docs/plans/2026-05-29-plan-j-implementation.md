@@ -581,15 +581,23 @@ This wave runs after Waves 2, 4, 5 are confirmed. Agent has: new DATABASE_URL, R
 
 ### Task 6.4 — Update staging Fly secrets (URL mirror)
 
-- [ ] **Step 6.4.1 — Add staging mirror URLs to ALLOWED_HOSTS + CSRF.**
+- [ ] **Step 6.4.1 — Add staging mirror URLs: ALLOWED_HOSTS + CSRF + FROM_EMAIL + MAGIC_LINK + PUBLIC_BASE_URL.**
+
+  > **Note (deviation from original plan):** The original Task 6.4 only covered `ALLOWED_HOSTS` + `CSRF_TRUSTED_ORIGINS`. That was insufficient — `MAGIC_LINK_FRONTEND_URL`, `PUBLIC_BASE_URL`, `RESEND_FROM_EMAIL`, and `DEFAULT_FROM_EMAIL` also need to point at staging URLs, otherwise magic links and emails sent from staging will reference the prod URL. Set all five in one command:
 
   ```bash
   flyctl secrets set --app eventgate-backend-staging \
-    ALLOWED_HOSTS="api.eventgate-staging.byondr.co,eventgate-backend-staging.fly.dev" \
-    CSRF_TRUSTED_ORIGINS="https://eventgate-staging.byondr.co,https://api.eventgate-staging.byondr.co,https://frontend-five-lovat-94.vercel.app"
+    ALLOWED_HOSTS="*" \
+    CSRF_TRUSTED_ORIGINS="https://eventgate-staging.byondr.co,https://api.eventgate-staging.byondr.co" \
+    MAGIC_LINK_FRONTEND_URL="https://eventgate-staging.byondr.co" \
+    PUBLIC_BASE_URL="https://api.eventgate-staging.byondr.co" \
+    RESEND_FROM_EMAIL="noreply@mail.byondr.co" \
+    DEFAULT_FROM_EMAIL="Eventgate <noreply@mail.byondr.co>"
   ```
 
   `--stage` not used; staging Fly will roll-restart, which is fine — staging isn't pilot-facing.
+
+  > ⚠️ **`ALLOWED_HOSTS="*"` is a pragmatic workaround.** Narrower patterns (the exact subdomain, `.fly.dev`, `localhost`, `fly-local-6pn`) don't match Fly's internal Consul health probe Host header. Until the exact Consul Host pattern is identified (Plan K follow-up), `"*"` is necessary.
 
 - [ ] **Step 6.4.2 — Verify staging still healthy after restart.**
 

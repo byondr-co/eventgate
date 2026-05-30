@@ -4,17 +4,17 @@
 >
 > **Pilot customer:** **The Click Cam** (first committed customer, identified 2026-05-23). Exact event date still soft; falls within the pilot window.
 >
-> **Pilot window:** **2026-06-05 → 2026-07-03** (W13–14, first paying/pilot event under brief §12 Phase 1 exit criteria). Treat anything not shipped by **2026-05-29** as risk-bearing.
+> **Pilot window:** **2026-06-19 → 2026-07-17** (W13–14, first paying/pilot event under brief §12 Phase 1 exit criteria; slipped +2 weeks from original 2026-06-05 — Click Cam confirmed). Treat anything not shipped by **2026-06-12** (T-7) as risk-bearing.
 >
-> **Scope of this runbook:** what to verify _before_ ship, who runs the door, what to do when something breaks during the event, how to roll back, how to write up afterwards. Backend lives on Fly (`eventgate-backend-staging`; prod split deferred per Plan H scope amendment — pilot runs here), frontend on Vercel (`frontend-five-lovat-94`; same — deferred).
+> **Scope of this runbook:** what to verify _before_ ship, who runs the door, what to do when something breaks during the event, how to roll back, how to write up afterwards. Backend lives on Fly (`eventgate-backend-prod` at `api.eventgate.byondr.co`; prod env split shipped in Plan J), frontend on Vercel (`eventgate-prod` at `eventgate.byondr.co`).
 >
 > **Contact details** (phone numbers, emails beyond `@squeeze-inc.co.jp` / `@gmail.com`, anything PII-sensitive) live **outside this doc** — in 1Password / a gitignored `contacts.private.md` / whatever your team uses. The runbook references people by name only.
 >
-> **Pronunciation:** Gatethres is pronounced **GATE-thress** (rhymes with "address"). Khmer transliteration (confirmed by Vatana 2026-05-25): **ហ្គេតថ្រេស**.
+> **Pronunciation:** Eventgate is pronounced **ee-vent-gate**. Khmer transliteration (user-provided 2026-05-29): **អ៊ីវ៉ិនហ្គេត**.
 >
 > **External blockers tracked here:**
 >
-> - **Brand name** — Phase-0 task per brief §14 row 1. Status: ✅ **resolved 2026-05-24 → Gatethres** (pronounced GATE-thress). Internal rename landed in Plan H wave 5; prod env split deferred per scope amendment — pilot runs on existing staging infrastructure under the new brand. See [Plan H spec](./2026-05-24-plan-h-brand-rename-and-prod-split.md). _Last updated: 2026-05-24._
+> - **Brand name** — Phase-0 task per brief §14 row 1. Status: ✅ **resolved 2026-05-30 → Eventgate** (ee-vent-gate · Khmer: អ៊ីវ៉ិនហ្គេត). Code rename landed in Plan J Wave 3 (PR #11); prod env split + byondr URL migration landed in Plan J Waves 4–8 (PR #12). Pilot runs on new prod infrastructure at `eventgate.byondr.co` + `api.eventgate.byondr.co`. See [Plan J spec](./2026-05-29-plan-j-byondr-umbrella-rename.md). _Last updated: 2026-05-30._
 > - **Khmer copy review** — translator identified per brief §12 row 4: **Vatana** (also Door Operator — see §2). Status: ⏳ **pending** (machine-quality strings in `frontend/lib/i18n/messages/km.json` covering Plan D scanner + Plan D walk-in + Plan E error messages + Plan F help-desk + Plan G Telegram/CSV; needs a one-pass review before pilot). _Last updated: 2026-05-23._
 
 ---
@@ -25,7 +25,7 @@
 
 ### 1.1 External-readiness gates
 
-- [x] **Brand name landed — Gatethres** (resolved 2026-05-24). Internal repo rename: Plan H wave 5. Telegram bot renamed to `@gatethres_bot`: T4. Prod infra renames (Fly app, Vercel project, Sentry project, Resend domain, Tigris bucket, DNS cutover) deferred per Plan H scope amendment — pilot runs on staging infrastructure. §intro + §1.4 updated 2026-05-24.
+- [x] **Brand name landed — Eventgate** (resolved 2026-05-30 via Plan J). Internal repo rename: Plan J Wave 3 (PR #11). Prod infra shipped under `eventgate.byondr.co` (Plan J Waves 4–8). Telegram bot `@eventgate_bot` reused with rotated token. §intro + §1.4 updated 2026-05-30.
 - [ ] **Khmer copy review pass complete.** Translator has signed off on:
   - `frontend/lib/i18n/messages/km.json` — scanner + walk-in + error messages.
   - Help-desk inbox strings (Plan F).
@@ -138,17 +138,17 @@
 
 ### 1.4 Pilot environment URLs
 
-> **First-pilot customer:** The Click Cam. Brand is **Gatethres** (resolved 2026-05-24). Prod env split (new Fly app, new Vercel project, new Neon prod branch, DNS cutover to `gatethres.com` / `api.gatethres.com`) was **deferred per Plan H scope amendment** — the pilot runs on the existing staging infrastructure under the Gatethres brand.
+> **First-pilot customer:** The Click Cam. Brand is **Eventgate** (finalized 2026-05-30 via Plan J). Prod env split shipped in Plan J Waves 4–8 — pilot runs on the new prod infrastructure under the Eventgate brand on the byondr.co umbrella.
 
-| Resource | Staging today | Pilot (Gatethres — scope amendment applied) |
+| Resource | Staging | Production (pilot) |
 | --- | --- | --- |
-| Backend API | `https://eventgate-backend-staging.fly.dev` | `https://eventgate-backend-staging.fly.dev` **(same as staging — prod split deferred per Plan H scope amendment)** |
-| Dashboard | `https://frontend-five-lovat-94.vercel.app` | `https://frontend-five-lovat-94.vercel.app` **(same as staging — prod split deferred per Plan H scope amendment)** |
-| Scanner | `<dashboard>/scanner` | `<dashboard>/scanner` (same) |
-| Walk-in display | `<dashboard>/scanner/walkin` | `<dashboard>/scanner/walkin` (same) |
-| Sentry | `<personal-org>/eventgate` (verified 2026-05-23) | `<personal-org>/eventgate` **(same — Sentry project rename deferred)** |
-| Telegram bot | `@eventgate_bot` (verified 2026-05-23) | `@gatethres_bot` **(rename via BotFather is T4; webhook URL stays pointed at staging)** |
-| Tigris bucket | `eventgate-backend-staging-media` | `eventgate-backend-staging-media` **(same — bucket rename deferred)** |
+| Backend API | `https://api.eventgate-staging.byondr.co` | `https://api.eventgate.byondr.co` |
+| Dashboard | `https://eventgate-staging.byondr.co` | `https://eventgate.byondr.co` |
+| Scanner | `<dashboard>/scanner` | `<dashboard>/scanner` |
+| Walk-in display | `<dashboard>/scanner/walkin` | `<dashboard>/scanner/walkin` |
+| Sentry | `<personal-org>/eventgate-staging` | `<personal-org>/eventgate-prod` |
+| Telegram bot | `@eventgate_bot` | `@eventgate_bot` (same bot, webhook → prod) |
+| Tigris bucket | `eventgate-backend-staging-media` | `eventgate-backend-prod-media` |
 
 ### 1.5 End-to-end smoke (T-1 day)
 
@@ -191,7 +191,7 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 ### 2.3 Pre-event handoff (T-2 h)
 
 - [ ] **Vatana** has all scanner devices in hand, PIN known, enrollment codes printed on backup paper, phone fully charged + power bank, Telegram open.
-- [ ] **Vinei** has terminal open with `flyctl`, `gh`, `pnpm dlx vercel`, and a fresh `gatethres_access` cookie value captured in a scratch file (15-min JWT — will need to refresh).
+- [ ] **Vinei** has terminal open with `flyctl`, `gh`, `pnpm dlx vercel`, and a fresh `eventgate_access` cookie value captured in a scratch file (15-min JWT — will need to refresh).
 - [ ] **Customer Contact** (The Click Cam) identified + reachable; they know they'll be the Approve/Void caller on manual-review tickets where ID is ambiguous.
 - [ ] Both Vatana + Vinei have this runbook open in a browser tab.
 - [ ] Phone numbers exchanged (kept in 1Password / contacts.private.md per intro) + test ping confirmed both directions.
@@ -295,7 +295,7 @@ Note: a `conflict` (two devices checking in the same guest within an offline-rep
 
 ```bash
 curl -sS "<api>/orgs/<slug>/events/<event-slug>/audit/" \
-  -H "Cookie: gatethres_access=$ACCESS_COOKIE" | python3 -m json.tool | head -80
+  -H "Cookie: eventgate_access=$ACCESS_COOKIE" | python3 -m json.tool | head -80
 ```
 
 - Confirm row count ≈ (check-ins + walk-ins + escalations + ticket actions). A wildly low count = audit pipeline broken; flag for post-mortem.
@@ -366,7 +366,7 @@ A printed list is **also useful in non-P1 situations** — Vatana can fall back 
 Before pulling the trigger, answer:
 
 1. **What broke?** Read Sentry + Fly logs for 60 seconds. If unclear, time-box another 60s; don't dive forever.
-2. **What was the last deploy?** `gh run list --workflow deploy-backend.yml --limit 5` and `pnpm dlx vercel list | head -5`.
+2. **What was the last deploy?** `gh run list --workflow deploy-backend-prod.yml --limit 5` (prod) or `deploy-backend.yml` (staging) and `pnpm dlx vercel list | head -5`.
 3. **Did a deploy land within the last hour?** If yes, rollback is high-leverage. If no, the bug was latent — rollback may not help.
 4. **Is the door blocked now?** If yes, rollback is the cheapest fix even if root cause isn't fully understood.
 
@@ -391,10 +391,10 @@ Expect: <60s from click to live.
 
 ```bash
 # List recent releases on Fly (--image flag shows the Docker image ref for each)
-flyctl releases --app eventgate-backend-staging --image | head -10
+flyctl releases --app eventgate-backend-prod --image | head -10
 # Pick the previous-good version's DOCKER IMAGE column
 # (look for "complete" status; avoid "failed" releases like the v23–v33 broken-release_command run)
-flyctl deploy --app eventgate-backend-staging --image registry.fly.io/eventgate-backend-staging:deployment-<id>
+flyctl deploy --app eventgate-backend-prod --image registry.fly.io/eventgate-backend-prod:deployment-<id>
 ```
 
 > ⚠️ **`flyctl releases rollback` is not a valid command.** Earlier versions of this runbook documented one — verified 2026-05-23 against flyctl: `releases` has no `rollback` subcommand; you deploy a previous image by reference instead.
@@ -424,8 +424,8 @@ git push origin main
 # wait for the workflow run to land green.
 gh run watch
 # After the run completes, verify the new image actually came up:
-flyctl status --app eventgate-backend-staging
-curl -sS https://eventgate-backend-staging.fly.dev/api/health/
+flyctl status --app eventgate-backend-prod
+curl -sS https://api.eventgate.byondr.co/api/health/
 ```
 
 For non-P1 fixes (degraded mode that you can sit on for an hour), PR + review is still preferred:
@@ -442,8 +442,8 @@ gh run watch
 
 After **any** rollback:
 
-- [ ] **GHA / Fly deploy actually completed green** (`gh run list --workflow deploy-backend.yml --limit 1` shows `completed success`, `flyctl status` shows expected version). Today's session proved you can roll back to a "good" image that still hits a release_command crash — don't trust the rollback until the deploy logs are green.
-- [ ] Backend health 200: `curl -sS https://eventgate-backend-staging.fly.dev/api/health/`.
+- [ ] **GHA / Fly deploy actually completed green** (`gh run list --workflow deploy-backend-prod.yml --limit 1` shows `completed success`, `flyctl status` shows expected version). Today's session proved you can roll back to a "good" image that still hits a release_command crash — don't trust the rollback until the deploy logs are green.
+- [ ] Backend health 200: `curl -sS https://api.eventgate.byondr.co/api/health/`.
 - [ ] Frontend loads: open `<dashboard>` in incognito.
 - [ ] Scanner unlocks: try one device.
 - [ ] One known-good QR scans green (CHECKED IN card).

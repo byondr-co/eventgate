@@ -57,3 +57,50 @@ Important note: Everything in this docuument should not be autonomously implemen
 - [PR #2](https://github.com/vineidev/gatethres/pull/2) — Plan H hotfix (mypy MEDIA_ROOT type fix + T9 findings log entries, merged 2026-05-24)
 
 **Plan H status: ✅ DONE (rename half). Prod env split tracked separately for follow-up.**
+
+---
+
+## Plan J — wrap-up summary (2026-05-30)
+
+**Goal:** Rename `gatethres` → `eventgate`, migrate to `eventgate.byondr.co` (prod) + `api.eventgate.byondr.co` (backend) + staging mirror at `eventgate-staging.byondr.co`. Fold in Plan I prod env split (new Fly app `eventgate-backend-prod` in Singapore, fresh Neon prod project + database `eventgate`, Upstash prod `eventgate-redis-prod`, Sentry project `eventgate-prod`, Tigris bucket `eventgate-backend-prod-media`, verified Resend domain `mail.byondr.co` shared across future byondr products).
+
+**Pilot window (revised):** 2026-06-19 → 2026-07-17 (slipped +2 weeks from original 2026-06-05; Click Cam confirmed).
+
+**What landed:**
+- Wave 3 code rename: cookie, SW cache v2→v3, Celery app name, pyproject, manifest, all brand strings (PR #11)
+- Wave 3.5 naming corrections: `eventgate-backend-prod` + `byondr-co/eventgate` (PR #12)
+- GitHub repo transfer to `byondr-co/eventgate` (made PUBLIC for Vercel integration)
+- 4 GoDaddy DNS records for byondr.co subdomains (eventgate, api.eventgate, eventgate-staging, api.eventgate-staging)
+- New Fly app `eventgate-backend-prod` (Singapore) with 26 secrets (21 manual + 5 Tigris auto-injected) + 3 process-group machines (app + worker + beat)
+- Staging Fly secrets diff (ALLOWED_HOSTS + CSRF + FROM_EMAIL + MAGIC_LINK_FRONTEND_URL + PUBLIC_BASE_URL)
+- Fly certs for both api.eventgate.byondr.co + api.eventgate-staging.byondr.co
+- New Vercel project `eventgate-prod` linked to `byondr-co/eventgate`; staging Vercel renamed `frontend-five-lovat-94` → `eventgate-staging`
+- Resend domain `mail.byondr.co` verified (Tokyo region)
+- Telegram bot `@eventgate_bot` reused with rotated token + repointed webhook to `api.eventgate.byondr.co`
+- Khmer transliteration: `អ៊ីវ៉ិនហ្គេត` (user-provided 2026-05-29, no Vatana round-trip)
+
+**Operational lessons confirmed and surfaced:**
+
+1. **`ALLOWED_HOSTS` must include a wildcard or the exact Fly Consul Host pattern** — narrower patterns (`api.example.com`, `.fly.dev`, `localhost`, `fly-local-6pn`) don't match Fly's internal health probe. Pragmatic fix: `ALLOWED_HOSTS="*"`. Narrow this post-pilot when we identify the exact Host header Fly Consul sends.
+
+2. **`flyctl deploy` on a fresh multi-process app may only create the `app` machine** — `worker` and `beat` were missing on the first deploy. Run `flyctl scale count app=1 worker=1 beat=1 --app <app> --region sin --yes` after first deploy to ensure all process groups have machines. Without this, Celery tasks queue in Redis with no consumer.
+
+3. **Vercel new-project Root Directory defaults to repo root** — even if the project name matches a sub-directory like `frontend/`. Set Root Directory explicitly in Settings → General after creating any new Vercel project in a monorepo, or the build will succeed silently with empty output.
+
+4. **Staging-secrets-diff during prod env split must update ALL env-dependent values, not just hostnames** — Wave 6.4 of Plan J's impl plan only covered `ALLOWED_HOSTS` + `CSRF_TRUSTED_ORIGINS`, missing `MAGIC_LINK_FRONTEND_URL`, `PUBLIC_BASE_URL`, `RESEND_FROM_EMAIL`, `DEFAULT_FROM_EMAIL`. Each of these had to be patched manually during Wave 8.
+
+5. **flyctl SSH is intermittently flaky** — repeated `flyctl ssh console --command "..."` invocations stall or get force-closed. Don't rely on SSH for critical verification in agent workflows. Prefer HTTP API (curl) or Telegram API endpoints (`getWebhookInfo`).
+
+6. **Long-running agent dispatches can hang silently** — the original Wave 6 dispatched agent ran for ~24h before being killed. Cause likely the flyctl SSH stalls inside its loop. Future agents should add explicit per-command timeouts and report-and-continue on stalls.
+
+7. **`flyctl secrets set` can fail with "failed to acquire lease"** if multiple `flyctl` operations run concurrently or in quick succession. Wait for the lease to expire (~1 min) or retry with a backoff loop.
+
+**Resolved follow-ups from PR #5:**
+- (none from Plan J side; staging mypy gap already closed in PR #5)
+
+**Plan J status:** ✅ DONE.
+
+**PRs:**
+- [PR #11](https://github.com/byondr-co/eventgate/pull/11) — Wave 3 internal code rename (~24h delay, redirects from old vineidev/gatethres URL still work)
+- [PR #12](https://github.com/byondr-co/eventgate/pull/12) — Wave 3.5 naming corrections (eventgate-backend-prod, byondr-co)
+- (Wave 9 closeout PR — being opened by this agent)
