@@ -73,6 +73,21 @@ export function useSendInvite(slug: string) {
   });
 }
 
+export function useUpdateOrg(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string }) =>
+      apiFetch<Organization>(`/api/v1/orgs/${slug}/`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: (data) => {
+      qc.setQueryData(["orgs", slug], data);
+      qc.invalidateQueries({ queryKey: ORGS_QUERY_KEY });
+    },
+  });
+}
+
 export function useAcceptInvite() {
   const qc = useQueryClient();
   return useMutation({
