@@ -104,3 +104,17 @@ Important note: Everything in this docuument should not be autonomously implemen
 - [PR #11](https://github.com/byondr-co/eventgate/pull/11) — Wave 3 internal code rename (~24h delay, redirects from old vineidev/gatethres URL still work)
 - [PR #12](https://github.com/byondr-co/eventgate/pull/12) — Wave 3.5 naming corrections (eventgate-backend-prod, byondr-co)
 - (Wave 9 closeout PR — being opened by this agent)
+
+## Plan K — verification finding (#11 CSV bulk email task model)
+
+**2026-05-31 — Confirmed: CSV import already dispatches one Celery task per email send, with retry.**
+
+Chain verified:
+- `backend/apps/guests/views.py:281` — `process_csv_import_task.delay(import_id=str(ci.id))` enqueues one parent task per CSV upload
+- `backend/apps/guests/tasks.py:84` `process_csv_import_task` — loops rows, calls `register_guest(...)` for each
+- `backend/apps/guests/services.py:65` — `send_qr_email_task.delay(guest_id=str(guest.id))` enqueues one child task per guest
+- `backend/apps/guests/tasks.py:26` — `@shared_task(name="guests.send_qr_email", bind=True, max_retries=3, default_retry_delay=60)` declaration
+
+Implication: at pilot scale (a few hundred guests), bulk import will fan out into hundreds of independent Celery tasks. Upstash Redis + Celery worker concurrency=4 (per `fly.prod.toml`) handle this comfortably; each task is bounded I/O against Resend. No design change required.
+
+**No code change in Plan K for this item.** Documentation-only verification.

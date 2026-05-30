@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { extractApiError } from "@/lib/api";
 import { useCreateOrg } from "@/lib/orgs";
 
 export function CreateOrgForm() {
@@ -32,14 +33,14 @@ export function CreateOrgForm() {
             maxLength={200}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="My Conference 2026"
+            placeholder="byondr.co"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <Button type="submit" disabled={create.isPending || !name} className="w-full">
             {create.isPending ? "Creating…" : "Create"}
           </Button>
           {create.isError && (
-            <p className="text-sm text-destructive">{(create.error as Error).message}</p>
+            <p className="text-sm text-destructive">{extractApiError(create.error)}</p>
           )}
         </form>
       </CardContent>

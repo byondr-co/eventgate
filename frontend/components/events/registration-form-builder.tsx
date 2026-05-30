@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { extractApiError } from "@/lib/api";
 import { useAddField, useDeleteField, useFields, type FieldType } from "@/lib/events";
 
 export function RegistrationFormBuilder({
@@ -39,7 +40,7 @@ export function RegistrationFormBuilder({
       setName("");
       setLabelKm("");
     } catch (err) {
-      setError((err as Error).message);
+      setError(extractApiError(err));
     }
   };
 

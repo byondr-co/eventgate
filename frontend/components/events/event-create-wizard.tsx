@@ -62,7 +62,7 @@ export function EventCreateWizard({ orgSlug }: { orgSlug: string }) {
               required
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
-              placeholder="Annual Meetup 2026"
+              placeholder={`byondr.co Conference ${new Date().getFullYear()}`}
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
           </label>

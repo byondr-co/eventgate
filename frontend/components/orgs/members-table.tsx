@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { extractApiError } from "@/lib/api";
 import { useMembers, useSendInvite } from "@/lib/orgs";
 
 type Role = "owner" | "admin" | "manager" | "staff";
@@ -55,7 +56,7 @@ export function MembersTable({ slug }: { slug: string }) {
           </form>
           {success && <p className="mt-3 text-sm text-emerald-600">{success}</p>}
           {invite.isError && (
-            <p className="mt-3 text-sm text-destructive">{(invite.error as Error).message}</p>
+            <p className="mt-3 text-sm text-destructive">{extractApiError(invite.error)}</p>
           )}
         </CardContent>
       </Card>
