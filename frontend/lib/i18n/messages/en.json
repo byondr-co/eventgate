@@ -7,7 +7,9 @@
     "devices": "Devices",
     "helpdesk": "Help desk",
     "audit": "Audit",
-    "settings": "Settings"
+    "settings": "Settings",
+    "events": "Events",
+    "members": "Members"
   },
   "register": {
     "title": "Register for {eventName}",
