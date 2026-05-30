@@ -35,3 +35,17 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (res.status === 204) return undefined as unknown as T;
   return res.json() as Promise<T>;
 }
+
+export function extractApiError(err: unknown): string {
+  if (!(err instanceof Error)) return "Something went wrong.";
+  const m = err.message.match(/^\d+\s+[^:]*:\s*([\s\S]+)$/);
+  if (!m) return err.message;
+  try {
+    const parsed = JSON.parse(m[1]);
+    if (typeof parsed?.detail === "string") return parsed.detail;
+    if (Array.isArray(parsed?.non_field_errors)) return parsed.non_field_errors.join(" · ");
+    return err.message;
+  } catch {
+    return err.message;
+  }
+}

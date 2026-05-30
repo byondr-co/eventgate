@@ -9,6 +9,7 @@ import type { EventStatus } from "@/lib/events";
 // Stub apiFetch so no real network calls happen
 vi.mock("@/lib/api", () => ({
   apiFetch: vi.fn(),
+  extractApiError: (err: unknown) => (err instanceof Error ? err.message : "Something went wrong."),
 }));
 
 // Stub sonner toast so we can assert on calls without rendering a Toaster

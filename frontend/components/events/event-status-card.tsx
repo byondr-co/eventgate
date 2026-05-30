@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { extractApiError } from "@/lib/api";
 import { EVENT_TRANSITIONS, useTransitionEvent } from "@/lib/events";
 import type { EventStatus } from "@/lib/events";
 import { eventStatusVariant } from "./events-table";
@@ -28,7 +29,7 @@ export function EventStatusCard({ event, orgSlug, eventSlug }: Props) {
   const onClick = (target: EventStatus, label: string) => {
     mutation.mutate(target, {
       onSuccess: () => toast.success(`Event status changed: ${label}`),
-      onError: (err) => toast.error((err as Error).message),
+      onError: (err) => toast.error(extractApiError(err)),
     });
   };
 

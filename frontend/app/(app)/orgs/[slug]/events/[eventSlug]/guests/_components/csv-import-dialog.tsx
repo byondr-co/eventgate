@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { extractApiError } from "@/lib/api";
 import { type PreviewResponse, useCommitMutation, usePreviewMutation } from "@/lib/csv-imports";
 
 type Target = "name" | "email" | "phone" | string | null;
@@ -82,7 +83,7 @@ export function CsvImportDialog({ orgSlug, eventSlug }: { orgSlug: string; event
               className="block w-full text-sm"
             />
             {previewMut.isError && (
-              <p className="text-sm text-red-600">{(previewMut.error as Error).message}</p>
+              <p className="text-sm text-destructive">{extractApiError(previewMut.error)}</p>
             )}
           </div>
         )}
