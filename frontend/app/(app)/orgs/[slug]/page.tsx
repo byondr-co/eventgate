@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { EventsTable } from "@/components/events/events-table";
+import { OrgNameEditor } from "@/components/orgs/org-name-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { useOrg } from "@/lib/orgs";
 
@@ -18,7 +19,7 @@ export default function OrgDashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">{org.name}</h1>
+          <OrgNameEditor orgSlug={slug} name={org.name} />
           <p className="text-sm text-muted-foreground">
             {org.slug} · {org.role}
           </p>

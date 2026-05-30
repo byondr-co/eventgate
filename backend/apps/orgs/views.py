@@ -43,12 +43,14 @@ class OrganizationViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
     """
-    list   GET    /api/v1/orgs/
-    create POST   /api/v1/orgs/
-    detail GET    /api/v1/orgs/<slug>/
+    list           GET    /api/v1/orgs/
+    create         POST   /api/v1/orgs/
+    detail         GET    /api/v1/orgs/<slug>/
+    partial_update PATCH  /api/v1/orgs/<slug>/
     """
 
     serializer_class = OrganizationSerializer
@@ -58,6 +60,9 @@ class OrganizationViewSet(
     def get_permissions(self):
         if self.action in ("list", "create"):
             return [IsAuthenticated()]
+        if self.action in ("update", "partial_update"):
+            self.required_org_roles = ("owner", "admin")
+            return [IsAuthenticated(), _MembershipForSlug(), HasOrgRole()]
         return [IsAuthenticated(), _MembershipForSlug()]
 
     def get_queryset(self):
