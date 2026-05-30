@@ -117,11 +117,32 @@ class TestFieldEndpoints:
         assert response.status_code == 201
         assert response.json()["is_preset"] is False
 
-    def test_cannot_delete_preset(self, conf_with_presets):
+    def test_delete_preset_email_field_now_succeeds(self, conf_with_presets):
         client = APIClient()
         _login(client, "alice@example.com")
         response = client.delete("/api/v1/orgs/acme/events/conf/fields/email/")
-        assert response.status_code == 403
+        assert response.status_code == 204, response.content
+        assert not RegistrationField.objects.filter(
+            event=conf_with_presets, field_key="email"
+        ).exists()
+
+    def test_delete_preset_name_field_now_succeeds(self, conf_with_presets):
+        client = APIClient()
+        _login(client, "alice@example.com")
+        response = client.delete("/api/v1/orgs/acme/events/conf/fields/name/")
+        assert response.status_code == 204, response.content
+        assert not RegistrationField.objects.filter(
+            event=conf_with_presets, field_key="name"
+        ).exists()
+
+    def test_delete_preset_phone_field_now_succeeds(self, conf_with_presets):
+        client = APIClient()
+        _login(client, "alice@example.com")
+        response = client.delete("/api/v1/orgs/acme/events/conf/fields/phone_or_chat/")
+        assert response.status_code == 204, response.content
+        assert not RegistrationField.objects.filter(
+            event=conf_with_presets, field_key="phone_or_chat"
+        ).exists()
 
     def test_can_delete_custom(self, conf_with_presets):
         client = APIClient()

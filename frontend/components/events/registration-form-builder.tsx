@@ -119,17 +119,35 @@ export function RegistrationFormBuilder({
                     <td className="py-2">{f.field_type}</td>
                     <td className="py-2">{f.required ? "Yes" : "No"}</td>
                     <td className="py-2 text-right">
-                      {!f.is_preset && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={deleteField.isPending}
-                          onClick={() => deleteField.mutate(f.field_key)}
-                        >
-                          Remove
-                        </Button>
-                      )}
-                      {f.is_preset && <span className="text-xs text-muted-foreground">Preset</span>}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={deleteField.isPending}
+                        onClick={() => {
+                          if (f.is_preset) {
+                            const labels: Record<string, string> = {
+                              email:
+                                "Deleting `email` will disable QR-code email delivery for this event's new registrations.",
+                              name: "Deleting `name` will remove the guest-name capture; reports will lose name attribution.",
+                              phone_or_chat:
+                                "Deleting `phone_or_chat` will remove walk-in lookup by phone/chat ID.",
+                            };
+                            const warning =
+                              labels[f.field_key] ??
+                              "This is a preset field; deleting it may break flows that rely on it.";
+                            if (
+                              !window.confirm(
+                                `${warning}\n\nThis cannot be undone via the UI. Continue?`,
+                              )
+                            ) {
+                              return;
+                            }
+                          }
+                          deleteField.mutate(f.field_key);
+                        }}
+                      >
+                        Remove
+                      </Button>
                     </td>
                   </tr>
                 ))}
