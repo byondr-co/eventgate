@@ -85,12 +85,7 @@ class RegistrationFieldViewSet(viewsets.ModelViewSet):
         )
         serializer.save(event=event)
 
-    def perform_destroy(self, instance):
-        if instance.is_preset:
-            from rest_framework.exceptions import PermissionDenied
-
-            raise PermissionDenied("Preset fields cannot be deleted.")
-        instance.delete()
+    # Plan K item #9 — preset fields are now deletable; UI warns the operator.
 
 
 class EventPinView(APIView):
