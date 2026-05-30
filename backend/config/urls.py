@@ -22,6 +22,8 @@ urlpatterns = [
     path("api/v1/", include("apps.helpdesk.urls")),
     path("api/v1/", include("apps.audit.urls")),
     path("api/v1/", include("apps.notifications.urls")),
+    path("", include("apps.shorturls.urls")),  # Plan K item #6 — public short URL redirect
+    path("api/v1/", include("apps.shorturls.api_urls")),  # Plan K item #6 — list short URLs
 ]
 
 if settings.DEBUG:
