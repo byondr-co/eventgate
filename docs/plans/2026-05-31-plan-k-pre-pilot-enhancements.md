@@ -185,16 +185,36 @@ Plan K is "done" when ALL green:
 - [ ] CI green on all 8 gates for PR #1 + PR #2
 - [ ] Improvement log entry confirms #11 (CSV bulk email task model) verified as already correct
 
-## 8. Rollout
+## 8. Rollout — 8 small PR slices
 
-- **Branch names:** `feature/plan-k-pre-pilot-enhancements` for the spec commit (this doc + impl plan). Execution PRs branch from main:
-  - PR #1: `feature/plan-k-backend` — endpoints, model, migration, helper, session config
-  - PR #2: `feature/plan-k-frontend` — wiring, UX polish, components
-- **PR target:** `byondr-co/eventgate` `main`
-- **Commit style:** single-line conventional-commit subjects (`feat(plan-k): ...`, `fix(plan-k): ...`, `chore(plan-k): ...`). NO `Co-Authored-By:` trailer.
-- **Wave dependencies:** PR #1 lands first (backend endpoints exist). PR #2 branches from updated `main` and consumes those endpoints.
-- **Estimated effort:** PR #1 ~1 dispatch (backend rename agent shape — well-bounded). PR #2 ~1 dispatch (frontend wiring is more files but each is small). Total: 2 single-shot agent dispatches over 1–2 days.
-- **Pilot-prep alignment:** Both PRs should be merged by **2026-06-12 (T-7)** to be available during the T-3 dry-run smoke. Plenty of slack — pilot is 19 days out.
+Each PR is a single agent dispatch in its own worktree, reviewable in ~10 min, ~150–500 lines each.
+
+| # | Title | Items covered | Branch | ~Lines | Depends on |
+|---|---|---|---|---|---|
+| **K1** | Plumbing & quick wins | #1 placeholders + #4/#7 error parser + #8a session config + #11 log entry | `feature/plan-k1-plumbing` | ~150 | — |
+| **K2** | Org-context layout (breadcrumb + tabs) | #2 | `feature/plan-k2-org-layout` | ~250 | K1 |
+| **K3** | Org name inline edit | #3 | `feature/plan-k3-org-rename` | ~300 | K1 |
+| **K4** | Member CRUD (role / remove / cancel invite) | #5 | `feature/plan-k4-member-crud` | ~450 | K1 |
+| **K5** | Public URL with short codes | #6 | `feature/plan-k5-short-urls` | ~500 | K1 |
+| **K6** | CSV import drop-zone + wider modal | #10 | `feature/plan-k6-csv-dropzone` | ~250 | K1 |
+| **K7** | Preset field deletable | #9 | `feature/plan-k7-preset-delete` | ~200 | K1 |
+| **K8** | Silent refresh of access token | #8b | `feature/plan-k8-silent-refresh` | ~300 | K1 |
+
+**Dependency graph:** K1 first (provides `extractApiError` used by every other PR's error displays). After K1: K2–K8 can land in any order; they don't touch each other's files.
+
+**Parallel-execution potential** (after K1):
+- K2, K3, K4 all touch org/membership UI but different files — could be sequential or careful parallel
+- K5, K6, K7, K8 are fully independent — parallelizable
+
+**PR target:** `byondr-co/eventgate` `main`
+
+**Commit style:** single-line conventional-commit subjects (`feat(plan-k): ...`, `fix(plan-k): ...`, `chore(plan-k): ...`). **No `Co-Authored-By:` trailer.**
+
+**Branch naming:** `feature/plan-k<N>-<short-name>` per table above. Each branch off latest `main` at dispatch time.
+
+**Pilot-prep alignment:** All 8 PRs should merge by **2026-06-12 (T-7)** to be available during the T-3 dry-run smoke (2026-06-16). That gives 12 days from today (2026-05-31) → 8 PRs at ~1.5 days each on average = comfortable.
+
+**Estimated agent dispatches:** 8 single-shot dispatches, ~10–15 min each = ~90–120 min agent wall-time total. Plus user review/merge time per PR (~5 min each = 40 min).
 
 ## 9. Follow-ups (deferred from this plan)
 
