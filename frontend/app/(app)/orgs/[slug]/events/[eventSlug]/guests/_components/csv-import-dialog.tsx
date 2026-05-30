@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { CsvDropZone } from "@/components/events/csv-drop-zone";
 import { extractApiError } from "@/lib/api";
 import { type PreviewResponse, useCommitMutation, usePreviewMutation } from "@/lib/csv-imports";
 
@@ -66,22 +67,14 @@ export function CsvImportDialog({ orgSlug, eventSlug }: { orgSlug: string; event
           </Button>
         }
       />
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>Import guests from CSV</DialogTitle>
         </DialogHeader>
 
         {!preview && (
           <div className="space-y-4">
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void onFile(f);
-              }}
-              className="block w-full text-sm"
-            />
+            <CsvDropZone onFile={onFile} />
             {previewMut.isError && (
               <p className="text-sm text-destructive">{extractApiError(previewMut.error)}</p>
             )}
