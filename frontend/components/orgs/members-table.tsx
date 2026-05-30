@@ -5,13 +5,25 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { extractApiError } from "@/lib/api";
-import { useMembers, useSendInvite } from "@/lib/orgs";
+import {
+  useCancelInvite,
+  useMembers,
+  usePendingInvites,
+  useRemoveMembership,
+  useSendInvite,
+  useUpdateMembership,
+} from "@/lib/orgs";
 
 type Role = "owner" | "admin" | "manager" | "staff";
 
 export function MembersTable({ slug }: { slug: string }) {
   const members = useMembers(slug);
+  const invites = usePendingInvites(slug);
   const invite = useSendInvite(slug);
+  const updateRole = useUpdateMembership(slug);
+  const removeMember = useRemoveMembership(slug);
+  const cancelInvite = useCancelInvite(slug);
+
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("admin");
   const [success, setSuccess] = useState<string | null>(null);
@@ -74,23 +86,102 @@ export function MembersTable({ slug }: { slug: string }) {
                   <th className="text-left font-normal py-2">Email</th>
                   <th className="text-left font-normal py-2">Role</th>
                   <th className="text-left font-normal py-2">Joined</th>
+                  <th className="text-right font-normal py-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {members.data.results.map((m) => (
                   <tr key={m.id} className="border-b">
                     <td className="py-2">{m.user_email}</td>
-                    <td className="py-2">{m.role}</td>
+                    <td className="py-2">
+                      <select
+                        value={m.role ?? ""}
+                        onChange={(e) =>
+                          updateRole.mutate({ membershipId: m.id, role: e.target.value })
+                        }
+                        disabled={updateRole.isPending}
+                        className="rounded border border-input bg-background px-2 py-1 text-xs"
+                      >
+                        <option value="owner">Owner</option>
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="staff">Staff</option>
+                      </select>
+                    </td>
                     <td className="py-2 text-muted-foreground">
                       {new Date(m.accepted_at).toLocaleDateString()}
+                    </td>
+                    <td className="py-2 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={removeMember.isPending}
+                        onClick={() => {
+                          if (window.confirm(`Remove ${m.user_email} from this organization?`)) {
+                            removeMember.mutate(m.id);
+                          }
+                        }}
+                      >
+                        Remove
+                      </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+          {updateRole.isError && (
+            <p className="mt-2 text-sm text-destructive">{extractApiError(updateRole.error)}</p>
+          )}
+          {removeMember.isError && (
+            <p className="mt-2 text-sm text-destructive">{extractApiError(removeMember.error)}</p>
+          )}
         </CardContent>
       </Card>
+
+      {invites.data && invites.data.count > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending invites ({invites.data.count})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <table className="w-full text-sm">
+              <thead className="text-muted-foreground">
+                <tr className="border-b">
+                  <th className="text-left font-normal py-2">Email</th>
+                  <th className="text-left font-normal py-2">Role</th>
+                  <th className="text-left font-normal py-2">Expires</th>
+                  <th className="text-right font-normal py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invites.data.results.map((i) => (
+                  <tr key={i.id} className="border-b">
+                    <td className="py-2">{i.email}</td>
+                    <td className="py-2">{i.role}</td>
+                    <td className="py-2 text-muted-foreground">
+                      {new Date(i.expires_at).toLocaleDateString()}
+                    </td>
+                    <td className="py-2 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={cancelInvite.isPending}
+                        onClick={() => cancelInvite.mutate(i.id)}
+                      >
+                        Cancel
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {cancelInvite.isError && (
+              <p className="mt-2 text-sm text-destructive">{extractApiError(cancelInvite.error)}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

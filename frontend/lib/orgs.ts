@@ -99,3 +99,63 @@ export function useAcceptInvite() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ORGS_QUERY_KEY }),
   });
 }
+
+export type Membership = {
+  id: string;
+  user_email: string;
+  user_full_name: string;
+  role: NonNullable<Organization["role"]>;
+  is_active: boolean;
+  accepted_at: string;
+  created_at: string;
+};
+
+export type Invite = {
+  id: string;
+  email: string;
+  role: NonNullable<Organization["role"]>;
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+};
+
+export function useUpdateMembership(orgSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ membershipId, role }: { membershipId: string; role: string }) =>
+      apiFetch<Membership>(`/api/v1/orgs/${orgSlug}/memberships/${membershipId}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["members", orgSlug] }),
+  });
+}
+
+export function useRemoveMembership(orgSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (membershipId: string) =>
+      apiFetch<void>(`/api/v1/orgs/${orgSlug}/memberships/${membershipId}/`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["members", orgSlug] }),
+  });
+}
+
+export function useCancelInvite(orgSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (inviteId: string) =>
+      apiFetch<void>(`/api/v1/orgs/${orgSlug}/invites/${inviteId}/`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invites", orgSlug] }),
+  });
+}
+
+export function usePendingInvites(orgSlug: string) {
+  return useQuery({
+    queryKey: ["invites", orgSlug],
+    queryFn: () =>
+      apiFetch<{ count: number; results: Invite[] }>(`/api/v1/orgs/${orgSlug}/invites/`),
+    enabled: !!orgSlug,
+  });
+}

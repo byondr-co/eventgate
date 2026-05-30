@@ -14,6 +14,7 @@ from apps.orgs.serializers import (
     InviteCreateSerializer,
     InviteSerializer,
     MembershipSerializer,
+    MembershipUpdateSerializer,
     OrganizationSerializer,
 )
 from apps.orgs.services import (
@@ -21,7 +22,10 @@ from apps.orgs.services import (
     InviteEmailMismatch,
     InviteError,
     accept_invite,
+    cancel_invite,
+    remove_membership,
     send_invite,
+    update_membership_role,
 )
 
 
@@ -82,12 +86,26 @@ class OrganizationViewSet(
         serializer.instance = org
 
 
-class OrgInviteCreateView(viewsets.GenericViewSet, mixins.CreateModelMixin):
-    """POST /api/v1/orgs/<slug>/invites/"""
+class OrgInviteCreateView(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.ListModelMixin):
+    """GET/POST /api/v1/orgs/<slug>/invites/"""
 
     permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
     required_org_roles = ("owner", "admin", "manager")
-    serializer_class = InviteCreateSerializer
+    pagination_class = StandardPagination
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return InviteSerializer
+        return InviteCreateSerializer
+
+    def get_queryset(self):
+        from apps.orgs.models import Invite
+
+        return Invite.objects.filter(
+            organization=self.request.organization,
+            accepted_at__isnull=True,
+            revoked_at__isnull=True,
+        ).order_by("-created_at")
 
     def create(self, request: Request, *args, **kwargs) -> Response:
         ser = self.get_serializer(data=request.data)
@@ -141,3 +159,62 @@ class AcceptInviteView(viewsets.GenericViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class OrgMembershipDetailView(viewsets.GenericViewSet):
+    """PATCH/DELETE /api/v1/orgs/<slug>/memberships/<membership_id>/"""
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin")
+
+    def _get_membership(self, request, membership_id: str) -> OrganizationMembership:
+        from django.shortcuts import get_object_or_404
+
+        return get_object_or_404(
+            OrganizationMembership,
+            id=membership_id,
+            organization=request.organization,
+            is_active=True,
+        )
+
+    def partial_update(self, request: Request, org_slug=None, membership_id=None) -> Response:
+        ser = MembershipUpdateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        membership = self._get_membership(request, membership_id)
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
+        try:
+            update_membership_role(membership=membership, new_role=ser.validated_data["role"])
+        except DRFValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MembershipSerializer(membership).data)
+
+    def destroy(self, request: Request, org_slug=None, membership_id=None) -> Response:
+        membership = self._get_membership(request, membership_id)
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
+        try:
+            remove_membership(membership=membership)
+        except DRFValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OrgInviteDetailView(viewsets.GenericViewSet):
+    """DELETE /api/v1/orgs/<slug>/invites/<invite_id>/  (cancel a pending invite)"""
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin")
+
+    def destroy(self, request: Request, org_slug=None, invite_id=None) -> Response:
+        from django.shortcuts import get_object_or_404
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
+        from apps.orgs.models import Invite
+
+        invite = get_object_or_404(Invite, id=invite_id, organization=request.organization)
+        try:
+            cancel_invite(invite=invite)
+        except DRFValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
