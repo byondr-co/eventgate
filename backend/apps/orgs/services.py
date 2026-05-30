@@ -1,4 +1,4 @@
-"""Invite lifecycle: send + accept."""
+"""Invite lifecycle: send + accept. Membership CRUD."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from apps.common.tokens import generate_token, hash_token, tokens_match
 from apps.orgs.models import Invite, Organization, OrganizationMembership
@@ -105,3 +106,63 @@ def accept_invite(*, raw_token: str, user) -> OrganizationMembership:
     invite.accepted_at = timezone.now()
     invite.save(update_fields=["accepted_at"])
     return membership
+
+
+def update_membership_role(
+    *, membership: OrganizationMembership, new_role: str
+) -> OrganizationMembership:
+    """Change a member's role. Prevent demoting the sole remaining owner."""
+    if membership.role == "owner" and new_role != "owner":
+        other_active_owners = (
+            OrganizationMembership.objects.filter(
+                organization=membership.organization,
+                role="owner",
+                is_active=True,
+            )
+            .exclude(pk=membership.pk)
+            .exists()
+        )
+        if not other_active_owners:
+            raise ValidationError(
+                {
+                    "detail": "Cannot demote the sole owner of this organization. "
+                    "Promote another member to owner first."
+                }
+            )
+    membership.role = new_role
+    membership.save(update_fields=["role", "updated_at"])
+    return membership
+
+
+def remove_membership(*, membership: OrganizationMembership) -> OrganizationMembership:
+    """Soft-remove (is_active=False). Prevent removing the sole remaining owner."""
+    if membership.role == "owner":
+        other_active_owners = (
+            OrganizationMembership.objects.filter(
+                organization=membership.organization,
+                role="owner",
+                is_active=True,
+            )
+            .exclude(pk=membership.pk)
+            .exists()
+        )
+        if not other_active_owners:
+            raise ValidationError(
+                {
+                    "detail": "Cannot remove the sole owner of this organization. "
+                    "Promote another member to owner first."
+                }
+            )
+    membership.is_active = False
+    membership.save(update_fields=["is_active", "updated_at"])
+    return membership
+
+
+def cancel_invite(*, invite: Invite) -> Invite:
+    """Revoke a pending invite. No-op if already revoked. Raises if already accepted."""
+    if invite.accepted_at is not None:
+        raise ValidationError({"detail": "Cannot cancel an accepted invite."})
+    if invite.revoked_at is None:
+        invite.revoked_at = timezone.now()
+        invite.save(update_fields=["revoked_at"])
+    return invite

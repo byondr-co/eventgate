@@ -48,6 +48,10 @@ class MembershipSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "user_email", "user_full_name", "accepted_at", "created_at")
 
 
+class MembershipUpdateSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=Organization.ROLES)
+
+
 class InviteCreateSerializer(serializers.Serializer):
     email = serializers.EmailField()
     role = serializers.ChoiceField(choices=Organization.ROLES)
