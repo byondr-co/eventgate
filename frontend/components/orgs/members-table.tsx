@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { extractApiError } from "@/lib/api";
@@ -112,18 +113,17 @@ export function MembersTable({ slug }: { slug: string }) {
                       {new Date(m.accepted_at).toLocaleDateString()}
                     </td>
                     <td className="py-2 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={removeMember.isPending}
-                        onClick={() => {
-                          if (window.confirm(`Remove ${m.user_email} from this organization?`)) {
-                            removeMember.mutate(m.id);
-                          }
-                        }}
-                      >
-                        Remove
-                      </Button>
+                      <ConfirmDialog
+                        trigger={
+                          <Button variant="outline" size="sm" disabled={removeMember.isPending}>
+                            Remove
+                          </Button>
+                        }
+                        title="Remove member?"
+                        description={`Remove ${m.user_email} from this organization?`}
+                        confirmLabel="Remove"
+                        onConfirm={() => removeMember.mutate(m.id)}
+                      />
                     </td>
                   </tr>
                 ))}

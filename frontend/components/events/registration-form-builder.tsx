@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { extractApiError } from "@/lib/api";
@@ -119,35 +120,17 @@ export function RegistrationFormBuilder({
                     <td className="py-2">{f.field_type}</td>
                     <td className="py-2">{f.required ? "Yes" : "No"}</td>
                     <td className="py-2 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={deleteField.isPending}
-                        onClick={() => {
-                          if (f.is_preset) {
-                            const labels: Record<string, string> = {
-                              email:
-                                "Deleting `email` will disable QR-code email delivery for this event's new registrations.",
-                              name: "Deleting `name` will remove the guest-name capture; reports will lose name attribution.",
-                              phone_or_chat:
-                                "Deleting `phone_or_chat` will remove walk-in lookup by phone/chat ID.",
-                            };
-                            const warning =
-                              labels[f.field_key] ??
-                              "This is a preset field; deleting it may break flows that rely on it.";
-                            if (
-                              !window.confirm(
-                                `${warning}\n\nThis cannot be undone via the UI. Continue?`,
-                              )
-                            ) {
-                              return;
-                            }
-                          }
-                          deleteField.mutate(f.field_key);
-                        }}
-                      >
-                        Remove
-                      </Button>
+                      <ConfirmDialog
+                        trigger={
+                          <Button variant="ghost" size="sm" disabled={deleteField.isPending}>
+                            Remove
+                          </Button>
+                        }
+                        title="Delete this field?"
+                        description="Guests will no longer be asked for this field. This cannot be undone."
+                        confirmLabel="Delete field"
+                        onConfirm={() => deleteField.mutate(f.field_key)}
+                      />
                     </td>
                   </tr>
                 ))}
