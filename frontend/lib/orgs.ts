@@ -69,7 +69,7 @@ export function useSendInvite(slug: string) {
         method: "POST",
         body: JSON.stringify({ email, role }),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["orgs", slug, "members"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invites", slug] }),
   });
 }
 
@@ -127,7 +127,7 @@ export function useUpdateMembership(orgSlug: string) {
         method: "PATCH",
         body: JSON.stringify({ role }),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["members", orgSlug] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["orgs", orgSlug, "members"] }),
   });
 }
 
@@ -138,7 +138,7 @@ export function useRemoveMembership(orgSlug: string) {
       apiFetch<void>(`/api/v1/orgs/${orgSlug}/memberships/${membershipId}/`, {
         method: "DELETE",
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["members", orgSlug] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["orgs", orgSlug, "members"] }),
   });
 }
 
