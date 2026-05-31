@@ -104,7 +104,7 @@ describe("MembersTable", () => {
     expect(screen.queryByText(/Pending invites/i)).not.toBeInTheDocument();
   });
 
-  it("calls confirm + DELETE on Remove button click", async () => {
+  it("opens ConfirmDialog and calls DELETE on Remove button click", async () => {
     mockApi.mockImplementation((url: string) => {
       if (String(url).includes("/members/")) return Promise.resolve(MEMBERS_DATA);
       if (String(url).includes("/invites/")) return Promise.resolve(EMPTY_INVITES);
@@ -118,7 +118,14 @@ describe("MembersTable", () => {
     const removeButtons = screen.getAllByRole("button", { name: /Remove/i });
     fireEvent.click(removeButtons[0]);
 
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Remove owner@x.com"));
+    // Dialog should now be open — confirm by clicking the dialog's confirm button
+    const confirmButton = await waitFor(() =>
+      screen.getByRole("button", { name: /Remove/i, hidden: false }),
+    );
+    // There should be a dialog title visible
+    expect(screen.getByText("Remove member?")).toBeInTheDocument();
+    fireEvent.click(confirmButton);
+
     await waitFor(() =>
       expect(mockApi).toHaveBeenCalledWith(
         expect.stringContaining("/memberships/m1/"),
