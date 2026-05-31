@@ -181,6 +181,11 @@ class OrgMembershipDetailView(viewsets.GenericViewSet):
         ser = MembershipUpdateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         membership = self._get_membership(request, membership_id)
+        if membership.user_id == request.user.id:
+            return Response(
+                {"detail": "You cannot change your own role. Ask another owner/admin."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         from rest_framework.exceptions import ValidationError as DRFValidationError
 
         try:

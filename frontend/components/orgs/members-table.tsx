@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { extractApiError } from "@/lib/api";
+import { useMe } from "@/lib/auth";
 import {
   useCancelInvite,
   useMembers,
@@ -24,6 +25,7 @@ export function MembersTable({ slug }: { slug: string }) {
   const updateRole = useUpdateMembership(slug);
   const removeMember = useRemoveMembership(slug);
   const cancelInvite = useCancelInvite(slug);
+  const me = useMe();
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("admin");
@@ -95,35 +97,56 @@ export function MembersTable({ slug }: { slug: string }) {
                   <tr key={m.id} className="border-b">
                     <td className="py-2">{m.user_email}</td>
                     <td className="py-2">
-                      <select
-                        value={m.role ?? ""}
-                        onChange={(e) =>
-                          updateRole.mutate({ membershipId: m.id, role: e.target.value })
-                        }
-                        disabled={updateRole.isPending}
-                        className="rounded border border-input bg-background px-2 py-1 text-xs"
-                      >
-                        <option value="owner">Owner</option>
-                        <option value="admin">Admin</option>
-                        <option value="manager">Manager</option>
-                        <option value="staff">Staff</option>
-                      </select>
+                      {m.role === "owner" ? (
+                        <span className="text-xs font-medium">Owner</span>
+                      ) : (
+                        <select
+                          value={m.role ?? ""}
+                          onChange={(e) =>
+                            updateRole.mutate({ membershipId: m.id, role: e.target.value })
+                          }
+                          disabled={updateRole.isPending || m.user_email === me.data?.email}
+                          className="rounded border border-input bg-background px-2 py-1 text-xs"
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="manager">Manager</option>
+                          <option value="staff">Staff</option>
+                        </select>
+                      )}
                     </td>
                     <td className="py-2 text-muted-foreground">
                       {new Date(m.accepted_at).toLocaleDateString()}
                     </td>
                     <td className="py-2 text-right">
-                      <ConfirmDialog
-                        trigger={
-                          <Button variant="outline" size="sm" disabled={removeMember.isPending}>
-                            Remove
-                          </Button>
-                        }
-                        title="Remove member?"
-                        description={`Remove ${m.user_email} from this organization?`}
-                        confirmLabel="Remove"
-                        onConfirm={() => removeMember.mutate(m.id)}
-                      />
+                      <span className="space-x-2 whitespace-nowrap">
+                        {m.role !== "owner" && m.user_email !== me.data?.email && (
+                          <ConfirmDialog
+                            trigger={
+                              <Button variant="outline" size="sm">
+                                Make owner
+                              </Button>
+                            }
+                            title="Make this member an owner?"
+                            description={`${m.user_email} will gain full owner permissions. Owners can manage billing, members, and all events.`}
+                            confirmLabel="Make owner"
+                            destructive={false}
+                            onConfirm={() =>
+                              updateRole.mutate({ membershipId: m.id, role: "owner" })
+                            }
+                          />
+                        )}
+                        <ConfirmDialog
+                          trigger={
+                            <Button variant="outline" size="sm" disabled={removeMember.isPending}>
+                              Remove
+                            </Button>
+                          }
+                          title="Remove member?"
+                          description={`Remove ${m.user_email} from this organization?`}
+                          confirmLabel="Remove"
+                          onConfirm={() => removeMember.mutate(m.id)}
+                        />
+                      </span>
                     </td>
                   </tr>
                 ))}

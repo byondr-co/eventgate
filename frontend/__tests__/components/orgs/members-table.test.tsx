@@ -7,6 +7,10 @@ vi.mock("@/lib/api", () => ({
   extractApiError: (e: unknown) => (e instanceof Error ? e.message : "Something went wrong."),
 }));
 
+vi.mock("@/lib/auth", () => ({
+  useMe: () => ({ data: { email: "current@x.com" } }),
+}));
+
 import { apiFetch } from "@/lib/api";
 import { MembersTable } from "@/components/orgs/members-table";
 
@@ -62,7 +66,7 @@ beforeEach(() => {
 });
 
 describe("MembersTable", () => {
-  it("renders members and role dropdowns", async () => {
+  it("renders members; owners show static label, non-owners get a role select", async () => {
     mockApi.mockImplementation((url: string) => {
       if (String(url).includes("/members/")) return Promise.resolve(MEMBERS_DATA);
       if (String(url).includes("/invites/")) return Promise.resolve(EMPTY_INVITES);
@@ -73,10 +77,26 @@ describe("MembersTable", () => {
     await waitFor(() => expect(screen.getByText("owner@x.com")).toBeInTheDocument());
     expect(screen.getByText("staff@x.com")).toBeInTheDocument();
 
-    // Each member row should have a role select
+    // Owner row shows a static "Owner" span label (not inside a select)
+    const ownerLabel = screen.getByText("Owner", { selector: "span" });
+    expect(ownerLabel).toBeInTheDocument();
+
+    // Non-owner rows get a select (no "owner" option); plus 1 invite form select
     const selects = screen.getAllByRole("combobox");
-    // 2 member role dropdowns + 1 invite role dropdown in the invite form
+    // 1 staff row dropdown + 1 invite form dropdown = 2
     expect(selects.length).toBeGreaterThanOrEqual(2);
+    // The staff member's dropdown should NOT have an "owner" option
+    const staffSelect = selects.find(
+      (s) =>
+        !Array.from(s.querySelectorAll("option")).some(
+          (o) => o.value === "owner" && o.textContent === "Owner",
+        ) || s.closest("form") !== null,
+    );
+    // Confirm there is no owner option in the members table selects
+    const memberSelects = selects.filter((s) => s.closest("form") === null);
+    memberSelects.forEach((sel) => {
+      expect(Array.from(sel.querySelectorAll("option")).map((o) => o.value)).not.toContain("owner");
+    });
   });
 
   it("shows pending invites section when count > 0", async () => {
