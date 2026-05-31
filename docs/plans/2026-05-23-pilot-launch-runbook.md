@@ -568,3 +568,22 @@ From the cross-device findings ([`2026-05-23-plan-f-cross-device-reverification-
 - [Improvement + findings log](./improvement-and-findings-logs.md)
 - [Brief — `docs/brief.md`](../brief.md)
 - [Handoff — `docs/handoff-2026-05-20.md`](../handoff-2026-05-20.md)
+
+## Tigris object storage (Plan L — banner uploads)
+
+Storage code already exists (`config/settings/prod.py`, gated on `BUCKET_NAME`).
+Provision the bucket + secrets per environment so banners (and CSV imports) persist
+across redeploys:
+
+```
+# Prod
+flyctl storage create --app eventgate-backend-prod
+# injects BUCKET_NAME, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_ENDPOINT_URL_S3, AWS_REGION as Fly secrets
+
+# Staging
+flyctl storage create --app eventgate-backend-staging
+```
+
+Verify after deploy:
+- `flyctl secrets list --app eventgate-backend-prod` shows BUCKET_NAME + AWS_* keys.
+- Upload a banner via the dashboard; confirm the public URL renders on the registration page and carries NO expiring `?X-Amz-...` signature (public-read, querystring_auth=False on `media_public`).

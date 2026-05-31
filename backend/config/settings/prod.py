@@ -61,4 +61,18 @@ if BUCKET_NAME:
         "staticfiles": {
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
+        "media_public": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "access_key": env("AWS_ACCESS_KEY_ID"),
+                "secret_key": env("AWS_SECRET_ACCESS_KEY"),
+                "bucket_name": BUCKET_NAME,
+                "endpoint_url": env("AWS_ENDPOINT_URL_S3"),
+                "region_name": env("AWS_REGION", default="auto"),
+                "location": "public",
+                "default_acl": "public-read",
+                "file_overwrite": False,
+                "querystring_auth": False,
+            },
+        },
     }
