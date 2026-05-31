@@ -1,12 +1,10 @@
 # Prod backend deploy.
 #
-# Manual gate only — NOT auto-triggered on push (that's the staging workflow
-# `.github/workflows/deploy-backend.yml`). Trigger from the GH Actions UI
-# (workflow_dispatch button) or by publishing a release tag.
+# Auto-deploys on push to main (CI gates run on the PR before merge). Also supports manual dispatch + release publish.
 #
 # Why split from staging deploy:
 #   - Staging deploys fire on every push to main → fast iteration
-#   - Prod deploys require human gate → no accidental ship from a PR merge
+#   - Prod deploys also auto-deploy on main now that PR CI gates protect quality
 #
 # Required repo secret:
 #   - FLY_API_TOKEN_PROD — separate from FLY_API_TOKEN (staging) so prod
@@ -19,6 +17,8 @@
 name: Deploy backend to Fly (prod)
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   release:
     types: [published]
