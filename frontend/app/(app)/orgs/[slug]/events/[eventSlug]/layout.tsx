@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { BreadcrumbTrail } from "@/components/nav/breadcrumb-trail";
 import { EventTabsNav } from "@/components/nav/event-tabs-nav";
 
 type Props = {
@@ -12,7 +11,6 @@ export default async function EventLayout({ children, params }: Props) {
   const { slug, eventSlug } = await params;
   return (
     <div className="space-y-4">
-      <BreadcrumbTrail />
       <EventTabsNav orgSlug={slug} eventSlug={eventSlug} />
       {children}
     </div>
