@@ -44,6 +44,13 @@ class Guest(OrgScopedModel):
     scanner = models.CharField(max_length=64, blank=True)
     checked_in_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    referrer_short_url = models.ForeignKey(
+        "shorturls.ShortUrl",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="referred_guests",
+    )
 
     class Meta:
         constraints: ClassVar = [

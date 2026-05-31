@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -33,6 +33,8 @@ export function RegistrationForm({
   const t = useTranslations("register");
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const ref = searchParams.get("ref");
   const register = useRegisterPublic(orgSlug, eventSlug);
   const [form, setForm] = useState<Record<string, string>>({
     name: "",
@@ -51,7 +53,10 @@ export function RegistrationForm({
     e.preventDefault();
     setError(null);
     try {
-      const { guest_id, entry_token } = await register.mutateAsync(form);
+      const { guest_id, entry_token } = await register.mutateAsync({
+        ...form,
+        ...(ref ? { ref } : {}),
+      });
       router.push(
         `/e/${orgSlug}/${eventSlug}/registered/${guest_id}?token=${encodeURIComponent(entry_token)}`,
       );

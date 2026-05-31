@@ -21,6 +21,9 @@ class ShortUrl(models.Model):
     )
     created_at = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField(null=True, blank=True)
+    visit_count = models.PositiveIntegerField(default=0)
+    note = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self) -> str:
         return f"/r/{self.short_code} → {self.target_url}"

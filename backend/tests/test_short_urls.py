@@ -35,7 +35,7 @@ def test_redirect_returns_302(client):
     )
     r = client.get(f"/r/{su.short_code}/")
     assert r.status_code == 302
-    assert r["Location"] == "https://example.com/landing"
+    assert r["Location"] == "https://example.com/landing?ref=aB7k9Xq2"
 
 
 def test_unknown_code_returns_404(client):
