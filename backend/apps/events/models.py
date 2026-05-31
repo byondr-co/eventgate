@@ -6,6 +6,8 @@ from typing import ClassVar
 from django.db import models
 from django.utils import timezone as tz
 
+from apps.common.storage import public_media_storage
+
 
 class Event(models.Model):
     """An event run by an Organization."""
@@ -29,6 +31,10 @@ class Event(models.Model):
     ends_at = models.DateTimeField(null=True, blank=True)
     timezone = models.CharField(max_length=64, default="Asia/Phnom_Penh")
     venue = models.CharField(max_length=255, blank=True)
+    banner_image = models.ImageField(
+        upload_to="event-banners/", storage=public_media_storage, null=True, blank=True
+    )
+    description = models.TextField(blank=True)
     registration_open = models.BooleanField(default=True)
     walkins_enabled = models.BooleanField(default=True)
     walkin_capacity = models.PositiveIntegerField(

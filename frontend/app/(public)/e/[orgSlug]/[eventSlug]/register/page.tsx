@@ -52,6 +52,8 @@ export default async function RegisterPage({ params }: Props) {
           eventName={event.name}
           venue={event.venue}
           fields={event.fields}
+          bannerImage={event.banner_image}
+          description={event.description}
         />
       </div>
     </main>

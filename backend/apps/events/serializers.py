@@ -42,5 +42,7 @@ class EventSerializer(serializers.ModelSerializer):
             "walkins_enabled",
             "walkin_capacity",
             "created_at",
+            "description",
+            "banner_image",
         )
         read_only_fields = ("id", "created_at")
