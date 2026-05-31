@@ -19,6 +19,9 @@ name: Deploy backend to Fly (prod)
 on:
   push:
     branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend-prod.yml"
   workflow_dispatch:
   release:
     types: [published]
