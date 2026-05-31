@@ -20,11 +20,14 @@ export type Guest = {
 
 type Paginated<T> = { count: number; results: T[] };
 
-export function useGuests(orgSlug: string, eventSlug: string) {
+export function useGuests(orgSlug: string, eventSlug: string, search = "") {
   return useQuery({
-    queryKey: ["guests", orgSlug, eventSlug],
+    queryKey: ["guests", orgSlug, eventSlug, search],
     queryFn: () =>
-      apiFetch<Paginated<Guest>>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/`),
+      apiFetch<Paginated<Guest>>(
+        `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/` +
+          (search ? `?search=${encodeURIComponent(search)}` : ""),
+      ),
     enabled: !!orgSlug && !!eventSlug,
   });
 }
@@ -39,6 +42,22 @@ export function useGuestsCount(orgSlug: string, eventSlug: string) {
     refetchInterval: 30000,
     refetchOnWindowFocus: true,
   });
+}
+
+export function useSendQrEmail(orgSlug: string, eventSlug: string) {
+  return useMutation({
+    mutationFn: (guestId: string) =>
+      apiFetch<{ status: string }>(
+        `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/${guestId}/send-qr-email/`,
+        { method: "POST" },
+      ),
+  });
+}
+
+export function fetchTelegramLink(orgSlug: string, eventSlug: string, guestId: string) {
+  return apiFetch<{ url: string }>(
+    `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/${guestId}/telegram-link/`,
+  );
 }
 
 export function useRegisterPublic(orgSlug: string, eventSlug: string) {

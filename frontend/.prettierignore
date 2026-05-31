@@ -3,3 +3,4 @@ public/sw.js
 
 # Package-manager managed; not for prettier.
 pnpm-lock.yaml
+pnpm-workspace.yaml
