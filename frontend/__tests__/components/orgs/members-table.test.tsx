@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api", () => ({
@@ -59,7 +59,6 @@ function wrap(ui: React.ReactNode) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  window.confirm = vi.fn(() => true);
 });
 
 describe("MembersTable", () => {
@@ -118,13 +117,11 @@ describe("MembersTable", () => {
     const removeButtons = screen.getAllByRole("button", { name: /Remove/i });
     fireEvent.click(removeButtons[0]);
 
-    // Dialog should now be open — confirm by clicking the dialog's confirm button
-    const confirmButton = await waitFor(() =>
-      screen.getByRole("button", { name: /Remove/i, hidden: false }),
-    );
-    // There should be a dialog title visible
-    expect(screen.getByText("Remove member?")).toBeInTheDocument();
-    fireEvent.click(confirmButton);
+    // Dialog should now be open — scope the confirm click to the dialog element
+    // so it is unambiguous even though the trigger button also matches /Remove/i
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Remove member?")).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
 
     await waitFor(() =>
       expect(mockApi).toHaveBeenCalledWith(
