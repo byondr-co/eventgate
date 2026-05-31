@@ -22,9 +22,13 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   // Browser: use relative path → Vercel rewrites to the backend, cookies same-origin.
   // SSR: use absolute path → direct call to the backend.
   const base = typeof window === "undefined" ? API_BASE : "";
+  const isFormData = init.body instanceof FormData;
   const res = await fetch(`${base}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(init.headers || {}) },
+    headers: {
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...(init.headers || {}),
+    },
     cache: "no-store",
     ...init,
   });

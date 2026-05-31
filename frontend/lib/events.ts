@@ -20,6 +20,8 @@ export type Event = {
   /** Hard cap on total walk-in guests (counting all non-voided). 0 means unlimited. */
   walkin_capacity: number;
   created_at: string;
+  description: string;
+  banner_image: string | null;
 };
 
 export type FieldType = "text" | "email" | "phone" | "textarea" | "select";
@@ -61,6 +63,8 @@ export type PublicEventDetail = {
   registration_open: boolean;
   walkins_enabled: boolean;
   fields: PublicEventField[];
+  description: string;
+  banner_image: string | null;
 };
 
 export function usePublicEventDetail(orgSlug: string, eventSlug: string) {
@@ -118,7 +122,9 @@ export function useCreateEvent(orgSlug: string) {
 export function useUpdateEvent(orgSlug: string, eventSlug: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Partial<Pick<Event, "walkin_capacity" | "walkins_enabled" | "venue">>) =>
+    mutationFn: (
+      input: Partial<Pick<Event, "walkin_capacity" | "walkins_enabled" | "venue" | "description">>,
+    ) =>
       apiFetch<Event>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/`, {
         method: "PATCH",
         body: JSON.stringify(input),
@@ -126,6 +132,24 @@ export function useUpdateEvent(orgSlug: string, eventSlug: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["events", orgSlug] });
       qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug] });
+    },
+  });
+}
+
+export function useUploadBanner(orgSlug: string, eventSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const fd = new FormData();
+      fd.append("banner_image", file);
+      return apiFetch<Event>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/`, {
+        method: "PATCH",
+        body: fd,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug] });
+      qc.invalidateQueries({ queryKey: ["public-event", orgSlug, eventSlug] });
     },
   });
 }

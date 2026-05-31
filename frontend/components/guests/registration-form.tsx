@@ -17,9 +17,19 @@ type Props = {
   eventName: string;
   venue?: string;
   fields?: PublicEventField[];
+  bannerImage?: string | null;
+  description?: string;
 };
 
-export function RegistrationForm({ orgSlug, eventSlug, eventName, venue, fields }: Props) {
+export function RegistrationForm({
+  orgSlug,
+  eventSlug,
+  eventName,
+  venue,
+  fields,
+  bannerImage,
+  description,
+}: Props) {
   const t = useTranslations("register");
   const locale = useLocale();
   const router = useRouter();
@@ -53,10 +63,13 @@ export function RegistrationForm({ orgSlug, eventSlug, eventName, venue, fields 
   const label = (f: PublicEventField) => (locale === "km" && f.label_km ? f.label_km : f.label_en);
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
+      {bannerImage ? <img src={bannerImage} alt="" className="h-40 w-full object-cover" /> : null}
       <CardHeader>
         <CardTitle>{t("title", { eventName })}</CardTitle>
-        <CardDescription>{venue ? venue : t("subtitle")}</CardDescription>
+        <CardDescription>
+          {description ? description : venue ? venue : t("subtitle")}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">

@@ -139,6 +139,12 @@ class PublicEventDetailView(APIView):
                 "slug": event.slug,
                 "name": event.name,
                 "venue": event.venue,
+                "description": event.description,
+                "banner_image": (
+                    request.build_absolute_uri(event.banner_image.url)
+                    if event.banner_image
+                    else None
+                ),
                 "status": event.status,
                 "starts_at": event.starts_at,
                 "ends_at": event.ends_at,
