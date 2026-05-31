@@ -12,6 +12,7 @@ vi.mock("next-intl", () => ({
       dashboard: "Dashboard",
       form: "Form",
       guests: "Guests",
+      links: "Links",
       devices: "Devices",
       helpdesk: "Help desk",
       audit: "Audit",
@@ -52,13 +53,14 @@ const EVT = "may-pilot";
 const props = { orgSlug: ORG, eventSlug: EVT };
 
 describe("EventTabsNav — href shapes", () => {
-  it("renders 7 tabs with correct hrefs", () => {
+  it("renders 8 tabs with correct hrefs", () => {
     mockPathname.mockReturnValue(`/orgs/${ORG}/events/${EVT}`);
     const { container } = wrap(<EventTabsNav {...props} />);
     const hrefs = [
       `/orgs/${ORG}/events/${EVT}`,
       `/orgs/${ORG}/events/${EVT}/form`,
       `/orgs/${ORG}/events/${EVT}/guests`,
+      `/orgs/${ORG}/events/${EVT}/links`,
       `/orgs/${ORG}/events/${EVT}/devices`,
       `/orgs/${ORG}/events/${EVT}/helpdesk`,
       `/orgs/${ORG}/events/${EVT}/audit`,
@@ -67,8 +69,8 @@ describe("EventTabsNav — href shapes", () => {
     for (const href of hrefs) {
       expect(container.querySelector(`a[href="${href}"]`)).toBeInTheDocument();
     }
-    // Exactly 7 anchors (no extras)
-    expect(container.querySelectorAll("a").length).toBe(7);
+    // Exactly 8 anchors (no extras)
+    expect(container.querySelectorAll("a").length).toBe(8);
   });
 });
 

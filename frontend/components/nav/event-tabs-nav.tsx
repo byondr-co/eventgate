@@ -8,7 +8,15 @@ import { useGuestsCount } from "@/lib/guests";
 import { useOpenTicketsCount } from "@/lib/helpdesk";
 import { cn } from "@/lib/utils";
 
-type TabKey = "dashboard" | "form" | "guests" | "devices" | "helpdesk" | "audit" | "settings";
+type TabKey =
+  | "dashboard"
+  | "form"
+  | "guests"
+  | "links"
+  | "devices"
+  | "helpdesk"
+  | "audit"
+  | "settings";
 
 type TabSpec = {
   key: TabKey;
@@ -22,6 +30,7 @@ const TABS: TabSpec[] = [
   { key: "dashboard", suffix: "" },
   { key: "form", suffix: "/form" },
   { key: "guests", suffix: "/guests", aliases: ["/imports"] },
+  { key: "links", suffix: "/links" },
   { key: "devices", suffix: "/devices" },
   { key: "helpdesk", suffix: "/helpdesk" },
   { key: "audit", suffix: "/audit" },

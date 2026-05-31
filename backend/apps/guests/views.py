@@ -53,8 +53,18 @@ class PublicRegistrationView(APIView):
     def post(self, request: Request, org_slug: str, event_slug: str) -> Response:
         org = get_object_or_404(Organization, slug=org_slug)
         event = get_object_or_404(Event, organization=org, slug=event_slug)
+
+        from apps.shorturls.models import ShortUrl
+
+        ref = request.data.get("ref")
+        referrer = (
+            ShortUrl.objects.filter(event=event, short_code=ref, is_active=True).first()
+            if ref
+            else None
+        )
+
         try:
-            guest = register_guest(event=event, payload=request.data)
+            guest = register_guest(event=event, payload=request.data, referrer=referrer)
         except EventNotOpen as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except RegistrationError as exc:

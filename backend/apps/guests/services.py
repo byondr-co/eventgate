@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import csv as _csv
 import io as _io
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.db import transaction
 
 from apps.common.tokens import generate_token
 from apps.events.models import Event
 from apps.guests.models import Guest
+
+if TYPE_CHECKING:
+    from apps.shorturls.models import ShortUrl
 
 PRESET_FIELDS = ("name", "email", "phone_or_chat")
 
@@ -24,7 +27,13 @@ class EventNotOpen(RegistrationError):
 
 
 @transaction.atomic
-def register_guest(*, event: Event, payload: dict[str, Any], source: str = "public_form") -> Guest:
+def register_guest(
+    *,
+    event: Event,
+    payload: dict[str, Any],
+    source: str = "public_form",
+    referrer: ShortUrl | None = None,
+) -> Guest:
     if not event.registration_open:
         raise EventNotOpen("Registration is closed for this event.")
 
@@ -58,6 +67,7 @@ def register_guest(*, event: Event, payload: dict[str, Any], source: str = "publ
         phone_or_chat=preset.get("phone_or_chat", ""),
         custom_fields=custom,
         source=source,
+        referrer_short_url=referrer,
     )
 
     from apps.guests.tasks import send_qr_email_task

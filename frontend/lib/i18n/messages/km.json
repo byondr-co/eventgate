@@ -1,4 +1,7 @@
 {
+  "nav": {
+    "links": "តំណ"
+  },
   "register": {
     "title": "ចុះឈ្មោះសម្រាប់ {eventName}",
     "subtitle": "បំពេញព័ត៌មាន — អ្នកនឹងទទួលបាន QR Code តាមអ៊ីមែល។",
