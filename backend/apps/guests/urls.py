@@ -6,7 +6,9 @@ from apps.guests.views import (
     CsvImportStatusView,
     GuestListView,
     GuestQrView,
+    GuestSendQrEmailView,
     GuestSyncView,
+    GuestTelegramLinkView,
     PublicRegistrationView,
 )
 
@@ -40,6 +42,16 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/imports/<uuid:import_id>/",
         CsvImportStatusView.as_view(),
         name="csv-import-status",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/<uuid:guest_id>/send-qr-email/",
+        GuestSendQrEmailView.as_view(),
+        name="guest-send-qr-email",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/<uuid:guest_id>/telegram-link/",
+        GuestTelegramLinkView.as_view(),
+        name="guest-telegram-link",
     ),
     path("guests/<uuid:guest_id>/qr.png", GuestQrView.as_view(), name="guest-qr"),
 ]

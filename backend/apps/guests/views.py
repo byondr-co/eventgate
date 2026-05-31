@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 from typing import ClassVar
 
+from django.conf import settings
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
@@ -34,7 +36,7 @@ from apps.guests.services import (
     parse_csv_preview,
     register_guest,
 )
-from apps.guests.tasks import process_csv_import_task
+from apps.guests.tasks import process_csv_import_task, send_qr_email_task
 from apps.orgs.models import Organization
 from apps.orgs.views import StandardPagination
 
@@ -78,6 +80,13 @@ class GuestListView(viewsets.GenericViewSet):
         entry_status = self.request.query_params.get("entry_status")
         if entry_status:
             qs = qs.filter(entry_status=entry_status)
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                Q(full_name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(phone_or_chat__icontains=search)
+            )
         return qs
 
     def list(self, request, *args, **kwargs):
@@ -288,3 +297,39 @@ class CsvImportCommitView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class GuestSendQrEmailView(APIView):
+    """POST /api/v1/orgs/<org>/events/<event>/guests/<id>/send-qr-email/"""
+
+    permission_classes: ClassVar = [IsAuthenticated, IsOrgMember]
+
+    def post(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        guest = get_object_or_404(
+            Guest, id=guest_id, organization=request.organization, event__slug=event_slug
+        )
+        if not guest.email:
+            return Response(
+                {"detail": "This guest has no email on file."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        send_qr_email_task.delay(guest_id=str(guest.id))
+        return Response({"status": "queued"}, status=status.HTTP_202_ACCEPTED)
+
+
+class GuestTelegramLinkView(APIView):
+    """GET /api/v1/orgs/<org>/events/<event>/guests/<id>/telegram-link/"""
+
+    permission_classes: ClassVar = [IsAuthenticated, IsOrgMember]
+
+    def get(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        guest = get_object_or_404(
+            Guest, id=guest_id, organization=request.organization, event__slug=event_slug
+        )
+        bot = getattr(settings, "TELEGRAM_BOT_USERNAME", "")
+        if not bot:
+            return Response(
+                {"detail": "Telegram bot is not configured."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({"url": f"https://t.me/{bot}?start={guest.entry_token}"})
