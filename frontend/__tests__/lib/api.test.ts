@@ -13,9 +13,9 @@ describe("extractApiError", () => {
     expect(extractApiError(err)).toBe("A · B");
   });
 
-  it("falls back to the raw message on non-JSON body", () => {
+  it("returns generic message for an HTML body (no raw HTML leaked)", () => {
     const err = new Error("500 Server Error: <html>boom</html>");
-    expect(extractApiError(err)).toBe("500 Server Error: <html>boom</html>");
+    expect(extractApiError(err)).toBe("Something went wrong. Please try again.");
   });
 
   it("returns a generic string on non-Error input", () => {
@@ -23,8 +23,8 @@ describe("extractApiError", () => {
     expect(extractApiError("nope")).toBe("Something went wrong.");
   });
 
-  it("returns the raw message when JSON parses but has no detail and no non_field_errors", () => {
+  it("returns generic message when JSON parses but has no detail and no non_field_errors", () => {
     const err = new Error('400 Bad Request: {"other":"x"}');
-    expect(extractApiError(err)).toBe(err.message);
+    expect(extractApiError(err)).toBe("Something went wrong. Please try again.");
   });
 });
