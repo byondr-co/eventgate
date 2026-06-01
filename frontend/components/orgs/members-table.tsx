@@ -135,17 +135,19 @@ export function MembersTable({ slug }: { slug: string }) {
                             }
                           />
                         )}
-                        <ConfirmDialog
-                          trigger={
-                            <Button variant="outline" size="sm" disabled={removeMember.isPending}>
-                              Remove
-                            </Button>
-                          }
-                          title="Remove member?"
-                          description={`Remove ${m.user_email} from this organization?`}
-                          confirmLabel="Remove"
-                          onConfirm={() => removeMember.mutate(m.id)}
-                        />
+                        {m.user_email !== me.data?.email && (
+                          <ConfirmDialog
+                            trigger={
+                              <Button variant="outline" size="sm" disabled={removeMember.isPending}>
+                                Remove
+                              </Button>
+                            }
+                            title="Remove member?"
+                            description={`Remove ${m.user_email} from this organization?`}
+                            confirmLabel="Remove"
+                            onConfirm={() => removeMember.mutate(m.id)}
+                          />
+                        )}
                       </span>
                     </td>
                   </tr>
