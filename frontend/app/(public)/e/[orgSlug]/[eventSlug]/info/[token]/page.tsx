@@ -39,6 +39,8 @@ export default async function WalkinInfoPage({ params }: Props) {
           token={token}
           eventName={event.name}
           fields={event.fields}
+          bannerImage={event.banner_image}
+          description={event.description}
         />
       </div>
     </main>
