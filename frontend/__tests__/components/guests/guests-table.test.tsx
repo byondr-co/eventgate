@@ -121,7 +121,11 @@ describe("GuestsTable page-size persistence", () => {
     wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
     const select = screen.getByLabelText("Rows per page") as HTMLSelectElement;
     expect(select.value).toBe("100");
-    expect(mockUseGuests).toHaveBeenCalledWith("o", "e", "", 1, 100);
+    expect(mockUseGuests).toHaveBeenCalledWith(
+      "o",
+      "e",
+      expect.objectContaining({ pageSize: 100, page: 1 }),
+    );
   });
 
   it("defaults to 25 and ignores an invalid persisted value", () => {
@@ -136,5 +140,54 @@ describe("GuestsTable page-size persistence", () => {
     wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
     fireEvent.change(screen.getByLabelText("Rows per page"), { target: { value: "50" } });
     expect(localStorage.getItem("guests.pageSize")).toBe("50");
+  });
+});
+
+describe("GuestsTable chips filter", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockUseGuests.mockClear();
+  });
+
+  it("requests guest_type=walk_in when the Walk-in chip is clicked", () => {
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    fireEvent.click(screen.getByRole("button", { name: "Walk-in" }));
+    expect(mockUseGuests).toHaveBeenLastCalledWith(
+      "o",
+      "e",
+      expect.objectContaining({ guestType: "walk_in", page: 1 }),
+    );
+  });
+
+  it("toggles a chip back off when clicked again", () => {
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    const chip = screen.getByRole("button", { name: "Checked-in" });
+    fireEvent.click(chip);
+    expect(mockUseGuests).toHaveBeenLastCalledWith(
+      "o",
+      "e",
+      expect.objectContaining({ entryStatus: "checked_in" }),
+    );
+    fireEvent.click(chip);
+    expect(mockUseGuests).toHaveBeenLastCalledWith(
+      "o",
+      "e",
+      expect.objectContaining({ entryStatus: "" }),
+    );
+  });
+});
+
+describe("GuestsTable frozen columns", () => {
+  it("makes the No and Actions columns sticky", () => {
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    const noHeader = screen.getByRole("columnheader", { name: "No" });
+    expect(noHeader.className).toContain("sticky");
+    expect(noHeader.className).toContain("left-0");
+    const actionsHeader = screen.getByRole("columnheader", { name: "Actions" });
+    expect(actionsHeader.className).toContain("sticky");
+    expect(actionsHeader.className).toContain("right-0");
   });
 });

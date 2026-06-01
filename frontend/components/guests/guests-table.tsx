@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchTelegramLink, useGuests, useSendQrEmail } from "@/lib/guests";
 import { notify } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZES = [25, 50, 100];
 const PAGE_SIZE_KEY = "guests.pageSize";
@@ -29,11 +30,39 @@ function entryLabel(status: string): string {
   return ENTRY_STATUS_LABELS[status] ?? status.replace(/_/g, " ");
 }
 
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-input bg-background text-muted-foreground hover:bg-muted",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(loadPageSize);
-  const guests = useGuests(orgSlug, eventSlug, search, page, pageSize);
+  const [guestType, setGuestType] = useState("");
+  const [entryStatus, setEntryStatus] = useState("");
+  const guests = useGuests(orgSlug, eventSlug, { search, page, pageSize, guestType, entryStatus });
   const sendQr = useSendQrEmail(orgSlug, eventSlug);
 
   const onEmail = async (guestId: string) => {
@@ -70,6 +99,18 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
     setPage(1);
     if (typeof window !== "undefined") window.localStorage.setItem(PAGE_SIZE_KEY, String(v));
   };
+  // Type chips and entry chips are two single-select groups; clicking an active chip clears it.
+  const toggleGuestType = (v: string) => {
+    setGuestType((cur) => (cur === v ? "" : v));
+    setPage(1);
+  };
+  const toggleEntryStatus = (v: string) => {
+    setEntryStatus((cur) => (cur === v ? "" : v));
+    setPage(1);
+  };
+
+  const stickyLeft = "sticky left-0 z-10 bg-card";
+  const stickyRight = "sticky right-0 z-10 bg-card";
 
   return (
     <Card>
@@ -82,12 +123,35 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search name, email, or phone…"
-          className="mb-4 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="mb-3 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
+        <div className="mb-4 flex flex-wrap gap-2">
+          <FilterChip active={guestType === "walk_in"} onClick={() => toggleGuestType("walk_in")}>
+            Walk-in
+          </FilterChip>
+          <FilterChip
+            active={guestType === "pre_registered"}
+            onClick={() => toggleGuestType("pre_registered")}
+          >
+            Pre-registered
+          </FilterChip>
+          <FilterChip
+            active={entryStatus === "checked_in"}
+            onClick={() => toggleEntryStatus("checked_in")}
+          >
+            Checked-in
+          </FilterChip>
+          <FilterChip
+            active={entryStatus === "registered_not_arrived"}
+            onClick={() => toggleEntryStatus("registered_not_arrived")}
+          >
+            Not arrived
+          </FilterChip>
+        </div>
         {guests.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {guests.data && rows.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            {search ? "No matches." : "No registrations yet."}
+            {search || guestType || entryStatus ? "No matches." : "No registrations yet."}
           </p>
         )}
         {rows.length > 0 && (
@@ -96,23 +160,29 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
               <table className="w-full text-sm">
                 <thead className="text-muted-foreground">
                   <tr className="border-b">
-                    <th className="text-left font-normal py-2 w-12">No</th>
+                    <th className={cn(stickyLeft, "w-12 border-r text-left font-normal py-2")}>
+                      No
+                    </th>
                     <th className="text-left font-normal py-2">Name</th>
                     <th className="text-left font-normal py-2">Email</th>
                     <th className="text-left font-normal py-2">Phone</th>
                     <th className="text-left font-normal py-2">Type</th>
                     <th className="text-left font-normal py-2">Entry</th>
                     <th className="text-left font-normal py-2">Registered</th>
-                    <th className="text-right font-normal py-2">Actions</th>
+                    <th className={cn(stickyRight, "border-l text-right font-normal py-2")}>
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((g, idx) => (
                     <tr key={g.id} className="border-b">
-                      <td className="py-2 text-muted-foreground">{firstRow + idx}</td>
-                      <td className="py-2">{g.full_name}</td>
+                      <td className={cn(stickyLeft, "border-r py-2 text-muted-foreground")}>
+                        {firstRow + idx}
+                      </td>
+                      <td className="py-2 whitespace-nowrap">{g.full_name}</td>
                       <td className="py-2">{g.email}</td>
-                      <td className="py-2">{g.phone_or_chat}</td>
+                      <td className="py-2 whitespace-nowrap">{g.phone_or_chat}</td>
                       <td className="py-2">
                         {g.guest_type === "walk_in" ? (
                           <Badge variant="secondary">Walk-in</Badge>
@@ -124,15 +194,20 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                         {g.entry_status === "checked_in" ? (
                           <Badge className="bg-green-600 text-white">Checked-in</Badge>
                         ) : (
-                          <span className="text-muted-foreground">
+                          <span className="text-muted-foreground whitespace-nowrap">
                             {entryLabel(g.entry_status)}
                           </span>
                         )}
                       </td>
-                      <td className="py-2 text-muted-foreground">
+                      <td className="py-2 text-muted-foreground whitespace-nowrap">
                         {new Date(g.created_at).toLocaleDateString()}
                       </td>
-                      <td className="py-2 text-right space-x-2 whitespace-nowrap">
+                      <td
+                        className={cn(
+                          stickyRight,
+                          "border-l py-2 text-right space-x-2 whitespace-nowrap",
+                        )}
+                      >
                         {g.guest_type === "walk_in" ? (
                           // Walk-ins are registered at the door; they have no pre-issued QR
                           // to email or Telegram link to share.

@@ -90,6 +90,9 @@ class GuestListView(viewsets.GenericViewSet):
         entry_status = self.request.query_params.get("entry_status")
         if entry_status:
             qs = qs.filter(entry_status=entry_status)
+        guest_type = self.request.query_params.get("guest_type")
+        if guest_type:
+            qs = qs.filter(guest_type=guest_type)
         search = self.request.query_params.get("search")
         if search:
             qs = qs.filter(
