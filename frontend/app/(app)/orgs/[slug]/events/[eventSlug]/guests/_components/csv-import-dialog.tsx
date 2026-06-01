@@ -84,7 +84,7 @@ export function CsvImportDialog({ orgSlug, eventSlug }: { orgSlug: string; event
         {preview && (
           <div className="space-y-4">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="min-w-full text-xs">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
                     {preview.headers.map((h, i) => {
