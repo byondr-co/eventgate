@@ -586,4 +586,14 @@ flyctl storage create --app eventgate-backend-staging
 
 Verify after deploy:
 - `flyctl secrets list --app eventgate-backend-prod` shows BUCKET_NAME + AWS_* keys.
-- Upload a banner via the dashboard; confirm the public URL renders on the registration page and carries NO expiring `?X-Amz-...` signature (public-read, querystring_auth=False on `media_public`).
+- Upload a banner via the dashboard; confirm it renders on the registration page. The
+  banner URL **will** carry a `?X-Amz-...` signature — that is expected.
+
+> **Correction (2026-06-01):** banners are served via **presigned (signed, ~1h-expiring) URLs**,
+> NOT stable public URLs. Tigris does **not** serve objects publicly via S3 `public-read` ACLs
+> (a public-read object still 403s anonymously), `PutBucketPolicy` is `NotImplemented`, and the
+> only public option is whole-bucket (`flyctl storage update <bucket> --public`) — which would
+> expose the private `csv_imports/` PII in the same bucket. So `media_public` uses
+> `querystring_auth=True` + `default_acl=private`. If permanent/shareable banner URLs are ever
+> needed, provision a **separate** `--public` Tigris bucket (banners only) and point `media_public`
+> at it. See the Plan L hotfixes S8 entry in `improvement-and-findings-logs.md`.

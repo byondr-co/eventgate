@@ -209,3 +209,16 @@ Implication: at pilot scale (a few hundred guests), bulk import will fan out int
 **Verified on prod (2026-06-01):** backend health 200; banner endpoint live (anon multipart POST → `401`, not `415`/`404` → route + parser correctly wired). **Pending:** the `/r/*` rewrite + the authenticated UI re-tests (actual banner upload, short-link create with no 502/raw-HTML) require the Vercel frontend redeploy to land and a logged-in prod session — to be confirmed by the user.
 
 **Plan L hotfixes status:** ✅ Code DONE — all 7 slices reviewed (spec + quality) and merged; CI green. Backend live on prod. Frontend pending Vercel redeploy + user UI confirmation.
+
+### S8 follow-up (2026-06-01) — banner 403 / Tigris public-access reality
+
+After S2 shipped, banner **upload** worked but the stored object URL returned **403 Forbidden**. The L6 provisioning checklist was **wrong**: it assumed `default_acl: "public-read"` makes a Tigris object publicly readable. It does not. Verified directly against prod:
+- The banner object already carried the `AllUsers: READ` ACL (public-read WAS applied at upload) yet still 403'd anonymously → **Tigris does not serve objects publicly based on S3 ACLs.**
+- Tigris returns **`NotImplemented` for `PutBucketPolicy`** → no prefix-scoped public read.
+- Tigris only supports **whole-bucket** public access (`flyctl storage update <bucket> --public` / `--private`). But the prod bucket also stores **private `csv_imports/` participant lists (PII)** under a different prefix — making the whole bucket public would expose them (confirmed `csv_imports/...` is currently `403` to anon; must stay that way).
+
+**Fix (PR #43, commit 7f6659f):** flip the `media_public` storage to **presigned GET URLs** (`querystring_auth=True`, `default_acl=private`) in `backend/config/settings/prod.py`. The backend regenerates a short-lived signed URL on each event-detail fetch; the public register page loads it fresh per visit. Single private bucket, zero PII-leak risk. Verified: a presigned GET on the actual prod banner object → **200 `image/webp`**. Tradeoff: banner URLs expire (~1h) so they aren't permanently shareable/cacheable — acceptable for a per-visit register page (revisit with a dedicated public Tigris bucket if permanent/OG-shareable URLs are later needed).
+
+**Lesson for any future public-asset feature on Tigris:** ACLs don't make objects public; choose between (a) a **dedicated `--public` bucket** (permanent URLs, must NOT share a bucket with private data) or (b) **presigned URLs** (code-only, expiring). `flyctl ssh console` was its usual flaky self during verification — boto3-only one-liners worked; `django.setup()` shell calls hung (gotcha #7).
+
+**Plan L hotfixes + S8 status:** ✅ DONE. 8 PRs merged (#36–#43). Banner serving fixed at the storage layer + deployed to prod; user to confirm the register page renders the banner.
