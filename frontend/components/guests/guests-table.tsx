@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchTelegramLink, useGuests, useSendQrEmail } from "@/lib/guests";
@@ -55,6 +56,7 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
             <thead className="text-muted-foreground">
               <tr className="border-b">
                 <th className="text-left font-normal py-2">Name</th>
+                <th className="text-left font-normal py-2">Type</th>
                 <th className="text-left font-normal py-2">Email</th>
                 <th className="text-left font-normal py-2">Phone</th>
                 <th className="text-left font-normal py-2">Entry</th>
@@ -66,6 +68,13 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
               {guests.data.results.map((g) => (
                 <tr key={g.id} className="border-b">
                   <td className="py-2">{g.full_name}</td>
+                  <td className="py-2">
+                    {g.guest_type === "walk_in" ? (
+                      <Badge variant="secondary">Walk-in</Badge>
+                    ) : (
+                      <Badge variant="outline">Pre-registered</Badge>
+                    )}
+                  </td>
                   <td className="py-2">{g.email}</td>
                   <td className="py-2">{g.phone_or_chat}</td>
                   <td className="py-2">{g.entry_status}</td>
@@ -73,17 +82,25 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                     {new Date(g.created_at).toLocaleDateString()}
                   </td>
                   <td className="py-2 text-right space-x-2 whitespace-nowrap">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!g.email || sendQr.isPending}
-                      onClick={() => onEmail(g.id)}
-                    >
-                      Email QR
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => onCopyTelegram(g.id)}>
-                      Copy Telegram link
-                    </Button>
+                    {g.guest_type === "walk_in" ? (
+                      // Walk-ins are registered at the door; they have no pre-issued QR
+                      // to email or Telegram link to share.
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!g.email || sendQr.isPending}
+                          onClick={() => onEmail(g.id)}
+                        >
+                          Email QR
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => onCopyTelegram(g.id)}>
+                          Copy Telegram link
+                        </Button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
