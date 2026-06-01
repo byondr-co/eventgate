@@ -1,11 +1,13 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchTelegramLink, useGuests, useSendQrEmail } from "@/lib/guests";
+import { useFields, type RegistrationField } from "@/lib/events";
+import { fetchTelegramLink, useGuests, useSendQrEmail, type Guest } from "@/lib/guests";
 import { notify } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +30,18 @@ const ENTRY_STATUS_LABELS: Record<string, string> = {
 
 function entryLabel(status: string): string {
   return ENTRY_STATUS_LABELS[status] ?? status.replace(/_/g, " ");
+}
+
+// Preset field keys map to dedicated Guest columns; everything else lives in custom_fields.
+const PRESET_VALUE: Record<string, (g: Guest) => string> = {
+  name: (g) => g.full_name,
+  email: (g) => g.email,
+  phone_or_chat: (g) => g.phone_or_chat,
+};
+
+function fieldValue(g: Guest, key: string): string {
+  const preset = PRESET_VALUE[key];
+  return preset ? preset(g) : (g.custom_fields?.[key] ?? "");
 }
 
 function FilterChip({
@@ -57,12 +71,14 @@ function FilterChip({
 }
 
 export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
+  const locale = useLocale();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(loadPageSize);
   const [guestType, setGuestType] = useState("");
   const [entryStatus, setEntryStatus] = useState("");
   const guests = useGuests(orgSlug, eventSlug, { search, page, pageSize, guestType, entryStatus });
+  const fields = useFields(orgSlug, eventSlug);
   const sendQr = useSendQrEmail(orgSlug, eventSlug);
 
   const onEmail = async (guestId: string) => {
@@ -83,6 +99,13 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
       notify.error(e);
     }
   };
+
+  // Data columns are driven by the event's registration form (sorted by order_index).
+  const regFields: RegistrationField[] = (fields.data?.results ?? [])
+    .slice()
+    .sort((a, b) => a.order_index - b.order_index);
+  const fieldLabel = (f: RegistrationField) =>
+    locale === "km" && f.label_km ? f.label_km : f.label_en;
 
   const count = guests.data?.count ?? 0;
   const rows = guests.data?.results ?? [];
@@ -160,29 +183,32 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
               <table className="w-full text-sm">
                 <thead className="text-muted-foreground">
                   <tr className="border-b">
-                    <th className={cn(stickyLeft, "w-12 border-r text-left font-normal py-2")}>
-                      No
-                    </th>
-                    <th className="text-left font-normal py-2">Name</th>
-                    <th className="text-left font-normal py-2">Email</th>
-                    <th className="text-left font-normal py-2">Phone</th>
+                    <th className={cn(stickyLeft, "w-12 text-left font-normal py-2")}>No</th>
+                    {regFields.map((f) => (
+                      <th
+                        key={f.field_key}
+                        className="text-left font-normal py-2 whitespace-nowrap"
+                      >
+                        {fieldLabel(f)}
+                      </th>
+                    ))}
                     <th className="text-left font-normal py-2">Type</th>
                     <th className="text-left font-normal py-2">Entry</th>
                     <th className="text-left font-normal py-2">Registered</th>
-                    <th className={cn(stickyRight, "border-l text-right font-normal py-2")}>
-                      Actions
-                    </th>
+                    <th className={cn(stickyRight, "text-right font-normal py-2")}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((g, idx) => (
                     <tr key={g.id} className="border-b">
-                      <td className={cn(stickyLeft, "border-r py-2 text-muted-foreground")}>
+                      <td className={cn(stickyLeft, "py-2 text-muted-foreground")}>
                         {firstRow + idx}
                       </td>
-                      <td className="py-2 whitespace-nowrap">{g.full_name}</td>
-                      <td className="py-2">{g.email}</td>
-                      <td className="py-2 whitespace-nowrap">{g.phone_or_chat}</td>
+                      {regFields.map((f) => (
+                        <td key={f.field_key} className="py-2 whitespace-nowrap">
+                          {fieldValue(g, f.field_key)}
+                        </td>
+                      ))}
                       <td className="py-2">
                         {g.guest_type === "walk_in" ? (
                           <Badge variant="secondary">Walk-in</Badge>
@@ -203,10 +229,7 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                         {new Date(g.created_at).toLocaleDateString()}
                       </td>
                       <td
-                        className={cn(
-                          stickyRight,
-                          "border-l py-2 text-right space-x-2 whitespace-nowrap",
-                        )}
+                        className={cn(stickyRight, "py-2 text-right space-x-2 whitespace-nowrap")}
                       >
                         {g.guest_type === "walk_in" ? (
                           // Walk-ins are registered at the door; they have no pre-issued QR
