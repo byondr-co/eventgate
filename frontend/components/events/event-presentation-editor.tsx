@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 
+import { FileDropZone } from "@/components/common/file-drop-zone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { extractApiError } from "@/lib/api";
 import { useEvent, useUpdateEvent, useUploadBanner } from "@/lib/events";
+import { notify } from "@/lib/toast";
+
+const MAX_BANNER_BYTES = 4 * 1024 * 1024; // 4 MB
 
 export function EventPresentationEditor({
   orgSlug,
@@ -18,29 +22,36 @@ export function EventPresentationEditor({
   const update = useUpdateEvent(orgSlug, eventSlug);
   const uploadBanner = useUploadBanner(orgSlug, eventSlug);
   const [description, setDescription] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const value = description ?? event.data?.description ?? "";
 
   const saveDescription = async () => {
-    setNotice(null);
     try {
       await update.mutateAsync({ description: value });
-      setNotice("Saved.");
+      notify.success("Saved.");
     } catch (e) {
-      setNotice(extractApiError(e));
+      notify.error(e);
     }
   };
 
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setNotice(null);
+  const validateImage = (file: File): string | null => {
+    if (file.size > MAX_BANNER_BYTES) {
+      return "Image must be under 4 MB";
+    }
+    return null;
+  };
+
+  const onBannerFile = async (file: File) => {
+    // Double-check size here in case FileDropZone validate is bypassed somehow
+    if (file.size > MAX_BANNER_BYTES) {
+      notify.warning("Image must be under 4 MB");
+      return;
+    }
     try {
       await uploadBanner.mutateAsync(file);
-      setNotice("Banner uploaded.");
+      notify.success("Banner updated.");
     } catch (err) {
-      setNotice(extractApiError(err));
+      notify.error(err);
     }
   };
 
@@ -59,13 +70,17 @@ export function EventPresentationEditor({
               className="mt-2 h-24 w-full rounded-md object-cover"
             />
           )}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={onFile}
-            disabled={uploadBanner.isPending}
-            className="mt-2 block text-sm"
-          />
+          <div className="mt-2">
+            <FileDropZone
+              accept="image/*"
+              label="Drop your banner image here"
+              hint="PNG, JPG or WebP — max 4 MB"
+              icon="🖼"
+              validate={validateImage}
+              onFile={onBannerFile}
+              disabled={uploadBanner.isPending}
+            />
+          </div>
         </div>
         <label className="block">
           <span className="text-sm font-medium">Description</span>
@@ -81,7 +96,6 @@ export function EventPresentationEditor({
           <Button onClick={saveDescription} disabled={update.isPending}>
             {update.isPending ? "Saving…" : "Save description"}
           </Button>
-          {notice && <span className="text-sm text-muted-foreground">{notice}</span>}
         </div>
       </CardContent>
     </Card>
