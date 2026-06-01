@@ -4,33 +4,30 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { extractApiError } from "@/lib/api";
 import { fetchTelegramLink, useGuests, useSendQrEmail } from "@/lib/guests";
+import { notify } from "@/lib/toast";
 
 export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
   const [search, setSearch] = useState("");
   const guests = useGuests(orgSlug, eventSlug, search);
   const sendQr = useSendQrEmail(orgSlug, eventSlug);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const onEmail = async (guestId: string) => {
-    setNotice(null);
     try {
       await sendQr.mutateAsync(guestId);
-      setNotice("QR email queued.");
+      notify.success("QR email queued.");
     } catch (e) {
-      setNotice(extractApiError(e));
+      notify.error(e);
     }
   };
 
   const onCopyTelegram = async (guestId: string) => {
-    setNotice(null);
     try {
       const { url } = await fetchTelegramLink(orgSlug, eventSlug, guestId);
       await navigator.clipboard.writeText(url);
-      setNotice("Telegram link copied.");
+      notify.success("Telegram link copied.");
     } catch (e) {
-      setNotice(extractApiError(e));
+      notify.error(e);
     }
   };
 
@@ -47,7 +44,6 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
           placeholder="Search name, email, or phone…"
           className="mb-4 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
-        {notice && <p className="mb-2 text-sm text-muted-foreground">{notice}</p>}
         {guests.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {guests.data && guests.data.results.length === 0 && (
           <p className="text-sm text-muted-foreground">

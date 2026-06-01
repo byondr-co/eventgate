@@ -5,8 +5,8 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { extractApiError } from "@/lib/api";
 import { useCreateShortUrl, useShortUrls, useUpdateShortUrl } from "@/lib/shorturls";
+import { notify } from "@/lib/toast";
 
 export function LinksTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
   const links = useShortUrls(orgSlug, eventSlug);
@@ -14,30 +14,28 @@ export function LinksTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug:
   const update = useUpdateShortUrl(orgSlug, eventSlug);
   const [note, setNote] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
 
   const shortUrl = (code: string) =>
     typeof window === "undefined" ? `/r/${code}` : `${window.location.origin}/r/${code}`;
 
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNotice(null);
     try {
       await create.mutateAsync({ note, expires_at: expiresAt || null });
       setNote("");
       setExpiresAt("");
+      notify.success("Link created.");
     } catch (err) {
-      setNotice(extractApiError(err));
+      notify.error(err);
     }
   };
 
   const copy = async (code: string) => {
-    setNotice(null);
     try {
       await navigator.clipboard.writeText(shortUrl(code));
-      setNotice("Link copied.");
+      notify.success("Link copied.");
     } catch {
-      setNotice("Could not copy.");
+      notify.error("Could not copy.");
     }
   };
 
@@ -65,7 +63,6 @@ export function LinksTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug:
               {create.isPending ? "Creating…" : "New link"}
             </Button>
           </form>
-          {notice && <p className="mt-3 text-sm text-muted-foreground">{notice}</p>}
         </CardContent>
       </Card>
 
