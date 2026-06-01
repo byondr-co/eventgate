@@ -42,6 +42,8 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 
 const GENERIC_ERROR = "Something went wrong. Please try again.";
 
+const SPECIAL_FIELD_KEYS = new Set(["detail", "non_field_errors"]);
+
 function isHtmlBody(s: string): boolean {
   const trimmed = s.trimStart();
   return (
@@ -49,11 +51,15 @@ function isHtmlBody(s: string): boolean {
   );
 }
 
-function parseApiFetchBody(err: unknown): Record<string, unknown> | null {
+function apiFetchBodyText(err: unknown): string | null {
   if (!(err instanceof Error)) return null;
   const m = err.message.match(/^\d+\s+[^:]*:\s*([\s\S]+)$/);
-  if (!m) return null;
-  const body = m[1];
+  return m ? m[1] : null;
+}
+
+function parseApiFetchBody(err: unknown): Record<string, unknown> | null {
+  const body = apiFetchBodyText(err);
+  if (body === null) return null;
   if (isHtmlBody(body)) return null;
   try {
     const parsed: unknown = JSON.parse(body);
@@ -70,9 +76,9 @@ export function extractApiError(err: unknown): string {
   if (!(err instanceof Error)) return "Something went wrong.";
   const parsed = parseApiFetchBody(err);
   if (parsed === null) {
-    const m = err.message.match(/^\d+\s+[^:]*:\s*([\s\S]+)$/);
-    if (!m) return err.message;
-    if (isHtmlBody(m[1])) return GENERIC_ERROR;
+    const body = apiFetchBodyText(err);
+    if (body === null) return err.message;
+    if (isHtmlBody(body)) return GENERIC_ERROR;
     return err.message;
   }
   if (typeof parsed.detail === "string") return parsed.detail;
@@ -99,10 +105,9 @@ export function extractFieldErrors(err: unknown): {
     return { fieldErrors: {}, formError: msg };
   }
 
-  const SPECIAL = new Set(["detail", "non_field_errors"]);
   const fieldErrors: Record<string, string> = {};
   for (const key of Object.keys(parsed)) {
-    if (SPECIAL.has(key)) continue;
+    if (SPECIAL_FIELD_KEYS.has(key)) continue;
     const val = parsed[key];
     if (Array.isArray(val) && val.length > 0) {
       fieldErrors[key] = String(val[0]);
