@@ -20,18 +20,23 @@ export type Guest = {
 
 type Paginated<T> = { count: number; results: T[] };
 
-export function useGuests(
-  orgSlug: string,
-  eventSlug: string,
-  search = "",
-  page = 1,
-  pageSize = 25,
-) {
+export type GuestFilters = {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  entryStatus?: string;
+  guestType?: string;
+};
+
+export function useGuests(orgSlug: string, eventSlug: string, filters: GuestFilters = {}) {
+  const { search = "", page = 1, pageSize = 25, entryStatus = "", guestType = "" } = filters;
   return useQuery({
-    queryKey: ["guests", orgSlug, eventSlug, search, page, pageSize],
+    queryKey: ["guests", orgSlug, eventSlug, search, page, pageSize, entryStatus, guestType],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
       if (search) params.set("search", search);
+      if (entryStatus) params.set("entry_status", entryStatus);
+      if (guestType) params.set("guest_type", guestType);
       return apiFetch<Paginated<Guest>>(
         `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/?${params.toString()}`,
       );

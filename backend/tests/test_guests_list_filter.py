@@ -42,6 +42,14 @@ def env(django_user_model):
         entry_status="manual_review",
         entry_token="tc",
     )
+    Guest.objects.create(
+        organization=org,
+        event=event,
+        guest_type="walk_in",
+        full_name="D",
+        entry_status="checked_in",
+        entry_token="td",
+    )
     c = APIClient()
     c.force_authenticate(user=user)
     return c, org, event
@@ -62,4 +70,27 @@ def test_no_filter_returns_all(env):
     r = c.get(f"/api/v1/orgs/{org.slug}/events/{event.slug}/guests/")
     body = r.json()
     results = body.get("results") if isinstance(body, dict) and "results" in body else body
-    assert len(results) == 3
+    assert len(results) == 4
+
+
+def test_filter_by_guest_type_walk_in(env):
+    c, org, event = env
+    r = c.get(f"/api/v1/orgs/{org.slug}/events/{event.slug}/guests/?guest_type=walk_in")
+    assert r.status_code == 200
+    body = r.json()
+    results = body.get("results") if isinstance(body, dict) and "results" in body else body
+    assert len(results) == 1
+    assert all(g["guest_type"] == "walk_in" for g in results)
+
+
+def test_filter_combines_guest_type_and_entry_status(env):
+    c, org, event = env
+    r = c.get(
+        f"/api/v1/orgs/{org.slug}/events/{event.slug}/guests/"
+        "?guest_type=pre_registered&entry_status=checked_in"
+    )
+    body = r.json()
+    results = body.get("results") if isinstance(body, dict) and "results" in body else body
+    # Only guest "A" is pre_registered AND checked_in (D is walk_in + checked_in).
+    assert len(results) == 1
+    assert results[0]["full_name"] == "A"
