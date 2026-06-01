@@ -21,6 +21,7 @@
     "submit": "Register",
     "submitting": "Registering…",
     "selectPlaceholder": "Choose an option…",
+    "fieldRequired": "This field is required.",
     "eventNotFound": "Event not found.",
     "registrationClosed": "Registration is closed for this event.",
     "success_title": "You're registered!",

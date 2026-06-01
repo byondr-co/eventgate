@@ -6,10 +6,9 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { extractFieldErrors } from "@/lib/api";
 import type { PublicEventField } from "@/lib/events";
 import { useRegisterPublic } from "@/lib/guests";
-
-const PRESET_KEYS = new Set(["name", "email", "phone_or_chat"]);
 
 type Props = {
   orgSlug: string;
@@ -36,22 +35,38 @@ export function RegistrationForm({
   const searchParams = useSearchParams();
   const ref = searchParams.get("ref");
   const register = useRegisterPublic(orgSlug, eventSlug);
-  const [form, setForm] = useState<Record<string, string>>({
-    name: "",
-    email: "",
-    phone_or_chat: "",
-  });
-  const [error, setError] = useState<string | null>(null);
 
-  // Custom (non-preset) fields, sorted by order_index — appended after the
-  // preset name/email/phone block.
-  const customFields = (fields ?? [])
-    .filter((f) => !PRESET_KEYS.has(f.field_key))
-    .sort((a, b) => a.order_index - b.order_index);
+  // All fields sorted by order_index — driven entirely from props.
+  const sortedFields = (fields ?? []).slice().sort((a, b) => a.order_index - b.order_index);
+
+  // Initialise form state from the field list.
+  const [form, setForm] = useState<Record<string, string>>(() =>
+    Object.fromEntries(sortedFields.map((f) => [f.field_key, ""])),
+  );
+
+  // Inline errors: one per field_key + an optional form-level message.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const label = (f: PublicEventField) => (locale === "km" && f.label_km ? f.label_km : f.label_en);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setFormError(null);
+
+    // Client-side required validation.
+    const newFieldErrors: Record<string, string> = {};
+    for (const f of sortedFields) {
+      if (f.required && !(form[f.field_key] ?? "").trim()) {
+        newFieldErrors[f.field_key] = t("fieldRequired");
+      }
+    }
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      return;
+    }
+    setFieldErrors({});
+
     try {
       const { guest_id, entry_token } = await register.mutateAsync({
         ...form,
@@ -61,11 +76,14 @@ export function RegistrationForm({
         `/e/${orgSlug}/${eventSlug}/registered/${guest_id}?token=${encodeURIComponent(entry_token)}`,
       );
     } catch (err) {
-      setError((err as Error).message);
+      const { fieldErrors: fe, formError: fe2 } = extractFieldErrors(err);
+      setFieldErrors(fe);
+      setFormError(fe2);
     }
   };
 
-  const label = (f: PublicEventField) => (locale === "km" && f.label_km ? f.label_km : f.label_en);
+  const inputClass = "mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+  const errorClass = "mt-1 text-sm text-destructive";
 
   return (
     <Card className="overflow-hidden">
@@ -78,81 +96,68 @@ export function RegistrationForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium">{t("field_name")}</span>
-            <input
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">{t("field_email")}</span>
-            <input
-              required
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">{t("field_phone")}</span>
-            <input
-              required
-              value={form.phone_or_chat}
-              onChange={(e) => setForm({ ...form, phone_or_chat: e.target.value })}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-          </label>
+          {formError && <p className={errorClass}>{formError}</p>}
 
-          {customFields.map((f) => (
-            <label key={f.field_key} className="block">
-              <span className="text-sm font-medium">
-                {label(f)}
-                {f.required ? <span className="text-destructive"> *</span> : null}
-              </span>
-              {f.field_type === "textarea" ? (
-                <textarea
-                  required={f.required}
-                  value={form[f.field_key] ?? ""}
-                  onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  rows={3}
-                />
-              ) : f.field_type === "select" ? (
-                <select
-                  required={f.required}
-                  value={form[f.field_key] ?? ""}
-                  onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="" disabled>
-                    {t("selectPlaceholder")}
-                  </option>
-                  {(f.options ?? []).map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
+          {sortedFields.map((f) => {
+            const fieldId = `field-${f.field_key}`;
+            const err = fieldErrors[f.field_key];
+            return (
+              <div key={f.field_key} className="block">
+                <label htmlFor={fieldId} className="text-sm font-medium">
+                  {label(f)}
+                  {f.required ? <span className="text-destructive"> *</span> : null}
+                </label>
+                {f.field_type === "textarea" ? (
+                  <textarea
+                    id={fieldId}
+                    value={form[f.field_key] ?? ""}
+                    onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
+                    className={inputClass}
+                    rows={3}
+                    aria-required={f.required}
+                    aria-describedby={err ? `${fieldId}-error` : undefined}
+                  />
+                ) : f.field_type === "select" ? (
+                  <select
+                    id={fieldId}
+                    value={form[f.field_key] ?? ""}
+                    onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
+                    className={inputClass}
+                    aria-required={f.required}
+                    aria-describedby={err ? `${fieldId}-error` : undefined}
+                  >
+                    <option value="" disabled>
+                      {t("selectPlaceholder")}
                     </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  required={f.required}
-                  type={f.field_type === "email" ? "email" : "text"}
-                  value={form[f.field_key] ?? ""}
-                  onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              )}
-            </label>
-          ))}
+                    {(f.options ?? []).map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id={fieldId}
+                    type={f.field_type === "email" ? "email" : "text"}
+                    value={form[f.field_key] ?? ""}
+                    onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
+                    className={inputClass}
+                    aria-required={f.required}
+                    aria-describedby={err ? `${fieldId}-error` : undefined}
+                  />
+                )}
+                {err && (
+                  <p id={`${fieldId}-error`} className={errorClass} role="alert">
+                    {err}
+                  </p>
+                )}
+              </div>
+            );
+          })}
 
           <Button type="submit" className="w-full" disabled={register.isPending}>
             {register.isPending ? t("submitting") : t("submit")}
           </Button>
-          {error && <p className="text-sm text-destructive">{error}</p>}
         </form>
       </CardContent>
     </Card>
