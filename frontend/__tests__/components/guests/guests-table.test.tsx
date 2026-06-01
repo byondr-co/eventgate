@@ -2,10 +2,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("next-intl", () => ({
+  useLocale: () => "en",
+}));
+
 vi.mock("@/lib/guests", () => ({
   useGuests: vi.fn(),
   useSendQrEmail: vi.fn(),
   fetchTelegramLink: vi.fn(),
+}));
+
+vi.mock("@/lib/events", () => ({
+  useFields: vi.fn(),
 }));
 
 vi.mock("@/lib/toast", () => ({
@@ -13,15 +21,44 @@ vi.mock("@/lib/toast", () => ({
 }));
 
 import { GuestsTable } from "@/components/guests/guests-table";
-import type { Guest } from "@/lib/guests";
-import { useGuests, useSendQrEmail } from "@/lib/guests";
+import { useFields, type RegistrationField } from "@/lib/events";
+import { useGuests, useSendQrEmail, type Guest } from "@/lib/guests";
 
 const mockUseGuests = vi.mocked(useGuests);
 const mockUseSendQrEmail = vi.mocked(useSendQrEmail);
+const mockUseFields = vi.mocked(useFields);
 
 function wrap(ui: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
+
+function field(over: Partial<RegistrationField>): RegistrationField {
+  return {
+    id: "f",
+    field_key: "name",
+    label_en: "Full name",
+    label_km: "",
+    field_type: "text",
+    required: false,
+    options_json: [],
+    order_index: 0,
+    is_preset: true,
+    ...over,
+  } as RegistrationField;
+}
+
+const PRESET_FIELDS: RegistrationField[] = [
+  field({ field_key: "name", label_en: "Full name", order_index: 0 }),
+  field({ field_key: "email", label_en: "Email", field_type: "email", order_index: 1 }),
+  field({ field_key: "phone_or_chat", label_en: "Phone or Chat", order_index: 2 }),
+];
+
+function setFields(list: RegistrationField[] = PRESET_FIELDS) {
+  mockUseFields.mockReturnValue({
+    data: { count: list.length, results: list },
+    isLoading: false,
+  } as unknown as ReturnType<typeof useFields>);
 }
 
 function guest(over: Partial<Guest>): Guest {
@@ -32,6 +69,7 @@ function guest(over: Partial<Guest>): Guest {
     full_name: "Ada Lovelace",
     email: "ada@example.com",
     phone_or_chat: "+855...",
+    custom_fields: {},
     source: "",
     created_at: "2026-06-01T00:00:00Z",
     ...over,
@@ -43,11 +81,17 @@ function setGuests(results: Guest[], count = results.length) {
     data: { count, results },
     isLoading: false,
   } as unknown as ReturnType<typeof useGuests>);
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  localStorage.clear();
+  setFields();
   mockUseSendQrEmail.mockReturnValue({
     mutateAsync: vi.fn(),
     isPending: false,
   } as unknown as ReturnType<typeof useSendQrEmail>);
-}
+});
 
 describe("GuestsTable walk-in vs pre-registered", () => {
   it("shows Email QR / Copy Telegram actions for pre-registered guests", () => {
@@ -83,12 +127,10 @@ describe("GuestsTable entry status + numbering + pagination", () => {
     const checkedIn = within(inRow).getByText("Checked-in");
     expect(checkedIn).toBeInTheDocument();
     expect(checkedIn.className).toContain("bg-green-600");
-    // Raw status codes must not leak.
     expect(screen.queryByText("checked_in")).not.toBeInTheDocument();
   });
 
   it("numbers rows continuing across pages", () => {
-    // 60 total, page size 25 → first page rows numbered 1..2 here (2 results shown).
     setGuests(
       [guest({ id: "a", full_name: "First" }), guest({ id: "b", full_name: "Second" })],
       60,
@@ -109,12 +151,24 @@ describe("GuestsTable entry status + numbering + pagination", () => {
   });
 });
 
-describe("GuestsTable page-size persistence", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    mockUseGuests.mockClear();
+describe("GuestsTable dynamic columns reflect the registration form", () => {
+  it("renders a column per registration field and reads custom_fields", () => {
+    setFields([
+      field({ field_key: "name", label_en: "Full name", order_index: 0 }),
+      field({ field_key: "company", label_en: "Company", is_preset: false, order_index: 1 }),
+    ]);
+    setGuests([
+      guest({ id: "g1", full_name: "Ada", custom_fields: { company: "Analytical Engines" } }),
+    ]);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    expect(screen.getByRole("columnheader", { name: "Company" })).toBeInTheDocument();
+    expect(screen.getByText("Analytical Engines")).toBeInTheDocument();
+    // A preset not present in the event's fields gets no column.
+    expect(screen.queryByRole("columnheader", { name: "Phone or Chat" })).not.toBeInTheDocument();
   });
+});
 
+describe("GuestsTable page-size persistence", () => {
   it("restores the persisted page size on mount and requests it", () => {
     localStorage.setItem("guests.pageSize", "100");
     setGuests([guest({ id: "g1", full_name: "Solo" })], 200);
@@ -144,11 +198,6 @@ describe("GuestsTable page-size persistence", () => {
 });
 
 describe("GuestsTable chips filter", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    mockUseGuests.mockClear();
-  });
-
   it("requests guest_type=walk_in when the Walk-in chip is clicked", () => {
     setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
     wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
@@ -180,14 +229,16 @@ describe("GuestsTable chips filter", () => {
 });
 
 describe("GuestsTable frozen columns", () => {
-  it("makes the No and Actions columns sticky", () => {
+  it("makes the No and Actions columns sticky without divider borders", () => {
     setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
     wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
     const noHeader = screen.getByRole("columnheader", { name: "No" });
     expect(noHeader.className).toContain("sticky");
     expect(noHeader.className).toContain("left-0");
+    expect(noHeader.className).not.toContain("border-r");
     const actionsHeader = screen.getByRole("columnheader", { name: "Actions" });
     expect(actionsHeader.className).toContain("sticky");
     expect(actionsHeader.className).toContain("right-0");
+    expect(actionsHeader.className).not.toContain("border-l");
   });
 });
