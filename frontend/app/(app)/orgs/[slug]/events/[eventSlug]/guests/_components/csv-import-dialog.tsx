@@ -67,7 +67,7 @@ export function CsvImportDialog({ orgSlug, eventSlug }: { orgSlug: string; event
           </Button>
         }
       />
-      <DialogContent className="max-w-5xl">
+      <DialogContent className="sm:max-w-5xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import guests from CSV</DialogTitle>
         </DialogHeader>
@@ -83,48 +83,50 @@ export function CsvImportDialog({ orgSlug, eventSlug }: { orgSlug: string; event
 
         {preview && (
           <div className="space-y-4">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  {preview.headers.map((h, i) => {
-                    const auto = preview.auto_mapping[String(i)] ?? "";
-                    return (
-                      <th key={i} className="py-2 pr-3 align-top">
-                        <div className="font-medium">{h}</div>
-                        <select
-                          className="mt-1 rounded border px-1 py-0.5 text-[0.7rem]"
-                          value={mapping[String(i)] ?? ""}
-                          onChange={(e) =>
-                            setMapping((m) => ({
-                              ...m,
-                              [String(i)]: e.target.value === "" ? null : e.target.value,
-                            }))
-                          }
-                        >
-                          {targetOptions().map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                              {auto && o.value === auto ? " (auto)" : ""}
-                            </option>
-                          ))}
-                        </select>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {preview.first_rows.map((row, ri) => (
-                  <tr key={ri} className="border-b">
-                    {row.map((cell, ci) => (
-                      <td key={ci} className="py-1 pr-3 font-mono">
-                        {cell}
-                      </td>
-                    ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    {preview.headers.map((h, i) => {
+                      const auto = preview.auto_mapping[String(i)] ?? "";
+                      return (
+                        <th key={i} className="py-2 pr-3 align-top">
+                          <div className="font-medium">{h}</div>
+                          <select
+                            className="mt-1 rounded border px-1 py-0.5 text-[0.7rem]"
+                            value={mapping[String(i)] ?? ""}
+                            onChange={(e) =>
+                              setMapping((m) => ({
+                                ...m,
+                                [String(i)]: e.target.value === "" ? null : e.target.value,
+                              }))
+                            }
+                          >
+                            {targetOptions().map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {o.label}
+                                {auto && o.value === auto ? " (auto)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </th>
+                      );
+                    })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {preview.first_rows.map((row, ri) => (
+                    <tr key={ri} className="border-b">
+                      {row.map((cell, ci) => (
+                        <td key={ci} className="py-1 pr-3 font-mono">
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setPreview(null)}>
