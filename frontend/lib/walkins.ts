@@ -2,6 +2,8 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
+import { getDeviceId } from "./walkin-device";
+
 /** The public walk-in endpoints are anonymous (no JWT cookie, no Authorization
  *  header). Plain `fetch` is the right primitive; no apiFetch wrapper. */
 
@@ -18,12 +20,19 @@ export type ClaimResponse = {
  *  fire on page mount and is safe to retry (server returns the same payload
  *  for an already-claimed walk-in).
  */
-export function useClaim(orgSlug: string, eventSlug: string, token: string) {
+export function useClaim(
+  orgSlug: string,
+  eventSlug: string,
+  token: string,
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: ["walkin-claim", orgSlug, eventSlug, token],
     queryFn: async (): Promise<ClaimResponse> => {
       const res = await fetch(`/api/v1/e/${orgSlug}/${eventSlug}/claim/${token}/`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: getDeviceId() }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -31,7 +40,7 @@ export function useClaim(orgSlug: string, eventSlug: string, token: string) {
       }
       return res.json();
     },
-    enabled: !!orgSlug && !!eventSlug && !!token,
+    enabled: (options.enabled ?? true) && !!orgSlug && !!eventSlug && !!token,
     retry: 1,
   });
 }

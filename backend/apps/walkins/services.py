@@ -139,11 +139,14 @@ def get_or_create_displayed(*, device, gate: str, scanner_label: str) -> tuple[G
 
 
 @transaction.atomic
-def claim_walkin(*, org_slug: str, event_slug: str, token: str) -> Guest:
+def claim_walkin(*, org_slug: str, event_slug: str, token: str, device_id: str = "") -> Guest:
     """Transition a displayed walk-in into checked_in + claimed_pending_info.
 
     Idempotent: a guest already in `checked_in` is returned as-is, with no
     extra audit row. Unknown / wrong-event tokens raise Http404.
+
+    `device_id` is the claiming device's self-issued (localStorage) id, recorded
+    for audit so one device claiming many slots is visible. Not enforced here.
     """
     guest = get_object_or_404(
         Guest,
@@ -180,6 +183,10 @@ def claim_walkin(*, org_slug: str, event_slug: str, token: str) -> Guest:
             entry_token=token[:32],
         )
         raise CheckinFailure({"detail": str(exc)}, 409) from exc
+
+    if device_id and not guest.device_id:
+        guest.device_id = device_id[:64]
+        guest.save(update_fields=["device_id"])
 
     write_audit(
         organization=guest.organization,

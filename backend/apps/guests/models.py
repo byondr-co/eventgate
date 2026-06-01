@@ -42,6 +42,9 @@ class Guest(OrgScopedModel):
     source = models.CharField(max_length=32, blank=True)
     gate = models.CharField(max_length=64, blank=True)
     scanner = models.CharField(max_length=64, blank=True)
+    # Self-issued (localStorage) id of the device that claimed this walk-in. Audit
+    # only — lets us see one device claim many slots. Not an enforcement boundary.
+    device_id = models.CharField(max_length=64, blank=True)
     checked_in_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
     referrer_short_url = models.ForeignKey(
