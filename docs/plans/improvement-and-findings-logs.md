@@ -183,3 +183,29 @@ Implication: at pilot scale (a few hundred guests), bulk import will fan out int
 - Sole-owner UX: surface a "transfer ownership" flow instead of just rejecting
 
 **Plan K status:** ✅ DONE. All 8 PRs merged. Test counts +26 each side. Pilot-prep is unblocked; T-7 dry-run on 2026-06-12 will exercise the new flows.
+
+---
+
+## Plan L Hotfixes (pilot test round 1) wrap-up — 2026-06-01
+
+10 findings from prod pilot testing, fixed across 7 PR slices (S1–S7) on top of Plan L. Plan: `docs/plans/2026-06-01-plan-l-hotfixes.md`. Locked decisions: (D1) action notifications → toast, form/validation errors → inline; (D2) banner upload via dedicated multipart endpoint + drag-drop + ~4MB client cap; (D3) registration form fully data-driven.
+
+**Slices merged (rebase, to `main`):**
+- S1 (a4f5600, d9d6a9f): `frontend/lib/toast.ts` (`notify.{success,error,warning,info}` over sonner) + hardened `extractApiError` (never returns raw HTML/JSON) + `extractFieldErrors` for inline form errors.
+- S2 (56a6c74): dedicated `EventBannerView` (`MultiPartParser`/`FormParser`) at `POST /orgs/<slug>/events/<slug>/banner/` — fixes the `415` (DRF default parser is JSON-only); generalized `FileDropZone`; `useUploadBanner` repointed; 4MB client cap + toasts.
+- S3 (917a03f): `/r/:path*` rewrite → `${API_BASE}/r/:path*/` in `next.config.ts` (Django route requires trailing slash) — short links no longer bounce to `/login`.
+- S4 (fc9d6ac, 7639409): data-driven registration form from `event.fields` (deleted preset fields no longer render); inline field/form errors; `noValidate` so no native browser bubbles (D1); backend payload contract preserved.
+- S5 (cfd8ef1): self-removal guard in `OrgMembershipDetailView.destroy` (additive to the existing sole-owner protection) + hide Remove on own row.
+- S6 (9927d05, 55e5dc7): CSV import modal widened via caller-opt-in `sm:max-w-5xl` (beats Base UI default through tailwind-merge), `max-h-[85vh] overflow-y-auto`, table `overflow-x-auto` + `min-w-full`. `dialog.tsx` untouched → other dialogs unaffected.
+- S7 (e24f3ee, 8120522): toast action feedback in guests-table (Email QR / Copy Telegram) + links-table (create/copy); `notify.error` now shows clean string messages verbatim and routes caught errors through `extractApiError`.
+
+**Lessons banked:**
+1. **DRF `DEFAULT_PARSER_CLASSES` is JSON-only** (`backend/config/settings/base.py:104`) — every multipart endpoint must set `parser_classes` explicitly (root cause of the banner `415`). `CsvImportPreviewView` was the working pattern to mirror.
+2. **`next.config.ts` only rewrites `/api/*`** — any other backend-served path (`/r/*`) needs its own rewrite (root cause of short links bouncing to `/login`; there is no `middleware.ts`/auth gate — the bounce came from the request hitting the Next app instead of being proxied).
+3. **`notify.error(input)` runs non-strings through `extractApiError`**, which returns a generic message for non-`Error` input. A caller passing a literal string (e.g. "Could not copy.") would have it swallowed → made `notify.error` string-aware (S7 fix). Future callers: pass a caught error OR a clean string; both now work.
+4. **Vercel frontend deploys are NOT visible via the connected Vercel MCP** (the `vineiro-3892` team has no projects; the eventgate prod frontend lives under a separate byondr Vercel account). Frontend rewrites (S3) only go live after Vercel redeploys `main`, which lags behind the immediate Fly backend deploy. Backend Fly prod deploy is path-filtered to `backend/**` and fired correctly for S2/S5 (both succeeded; prod health `/api/health/` = 200).
+5. **Branch protection still does NOT gate on `test`** — all 6 PRs were merged only after manual `gh pr checks` confirmed green. Backend+frontend PRs (S2, S5) get two `test` jobs (one per path filter).
+
+**Verified on prod (2026-06-01):** backend health 200; banner endpoint live (anon multipart POST → `401`, not `415`/`404` → route + parser correctly wired). **Pending:** the `/r/*` rewrite + the authenticated UI re-tests (actual banner upload, short-link create with no 502/raw-HTML) require the Vercel frontend redeploy to land and a logged-in prod session — to be confirmed by the user.
+
+**Plan L hotfixes status:** ✅ Code DONE — all 7 slices reviewed (spec + quality) and merged; CI green. Backend live on prod. Frontend pending Vercel redeploy + user UI confirmation.
