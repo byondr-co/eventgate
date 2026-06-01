@@ -20,14 +20,22 @@ export type Guest = {
 
 type Paginated<T> = { count: number; results: T[] };
 
-export function useGuests(orgSlug: string, eventSlug: string, search = "") {
+export function useGuests(
+  orgSlug: string,
+  eventSlug: string,
+  search = "",
+  page = 1,
+  pageSize = 25,
+) {
   return useQuery({
-    queryKey: ["guests", orgSlug, eventSlug, search],
-    queryFn: () =>
-      apiFetch<Paginated<Guest>>(
-        `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/` +
-          (search ? `?search=${encodeURIComponent(search)}` : ""),
-      ),
+    queryKey: ["guests", orgSlug, eventSlug, search, page, pageSize],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+      if (search) params.set("search", search);
+      return apiFetch<Paginated<Guest>>(
+        `/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/?${params.toString()}`,
+      );
+    },
     enabled: !!orgSlug && !!eventSlug,
   });
 }
