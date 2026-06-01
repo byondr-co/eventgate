@@ -57,4 +57,17 @@ describe("notify", () => {
     notify.error(undefined);
     expect(mockError).toHaveBeenCalledWith("Something went wrong.");
   });
+
+  it("error() with a plain string displays it verbatim", () => {
+    notify.error("Could not copy.");
+    expect(mockError).toHaveBeenCalledOnce();
+    expect(mockError).toHaveBeenCalledWith("Could not copy.");
+  });
+
+  it("error() with a plain string does not run it through extractApiError", () => {
+    // A string that looks like an Error message with HTML should still pass through
+    // unchanged — the caller already owns the message.
+    notify.error("Something went wrong. Please try again.");
+    expect(mockError).toHaveBeenCalledWith("Something went wrong. Please try again.");
+  });
 });

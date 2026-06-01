@@ -7,7 +7,7 @@ export const notify = {
     sonnerToast.success(msg);
   },
   error(input: unknown) {
-    sonnerToast.error(extractApiError(input));
+    sonnerToast.error(typeof input === "string" ? input : extractApiError(input));
   },
   warning(msg: string) {
     sonnerToast.warning(msg);
