@@ -9,6 +9,13 @@ import { fetchTelegramLink, useGuests, useSendQrEmail } from "@/lib/guests";
 import { notify } from "@/lib/toast";
 
 const PAGE_SIZES = [25, 50, 100];
+const PAGE_SIZE_KEY = "guests.pageSize";
+
+function loadPageSize(): number {
+  if (typeof window === "undefined") return PAGE_SIZES[0];
+  const saved = Number(window.localStorage.getItem(PAGE_SIZE_KEY));
+  return PAGE_SIZES.includes(saved) ? saved : PAGE_SIZES[0];
+}
 
 const ENTRY_STATUS_LABELS: Record<string, string> = {
   registered_not_arrived: "Registered, not arrived",
@@ -25,7 +32,7 @@ function entryLabel(status: string): string {
 export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(loadPageSize);
   const guests = useGuests(orgSlug, eventSlug, search, page, pageSize);
   const sendQr = useSendQrEmail(orgSlug, eventSlug);
 
@@ -61,6 +68,7 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
   const onPageSize = (v: number) => {
     setPageSize(v);
     setPage(1);
+    if (typeof window !== "undefined") window.localStorage.setItem(PAGE_SIZE_KEY, String(v));
   };
 
   return (
