@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/guests", () => ({
   useGuests: vi.fn(),
@@ -106,5 +106,35 @@ describe("GuestsTable entry status + numbering + pagination", () => {
     const select = screen.getByLabelText("Rows per page") as HTMLSelectElement;
     const values = Array.from(select.options).map((o) => o.value);
     expect(values).toEqual(["25", "50", "100"]);
+  });
+});
+
+describe("GuestsTable page-size persistence", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockUseGuests.mockClear();
+  });
+
+  it("restores the persisted page size on mount and requests it", () => {
+    localStorage.setItem("guests.pageSize", "100");
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 200);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    const select = screen.getByLabelText("Rows per page") as HTMLSelectElement;
+    expect(select.value).toBe("100");
+    expect(mockUseGuests).toHaveBeenCalledWith("o", "e", "", 1, 100);
+  });
+
+  it("defaults to 25 and ignores an invalid persisted value", () => {
+    localStorage.setItem("guests.pageSize", "37");
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 200);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    expect((screen.getByLabelText("Rows per page") as HTMLSelectElement).value).toBe("25");
+  });
+
+  it("persists the selection when changed", () => {
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 200);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    fireEvent.change(screen.getByLabelText("Rows per page"), { target: { value: "50" } });
+    expect(localStorage.getItem("guests.pageSize")).toBe("50");
   });
 });
