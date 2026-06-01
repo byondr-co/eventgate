@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 const PUBLIC_PATHS = ["/login", "/auth/callback", "/debug/health"];
 const INVITE_PREFIX = "/invites/";
 const SCANNER_PREFIX = "/scanner/";
+// Short links are public: anonymous visitors click /r/<code>, which is rewritten
+// to the Django redirect view and bounced to the public /e/ register page.
+const SHORTLINK_PREFIX = "/r/";
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -12,6 +15,7 @@ export function proxy(req: NextRequest) {
     PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
     pathname.startsWith(INVITE_PREFIX) ||
     pathname.startsWith("/e/") ||
+    pathname.startsWith(SHORTLINK_PREFIX) ||
     pathname.startsWith(SCANNER_PREFIX);
 
   const hasAccess = req.cookies.get("eventgate_access");
