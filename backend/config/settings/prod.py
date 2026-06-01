@@ -70,9 +70,14 @@ if BUCKET_NAME:
                 "endpoint_url": env("AWS_ENDPOINT_URL_S3"),
                 "region_name": env("AWS_REGION", default="auto"),
                 "location": "public",
-                "default_acl": "public-read",
+                # Tigris does NOT serve objects publicly via S3 ACLs (a public-read
+                # object still 403s anonymously) and only supports whole-bucket public
+                # access — which would expose the private csv_imports/ objects in this
+                # same bucket. So banners are served via short-lived presigned GET URLs
+                # that the backend regenerates on each event-detail fetch.
+                "default_acl": "private",
                 "file_overwrite": False,
-                "querystring_auth": False,
+                "querystring_auth": True,
             },
         },
     }
