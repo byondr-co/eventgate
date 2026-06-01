@@ -95,8 +95,12 @@ export function RegistrationForm({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4">
-          {formError && <p className={errorClass}>{formError}</p>}
+        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          {formError && (
+            <p className={errorClass} role="alert">
+              {formError}
+            </p>
+          )}
 
           {sortedFields.map((f) => {
             const fieldId = `field-${f.field_key}`;

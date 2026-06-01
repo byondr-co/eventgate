@@ -224,6 +224,20 @@ describe("RegistrationForm data-driven rendering", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /register/i })).toBeInTheDocument();
   });
+
+  it("form element has noValidate to suppress native browser validation bubbles", () => {
+    const { container } = wrap(
+      <RegistrationForm
+        orgSlug="org"
+        eventSlug="evt"
+        eventName="Test Event"
+        fields={[emailField]}
+      />,
+    );
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    expect(form).toHaveAttribute("novalidate");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -360,6 +374,11 @@ describe("RegistrationForm server error display", () => {
     await waitFor(() => {
       expect(screen.getByText("Registration is closed.")).toBeInTheDocument();
     });
+    // form-level error must carry role="alert" for screen-reader parity
+    expect(screen.getByText("Registration is closed.").closest("p")).toHaveAttribute(
+      "role",
+      "alert",
+    );
   });
 
   it("never renders raw JSON/HTML from the server error", async () => {
