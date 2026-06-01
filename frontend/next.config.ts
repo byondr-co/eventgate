@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
       // to Django (which enforces APPEND_SLASH=True).
       { source: "/api/:path*/", destination: `${API_BASE}/api/:path*/` },
       { source: "/api/:path*", destination: `${API_BASE}/api/:path*/` },
+      { source: "/r/:path*/", destination: `${API_BASE}/r/:path*/` },
+      { source: "/r/:path*", destination: `${API_BASE}/r/:path*/` },
     ];
   },
 };
