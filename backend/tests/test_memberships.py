@@ -155,6 +155,37 @@ def test_owner_cannot_change_own_role():
     assert own_m.role == "owner"
 
 
+def test_owner_cannot_remove_self():
+    """An owner/admin cannot DELETE their own membership (self-removal guard)."""
+    owner = _make_user("o@x.com")
+    co = _make_user("co@x.com")
+    org = _make_org("O", owner)
+    # Ensure there are two owners so sole-owner guard isn't the blocker
+    OrganizationMembership.objects.create(user=co, organization=org, role="owner")
+    own_m = OrganizationMembership.objects.get(user=owner, organization=org)
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    r = c.delete(f"/api/v1/orgs/{org.slug}/memberships/{own_m.id}/")
+    assert r.status_code == 400, r.content
+    assert "yourself" in r.json()["detail"].lower()
+    own_m.refresh_from_db()
+    assert own_m.is_active is True
+
+
+def test_owner_can_remove_another_member():
+    """Removing a different member still returns 204 (self-guard doesn't block other rows)."""
+    owner = _make_user("o@x.com")
+    target = _make_user("t@x.com")
+    org = _make_org("O", owner)
+    target_m = OrganizationMembership.objects.create(user=target, organization=org, role="staff")
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    r = c.delete(f"/api/v1/orgs/{org.slug}/memberships/{target_m.id}/")
+    assert r.status_code == 204, r.content
+    target_m.refresh_from_db()
+    assert target_m.is_active is False
+
+
 def test_make_another_member_owner_succeeds():
     owner = _make_user("o@x.com")
     org = _make_org("O", owner)

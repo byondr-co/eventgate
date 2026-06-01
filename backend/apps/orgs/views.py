@@ -196,6 +196,11 @@ class OrgMembershipDetailView(viewsets.GenericViewSet):
 
     def destroy(self, request: Request, org_slug=None, membership_id=None) -> Response:
         membership = self._get_membership(request, membership_id)
+        if membership.user_id == request.user.id:
+            return Response(
+                {"detail": "You cannot remove yourself. Ask another owner/admin."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         from rest_framework.exceptions import ValidationError as DRFValidationError
 
         try:

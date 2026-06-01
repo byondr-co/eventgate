@@ -151,6 +151,45 @@ describe("MembersTable", () => {
     );
   });
 
+  it("hides Remove button on the current user's own row", async () => {
+    // current@x.com is the logged-in user (from useMe mock above)
+    const dataWithCurrentUser = {
+      count: 2,
+      results: [
+        {
+          id: "m1",
+          user_email: "current@x.com",
+          user_full_name: "Me",
+          role: "admin",
+          is_active: true,
+          accepted_at: "2024-01-01T00:00:00Z",
+          created_at: "2024-01-01T00:00:00Z",
+        },
+        {
+          id: "m2",
+          user_email: "other@x.com",
+          user_full_name: "Other",
+          role: "staff",
+          is_active: true,
+          accepted_at: "2024-01-02T00:00:00Z",
+          created_at: "2024-01-02T00:00:00Z",
+        },
+      ],
+    };
+    mockApi.mockImplementation((url: string) => {
+      if (String(url).includes("/members/")) return Promise.resolve(dataWithCurrentUser);
+      if (String(url).includes("/invites/")) return Promise.resolve(EMPTY_INVITES);
+      return Promise.resolve({});
+    });
+
+    wrap(<MembersTable slug="acme" />);
+    await waitFor(() => expect(screen.getByText("current@x.com")).toBeInTheDocument());
+
+    // Only one Remove button should appear (for other@x.com, not current@x.com)
+    const removeButtons = screen.getAllByRole("button", { name: /Remove/i });
+    expect(removeButtons).toHaveLength(1);
+  });
+
   it("calls cancel invite on Cancel button click", async () => {
     mockApi.mockImplementation((url: string) => {
       if (String(url).includes("/members/")) return Promise.resolve(MEMBERS_DATA);
