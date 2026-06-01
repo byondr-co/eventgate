@@ -142,8 +142,8 @@ export function useUploadBanner(orgSlug: string, eventSlug: string) {
     mutationFn: (file: File) => {
       const fd = new FormData();
       fd.append("banner_image", file);
-      return apiFetch<Event>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/`, {
-        method: "PATCH",
+      return apiFetch<Event>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/banner/`, {
+        method: "POST",
         body: fd,
       });
     },

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.events.views import (
+    EventBannerView,
     EventPinView,
     EventViewSet,
     PublicEventDetailView,
@@ -63,5 +64,10 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/stats/",
         EventStatsView.as_view(),
         name="event-stats",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/banner/",
+        EventBannerView.as_view(),
+        name="event-banner-upload",
     ),
 ]

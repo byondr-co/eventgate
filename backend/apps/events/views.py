@@ -4,8 +4,9 @@ from typing import ClassVar
 
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -106,6 +107,30 @@ class EventPinView(APIView):
         except PinTooShort as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response({"detail": "PIN updated.", "rotated_at": event.event_pin_rotated_at})
+
+
+class EventBannerView(APIView):
+    """POST /api/v1/orgs/<org_slug>/events/<event_slug>/banner/
+
+    Accepts a multipart/form-data upload with a ``banner_image`` field.
+    Saves the file to ``Event.banner_image`` (public_media_storage) and returns
+    the updated event serialized with ``EventSerializer``.
+
+    Requires owner/admin/manager role (same guard as event mutation actions).
+    """
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+    parser_classes: ClassVar = [MultiPartParser, FormParser]
+
+    def post(self, request, org_slug: str, event_slug: str) -> Response:
+        event = get_object_or_404(Event, organization=request.organization, slug=event_slug)
+        uploaded = request.FILES.get("banner_image")
+        if uploaded is None:
+            return Response({"detail": "Missing banner_image."}, status=status.HTTP_400_BAD_REQUEST)
+        event.banner_image = uploaded
+        event.save(update_fields=["banner_image"])
+        return Response(EventSerializer(event, context={"request": request}).data)
 
 
 class PublicEventDetailView(APIView):
