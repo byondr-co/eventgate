@@ -38,9 +38,9 @@ function guest(over: Partial<Guest>): Guest {
   } as Guest;
 }
 
-function setGuests(results: Guest[]) {
+function setGuests(results: Guest[], count = results.length) {
   mockUseGuests.mockReturnValue({
-    data: { count: results.length, results },
+    data: { count, results },
     isLoading: false,
   } as unknown as ReturnType<typeof useGuests>);
   mockUseSendQrEmail.mockReturnValue({
@@ -68,5 +68,43 @@ describe("GuestsTable walk-in vs pre-registered", () => {
     expect(
       within(row).queryByRole("button", { name: /Copy Telegram link/ }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("GuestsTable entry status + numbering + pagination", () => {
+  it("humanizes entry statuses and renders Checked-in distinctly", () => {
+    setGuests([
+      guest({ id: "g1", full_name: "Reg", entry_status: "registered_not_arrived" }),
+      guest({ id: "g2", full_name: "In", entry_status: "checked_in" }),
+    ]);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    expect(screen.getByText("Registered, not arrived")).toBeInTheDocument();
+    const inRow = screen.getByText("In").closest("tr")!;
+    const checkedIn = within(inRow).getByText("Checked-in");
+    expect(checkedIn).toBeInTheDocument();
+    expect(checkedIn.className).toContain("bg-green-600");
+    // Raw status codes must not leak.
+    expect(screen.queryByText("checked_in")).not.toBeInTheDocument();
+  });
+
+  it("numbers rows continuing across pages", () => {
+    // 60 total, page size 25 → first page rows numbered 1..2 here (2 results shown).
+    setGuests(
+      [guest({ id: "a", full_name: "First" }), guest({ id: "b", full_name: "Second" })],
+      60,
+    );
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    const firstRow = screen.getByText("First").closest("tr")!;
+    expect(within(firstRow).getByText("1")).toBeInTheDocument();
+    const secondRow = screen.getByText("Second").closest("tr")!;
+    expect(within(secondRow).getByText("2")).toBeInTheDocument();
+  });
+
+  it("offers an adjustable page-size dropdown (25/50/100)", () => {
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 200);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    const select = screen.getByLabelText("Rows per page") as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    expect(values).toEqual(["25", "50", "100"]);
   });
 });
