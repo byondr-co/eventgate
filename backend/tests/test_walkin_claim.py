@@ -51,6 +51,38 @@ def test_claim_is_idempotent():
     assert AuditEvent.objects.filter(action="walkin.claim").count() == 1
 
 
+def test_claim_records_device_id_for_audit():
+    org, event, token = _mint_displayed_walkin()
+    anon = APIClient()
+    r = anon.post(
+        f"/api/v1/e/{org.slug}/{event.slug}/claim/{token}/",
+        {"device_id": "dev-abc-123"},
+        format="json",
+    )
+    assert r.status_code == 200
+    g = Guest.objects.get(entry_token=token)
+    assert g.device_id == "dev-abc-123"
+
+
+def test_claim_keeps_first_device_id_on_idempotent_reclaim():
+    org, event, token = _mint_displayed_walkin()
+    anon = APIClient()
+    anon.post(
+        f"/api/v1/e/{org.slug}/{event.slug}/claim/{token}/",
+        {"device_id": "first-device"},
+        format="json",
+    )
+    # A second claim (e.g. a different device hitting the same token) must not
+    # overwrite the recorded claimer.
+    anon.post(
+        f"/api/v1/e/{org.slug}/{event.slug}/claim/{token}/",
+        {"device_id": "second-device"},
+        format="json",
+    )
+    g = Guest.objects.get(entry_token=token)
+    assert g.device_id == "first-device"
+
+
 def test_claim_unknown_token_returns_404():
     org = Organization.objects.create(name="O", slug="o")
     event = Event.objects.create(organization=org, name="E", slug="e")

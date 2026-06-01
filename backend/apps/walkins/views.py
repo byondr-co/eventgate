@@ -82,8 +82,13 @@ class WalkinClaimView(APIView):
     def post(self, request, org_slug, event_slug, token):
         from apps.checkins.services import CheckinFailure
 
+        device_id = ""
+        if isinstance(request.data, dict):
+            device_id = str(request.data.get("device_id") or "")
         try:
-            guest = claim_walkin(org_slug=org_slug, event_slug=event_slug, token=token)
+            guest = claim_walkin(
+                org_slug=org_slug, event_slug=event_slug, token=token, device_id=device_id
+            )
         except CheckinFailure as exc:
             return Response(exc.body, status=exc.http_status)
         info_url = f"/e/{org_slug}/{event_slug}/info/{token}/"
