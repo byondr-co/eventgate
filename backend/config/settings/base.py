@@ -135,6 +135,10 @@ CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://localhost:
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
+# All tasks are fire-and-forget (`.delay()` only — nothing reads AsyncResult), so
+# storing results just burns per-command writes on the Redis result backend. Drop
+# them. Note: this does NOT affect task retries (those go through the broker).
+CELERY_TASK_IGNORE_RESULT = True
 # When set true (e.g. on staging with no separate worker), tasks run synchronously
 # inside the web process. Production should run a dedicated Celery worker — Plan D.
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
