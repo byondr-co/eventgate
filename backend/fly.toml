@@ -18,15 +18,18 @@ primary_region = "sin"
   release_command = "sh -c 'python manage.py migrate --noinput && python manage.py setup_telegram_webhook'"
 
 # Three process groups: the web `app` (gunicorn), the `worker` (Celery task
-# consumer), and `beat` (Celery periodic scheduler). When [processes] is
-# defined, Fly ignores the Dockerfile's CMD and uses the commands here for
-# each Machine, picked by process group name.
+# consumer), and `beat` (Celery periodic scheduler). Mirrors prod (fly.prod.toml)
+# so staging exercises the real async path before prod does. The broker is the
+# self-hosted Redis Machine (eventgate-redis-staging), not Upstash.
 #
 # `beat` MUST be exactly one Machine — multiple beat instances would double-
 # emit periodic tasks. Worker can scale horizontally; beat cannot.
+#
+# --without-gossip/-mingle/-heartbeat disable inter-worker pub/sub chatter that a
+# single-worker deploy doesn't need.
 [processes]
   app = "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -"
-  worker = "celery -A config worker --loglevel=INFO --concurrency=4"
+  worker = "celery -A config worker --loglevel=INFO --concurrency=4 --without-gossip --without-mingle --without-heartbeat"
   beat = "celery -A config beat --loglevel=INFO"
 
 # HTTP listener is bound to the `app` process group only.

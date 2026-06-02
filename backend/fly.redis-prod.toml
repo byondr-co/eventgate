@@ -1,0 +1,59 @@
+# Self-hosted Redis for PROD — eventgate-redis-prod (Singapore).
+#
+# Replaces the Fly-managed Upstash instance `eventgate-redis-prod` as the prod
+# broker + result backend + Django cache. Upstash bills per command, and an
+# always-on Celery worker/beat generates millions of idle polling commands/month.
+# A flat-cost Redis Machine is ~$2/mo regardless of command volume.
+#
+# This app reuses the name of the old Upstash resource (`eventgate-redis-prod`),
+# so that Upstash instance MUST be destroyed first to free the name — see the
+# runbook. Safe here because Redis is not in use yet (pre-pilot), so the brief
+# no-broker window during provisioning is acceptable.
+#
+# This is a SEPARATE Fly app from the backend (a plain redis image can't share
+# the backend's Django Docker image / process groups). It is reachable only over
+# Fly's private 6PN network at `eventgate-redis-prod.internal:6379` — there is
+# no public service block, so it is never exposed to the internet.
+#
+# Provisioning (one-time — NOT run by CI; see docs/runbook-redis-migration.md):
+#   1. flyctl apps create eventgate-redis-prod --org personal
+#   2. flyctl volumes create redis_data --app eventgate-redis-prod --region sin --size 1
+#   3. flyctl secrets set --app eventgate-redis-prod REDIS_PASSWORD=$(openssl rand -hex 32)
+#   4. flyctl deploy --config fly.redis-prod.toml --app eventgate-redis-prod
+#   5. Point the backend at it (see runbook for the exact secrets set command).
+
+app = "eventgate-redis-prod"
+primary_region = "sin"
+
+[build]
+  image = "redis:7.4-alpine"
+
+# --bind 0.0.0.0 :: so Redis listens on IPv6 too — Fly's `.internal` DNS resolves
+#   to a 6PN IPv6 address, so an IPv4-only bind would be unreachable.
+# --requirepass via $REDIS_PASSWORD (a Fly secret) — required because Redis
+#   protected-mode refuses remote connections without auth. Wrapped in `sh -c` so
+#   the shell expands the env var (Fly runs the process command without a shell).
+#   Keep the password alphanumeric (openssl rand -hex) so the unquoted expansion
+#   is shell-safe.
+# --appendonly yes + --dir /data — persist the AOF to the mounted volume so
+#   in-flight broker messages survive a Machine restart.
+# --maxmemory-policy noeviction — never evict broker keys; at pilot volume the
+#   200mb cap is never approached.
+[processes]
+  redis = "sh -c 'redis-server --bind 0.0.0.0 :: --appendonly yes --dir /data --maxmemory 200mb --maxmemory-policy noeviction --requirepass $REDIS_PASSWORD'"
+
+[mounts]
+  source = "redis_data"
+  destination = "/data"
+  processes = ["redis"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+  processes = ["redis"]
+
+# Always-on: the broker must never be in standby (the backend worker/beat depend
+# on it). No [http_service] — this app is private-only.
+[[restart]]
+  policy = "always"
+  processes = ["redis"]
