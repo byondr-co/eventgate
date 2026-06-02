@@ -5,24 +5,8 @@ import { useState } from "react";
 
 import { postUnlock } from "@/lib/scanner/api";
 import { primeGuestCache } from "@/lib/scanner/guest-cache";
-import {
-  clearDevice,
-  saveSession,
-  useDeviceIdentity,
-  type ScannerIdentity,
-} from "@/lib/scanner/session";
-
-const ROLE_LANDING: Record<ScannerIdentity["role"], string> = {
-  scanner: "/scanner/scan",
-  walkin_display: "/scanner/walkin",
-  helpdesk: "/scanner/enroll", // Plan F lands the help-desk lane; bounce for now
-};
-
-const ROLE_LABELS: Record<ScannerIdentity["role"], string> = {
-  scanner: "Pre-reg scanner",
-  walkin_display: "Walk-in display",
-  helpdesk: "Help desk",
-};
+import { ROLE_LABELS, ROLE_LANDING } from "@/lib/scanner/roles";
+import { clearDevice, saveSession, useDeviceIdentity } from "@/lib/scanner/session";
 
 export default function ScannerUnlockPage() {
   const router = useRouter();
