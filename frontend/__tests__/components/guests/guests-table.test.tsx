@@ -197,8 +197,8 @@ describe("GuestsTable page-size persistence", () => {
   });
 });
 
-describe("GuestsTable chips filter", () => {
-  it("requests guest_type=walk_in when the Walk-in chip is clicked", () => {
+describe("GuestsTable segmented filters", () => {
+  it("requests guest_type=walk_in when the Walk-in segment is clicked", () => {
     setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
     wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
     fireEvent.click(screen.getByRole("button", { name: "Walk-in" }));
@@ -209,17 +209,17 @@ describe("GuestsTable chips filter", () => {
     );
   });
 
-  it("toggles a chip back off when clicked again", () => {
+  it("clears the entry filter when All is selected in the entry group", () => {
     setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
     wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
-    const chip = screen.getByRole("button", { name: "Checked-in" });
-    fireEvent.click(chip);
+    fireEvent.click(screen.getByRole("button", { name: "Checked-in" }));
     expect(mockUseGuests).toHaveBeenLastCalledWith(
       "o",
       "e",
       expect.objectContaining({ entryStatus: "checked_in" }),
     );
-    fireEvent.click(chip);
+    const entryGroup = screen.getByRole("group", { name: "Filter by entry status" });
+    fireEvent.click(within(entryGroup).getByRole("button", { name: "All" }));
     expect(mockUseGuests).toHaveBeenLastCalledWith(
       "o",
       "e",

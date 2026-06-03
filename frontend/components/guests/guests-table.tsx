@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useFields, type RegistrationField } from "@/lib/events";
 import { fetchTelegramLink, useGuests, useSendQrEmail, type Guest } from "@/lib/guests";
 import { notify } from "@/lib/toast";
@@ -42,32 +43,6 @@ const PRESET_VALUE: Record<string, (g: Guest) => string> = {
 function fieldValue(g: Guest, key: string): string {
   const preset = PRESET_VALUE[key];
   return preset ? preset(g) : (g.custom_fields?.[key] ?? "");
-}
-
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-input bg-background text-muted-foreground hover:bg-muted",
-      )}
-    >
-      {children}
-    </button>
-  );
 }
 
 export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
@@ -122,16 +97,6 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
     setPage(1);
     if (typeof window !== "undefined") window.localStorage.setItem(PAGE_SIZE_KEY, String(v));
   };
-  // Type chips and entry chips are two single-select groups; clicking an active chip clears it.
-  const toggleGuestType = (v: string) => {
-    setGuestType((cur) => (cur === v ? "" : v));
-    setPage(1);
-  };
-  const toggleEntryStatus = (v: string) => {
-    setEntryStatus((cur) => (cur === v ? "" : v));
-    setPage(1);
-  };
-
   const stickyLeft = "sticky left-0 z-10 bg-card";
   const stickyRight = "sticky right-0 z-10 bg-card";
 
@@ -148,28 +113,33 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
           placeholder="Search name, email, or phone…"
           className="mb-3 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
-        <div className="mb-4 flex flex-wrap gap-2">
-          <FilterChip active={guestType === "walk_in"} onClick={() => toggleGuestType("walk_in")}>
-            Walk-in
-          </FilterChip>
-          <FilterChip
-            active={guestType === "pre_registered"}
-            onClick={() => toggleGuestType("pre_registered")}
-          >
-            Pre-registered
-          </FilterChip>
-          <FilterChip
-            active={entryStatus === "checked_in"}
-            onClick={() => toggleEntryStatus("checked_in")}
-          >
-            Checked-in
-          </FilterChip>
-          <FilterChip
-            active={entryStatus === "registered_not_arrived"}
-            onClick={() => toggleEntryStatus("registered_not_arrived")}
-          >
-            Not arrived
-          </FilterChip>
+        <div className="mb-4 flex flex-wrap gap-3">
+          <SegmentedControl
+            aria-label="Filter by guest type"
+            options={[
+              { value: "", label: "All" },
+              { value: "walk_in", label: "Walk-in" },
+              { value: "pre_registered", label: "Pre-registered" },
+            ]}
+            value={guestType}
+            onValueChange={(v) => {
+              setGuestType(v);
+              setPage(1);
+            }}
+          />
+          <SegmentedControl
+            aria-label="Filter by entry status"
+            options={[
+              { value: "", label: "All" },
+              { value: "checked_in", label: "Checked-in" },
+              { value: "registered_not_arrived", label: "Not arrived" },
+            ]}
+            value={entryStatus}
+            onValueChange={(v) => {
+              setEntryStatus(v);
+              setPage(1);
+            }}
+          />
         </div>
         {guests.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {guests.data && rows.length === 0 && (
