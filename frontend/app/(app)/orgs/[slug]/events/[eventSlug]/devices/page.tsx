@@ -3,9 +3,33 @@
 import { SmartphoneIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 
+import { Guide, type GuideStep } from "@/components/common/guide";
 import { DeviceCreateForm } from "@/components/events/device-create-form";
 import { DeviceTable } from "@/components/events/device-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CopyCode, DeviceCreate, EnterPin, OpenEnrollPage } from "@/lib/illustrations";
+
+const SETUP_STEPS: GuideStep[] = [
+  {
+    illustration: DeviceCreate,
+    title: "Create a device",
+    body: "Pick a role (Pre-reg scanner or Walk-in display) and a clear label like “Gate 1 Lane A”.",
+  },
+  {
+    illustration: CopyCode,
+    title: "Copy the code",
+    body: "Each device gets a one-time enrollment code.",
+  },
+  {
+    illustration: OpenEnrollPage,
+    title: "Open the enrollment page",
+    body: "On that phone or tablet, open the enroll page and paste the code.",
+  },
+  {
+    illustration: EnterPin,
+    title: "Enter the event PIN",
+    body: "Unlock, and it lands on its scanner or walk-in screen.",
+  },
+];
 
 export default function EventDevicesPage() {
   const { slug, eventSlug } = useParams<{ slug: string; eventSlug: string }>();
@@ -19,29 +43,10 @@ export default function EventDevicesPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">How to set up a device</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <ol className="list-decimal space-y-1.5 pl-5 text-muted-foreground">
-            <li>
-              <span className="text-foreground">Create a device</span> below — choose its role
-              (Pre-reg scanner or Walk-in display) and a clear label (e.g. “Gate 1 Lane A”).
-            </li>
-            <li>
-              Copy the <span className="text-foreground">one-time enrollment code</span> it
-              generates.
-            </li>
-            <li>
-              On that device, open the <span className="text-foreground">enrollment page</span> and
-              paste the code.
-            </li>
-            <li>
-              Enter the <span className="text-foreground">event PIN</span> to unlock — the device
-              lands on its scanner or walk-in screen.
-            </li>
-          </ol>
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold">How to set up a device</h2>
+        <Guide steps={SETUP_STEPS} />
+        <div className="space-y-1.5">
           <a
             href="/scanner/enroll"
             target="_blank"
@@ -55,8 +60,8 @@ export default function EventDevicesPage() {
             Opens <span className="font-mono">/scanner/enroll</span> in a new tab — best done on the
             device itself. If you lose a code, revoke the device and create a new one.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <DeviceCreateForm orgSlug={slug} eventSlug={eventSlug} />
       <DeviceTable orgSlug={slug} eventSlug={eventSlug} />

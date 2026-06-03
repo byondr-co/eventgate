@@ -194,3 +194,11 @@ describe("ScannerEnrollPage already-enrolled actions", () => {
     expect(screen.getAllByPlaceholderText("• • • •")).toHaveLength(1);
   });
 });
+
+describe("ScannerEnrollPage install guide", () => {
+  it("shows the add-to-home-screen guide", () => {
+    mockUseDevice.mockReturnValue(null);
+    render(<ScannerEnrollPage />);
+    expect(screen.getByText("Add this page to your home screen")).toBeInTheDocument();
+  });
+});

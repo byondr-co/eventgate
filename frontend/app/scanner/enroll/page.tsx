@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { InstallGuide } from "@/components/common/install-guide";
+import { Button } from "@/components/ui/button";
 import { postEnroll, postUnlock } from "@/lib/scanner/api";
 import { ROLE_LABELS, ROLE_LANDING } from "@/lib/scanner/roles";
 import { clearDevice, loadSession, saveDevice, useDeviceIdentity } from "@/lib/scanner/session";
@@ -131,14 +133,15 @@ export default function ScannerEnrollPage() {
         Paste the one-time enrollment code your event organizer gave you. The device will bind to
         that event until revoked.
       </p>
+      <InstallGuide className="mt-6" />
 
       {device && !busy ? (
-        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+        <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4 text-sm">
           <div className="flex gap-3">
             <svg
               aria-hidden="true"
               viewBox="0 0 24 24"
-              className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
+              className="mt-0.5 h-5 w-5 shrink-0 text-foreground"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -150,11 +153,11 @@ export default function ScannerEnrollPage() {
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
             <div>
-              <p className="font-medium text-amber-900">
+              <p className="font-medium text-foreground">
                 This device is already enrolled as <span className="font-mono">{device.label}</span>{" "}
                 for <span className="font-semibold">{eventName}</span>.
               </p>
-              <p className="mt-1 text-amber-800/80">
+              <p className="mt-1 text-muted-foreground">
                 Re-enrolling replaces this device and needs the event PIN to confirm — or reset it
                 here first.
               </p>
@@ -163,8 +166,10 @@ export default function ScannerEnrollPage() {
 
           {!resetting ? (
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   // Opening reset cancels any pending overwrite confirmation so
                   // the two PIN prompts can never appear at once.
@@ -173,10 +178,9 @@ export default function ScannerEnrollPage() {
                   setOverwriteError(null);
                   setResetting(true);
                 }}
-                className="rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100"
               >
                 Reset &amp; re-enroll
-              </button>
+              </Button>
 
               {showResume ? (
                 <button
@@ -204,7 +208,7 @@ export default function ScannerEnrollPage() {
           ) : (
             <form onSubmit={onConfirmReset} className="mt-3 space-y-2">
               <label className="block">
-                <span className="text-xs text-amber-800/80">Enter the event PIN to reset</span>
+                <span className="text-xs text-muted-foreground">Enter the event PIN to reset</span>
                 <input
                   required
                   inputMode="numeric"
@@ -216,26 +220,28 @@ export default function ScannerEnrollPage() {
                 />
               </label>
               <div className="flex gap-2">
-                <button
+                <Button
                   type="submit"
+                  variant="destructive"
+                  size="sm"
                   disabled={resetBusy || !resetPin}
-                  className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
                 >
                   {resetBusy ? "Verifying…" : "Confirm reset"}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setResetting(false);
                     setResetPin("");
                     setResetError(null);
                   }}
-                  className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
-              {resetError ? <p className="text-xs text-red-600">{resetError}</p> : null}
+              {resetError ? <p className="text-xs text-destructive">{resetError}</p> : null}
             </form>
           )}
         </div>
@@ -261,9 +267,9 @@ export default function ScannerEnrollPage() {
         </label>
 
         {device && overwriting ? (
-          <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-4">
             <label className="block">
-              <span className="text-xs text-amber-800/80">
+              <span className="text-xs text-muted-foreground">
                 This replaces <span className="font-mono">{device.label}</span>. Enter the event PIN
                 to confirm.
               </span>
@@ -279,26 +285,22 @@ export default function ScannerEnrollPage() {
               />
             </label>
             <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={overwriteBusy || !overwritePin}
-                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
+              <Button type="submit" disabled={overwriteBusy || !overwritePin}>
                 {overwriteBusy ? "Verifying…" : "Confirm & enroll"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => {
                   setOverwriting(false);
                   setOverwritePin("");
                   setOverwriteError(null);
                 }}
-                className="rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
-            {overwriteError ? <p className="text-xs text-red-600">{overwriteError}</p> : null}
+            {overwriteError ? <p className="text-xs text-destructive">{overwriteError}</p> : null}
           </div>
         ) : (
           <button
@@ -309,7 +311,7 @@ export default function ScannerEnrollPage() {
             {busy ? "Enrolling…" : "Enroll device"}
           </button>
         )}
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </form>
     </main>
   );

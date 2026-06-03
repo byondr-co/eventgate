@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 
-import { extractFieldErrors } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { extractFieldErrors } from "@/lib/api";
 import { useCreateDevice, type DeviceRole } from "@/lib/devices";
 
 type Props = { orgSlug: string; eventSlug: string };
@@ -60,47 +63,45 @@ export function DeviceCreateForm({ orgSlug, eventSlug }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4 max-w-md">
-          <label className="block">
-            <span className="text-sm font-medium">Label</span>
-            <input
+        <form onSubmit={onSubmit} className="max-w-md space-y-4">
+          <Field
+            label="Label"
+            htmlFor="device-label"
+            error={fieldErrors.label}
+            helper="Shown on the device and in the audit log."
+          >
+            <Input
+              id="device-label"
               required
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. Gate 1 Lane A"
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              aria-invalid={!!fieldErrors.label}
-              aria-describedby={fieldErrors.label ? "device-label-error" : undefined}
             />
-            {fieldErrors.label && (
-              <p id="device-label-error" className="mt-1 text-sm text-destructive" role="alert">
-                {fieldErrors.label}
-              </p>
-            )}
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Role</span>
-            <select
+          </Field>
+
+          <Field label="Role" htmlFor="device-role">
+            <Select
+              id="device-role"
               value={role}
               onChange={(e) => setRole(e.target.value as DeviceRole)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.label}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Gate (optional)</span>
-            <input
+            </Select>
+          </Field>
+
+          <Field label="Gate" htmlFor="device-gate" optional>
+            <Input
+              id="device-gate"
               value={gate}
               onChange={(e) => setGate(e.target.value)}
               placeholder="e.g. Gate 1"
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
-          </label>
+          </Field>
+
           <Button type="submit" disabled={create.isPending}>
             {create.isPending ? "Creating…" : "Create device"}
           </Button>
@@ -112,17 +113,15 @@ export function DeviceCreateForm({ orgSlug, eventSlug }: Props) {
         </form>
 
         {code && (
-          <div className="mt-6 rounded-md border border-amber-500 bg-amber-50 p-4 dark:bg-amber-950">
-            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-              Enrollment code — shown only once
+          <div className="mt-6 rounded-lg border bg-muted/40 p-4">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Enrollment code · shown once
             </p>
-            <p className="mt-2 break-all font-mono text-sm text-amber-900 dark:text-amber-100">
-              {code}
-            </p>
-            <Button type="button" variant="outline" className="mt-3" onClick={onCopy}>
-              {copied ? "Copied!" : "Copy to clipboard"}
+            <p className="mt-2 font-mono text-sm break-all text-foreground">{code}</p>
+            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={onCopy}>
+              {copied ? "Copied!" : "Copy code"}
             </Button>
-            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+            <p className="mt-2 text-xs text-muted-foreground">
               Paste this on the device at <span className="font-mono">/scanner/enroll</span>. If you
               lose it, revoke the device and create a new one.
             </p>
