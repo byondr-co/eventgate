@@ -19,13 +19,15 @@ vi.mock("@/lib/scanner/session", () => ({
 }));
 
 import ScannerEnrollPage from "@/app/scanner/enroll/page";
-import { postUnlock } from "@/lib/scanner/api";
-import { clearDevice, loadSession, useDeviceIdentity } from "@/lib/scanner/session";
+import { postEnroll, postUnlock } from "@/lib/scanner/api";
+import { clearDevice, loadSession, saveDevice, useDeviceIdentity } from "@/lib/scanner/session";
 
 const mockUseDevice = vi.mocked(useDeviceIdentity);
 const mockLoadSession = vi.mocked(loadSession);
 const mockPostUnlock = vi.mocked(postUnlock);
+const mockPostEnroll = vi.mocked(postEnroll);
 const mockClearDevice = vi.mocked(clearDevice);
+const mockSaveDevice = vi.mocked(saveDevice);
 
 const DEVICE = {
   device_id: "d1",
@@ -35,6 +37,17 @@ const DEVICE = {
   org_slug: "byondr",
   label: "Gate A",
   role: "walkin_display" as const,
+};
+
+const ENROLL_RESULT = {
+  device_id: "d2",
+  device_token: "tok-new",
+  event_id: "e2",
+  event_slug: "other",
+  event_name: "Other Event",
+  org_slug: "byondr",
+  label: "Gate B",
+  role: "scanner" as const,
 };
 
 beforeEach(() => {
@@ -99,5 +112,85 @@ describe("ScannerEnrollPage already-enrolled actions", () => {
     mockLoadSession.mockReturnValue(null);
     render(<ScannerEnrollPage />);
     expect(screen.getByText("launch")).toBeInTheDocument();
+  });
+
+  it("requires the event PIN before overwriting an already-enrolled device", async () => {
+    mockUseDevice.mockReturnValue(DEVICE);
+    mockLoadSession.mockReturnValue(null);
+    mockPostUnlock.mockResolvedValueOnce({} as never);
+    mockPostEnroll.mockResolvedValueOnce(ENROLL_RESULT);
+    render(<ScannerEnrollPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("Paste here"), { target: { value: "NEW-CODE" } });
+    fireEvent.click(screen.getByRole("button", { name: /Enroll device/ }));
+
+    // It must NOT enroll immediately — a PIN confirmation appears first.
+    expect(mockPostEnroll).not.toHaveBeenCalled();
+    const pin = await screen.findByPlaceholderText("• • • •");
+    fireEvent.change(pin, { target: { value: "1234" } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & enroll/ }));
+
+    await waitFor(() => expect(mockPostUnlock).toHaveBeenCalledWith("tok-dev", "1234"));
+    await waitFor(() => expect(mockPostEnroll).toHaveBeenCalledWith("NEW-CODE"));
+    await waitFor(() => expect(mockSaveDevice).toHaveBeenCalledTimes(1));
+  });
+
+  it("does NOT overwrite when the confirmation PIN is wrong", async () => {
+    mockUseDevice.mockReturnValue(DEVICE);
+    mockLoadSession.mockReturnValue(null);
+    mockPostUnlock.mockRejectedValueOnce(new Error("Incorrect PIN."));
+    render(<ScannerEnrollPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("Paste here"), { target: { value: "NEW-CODE" } });
+    fireEvent.click(screen.getByRole("button", { name: /Enroll device/ }));
+    fireEvent.change(await screen.findByPlaceholderText("• • • •"), { target: { value: "0000" } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & enroll/ }));
+
+    await waitFor(() => expect(screen.getByText("Incorrect PIN.")).toBeInTheDocument());
+    expect(mockPostEnroll).not.toHaveBeenCalled();
+  });
+
+  it("enrolls directly without a PIN when no device is enrolled yet", async () => {
+    mockUseDevice.mockReturnValue(null);
+    mockPostEnroll.mockResolvedValueOnce(ENROLL_RESULT);
+    render(<ScannerEnrollPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("Paste here"), { target: { value: "FRESH" } });
+    fireEvent.click(screen.getByRole("button", { name: /Enroll device/ }));
+
+    await waitFor(() => expect(mockPostEnroll).toHaveBeenCalledWith("FRESH"));
+    expect(mockPostUnlock).not.toHaveBeenCalled();
+  });
+
+  it("recovers (no stuck state) when the code is invalid after the PIN verifies", async () => {
+    mockUseDevice.mockReturnValue(DEVICE);
+    mockLoadSession.mockReturnValue(null);
+    mockPostUnlock.mockResolvedValueOnce({} as never);
+    mockPostEnroll.mockRejectedValueOnce(new Error("Unknown or already-used enrollment code."));
+    render(<ScannerEnrollPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("Paste here"), { target: { value: "BAD-CODE" } });
+    fireEvent.click(screen.getByRole("button", { name: /Enroll device/ }));
+    fireEvent.change(await screen.findByPlaceholderText("• • • •"), { target: { value: "1234" } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & enroll/ }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Unknown or already-used enrollment code.")).toBeInTheDocument(),
+    );
+    // Form recovered: the "Enroll device" button is back (not stuck on "Verifying…").
+    expect(screen.getByRole("button", { name: /Enroll device/ })).toBeInTheDocument();
+  });
+
+  it("opening reset cancels a pending overwrite prompt (only one PIN field)", async () => {
+    mockUseDevice.mockReturnValue(DEVICE);
+    mockLoadSession.mockReturnValue(null);
+    render(<ScannerEnrollPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("Paste here"), { target: { value: "NEW-CODE" } });
+    fireEvent.click(screen.getByRole("button", { name: /Enroll device/ }));
+    await screen.findByPlaceholderText("• • • •"); // overwrite prompt is open
+    fireEvent.click(screen.getByRole("button", { name: /Reset & re-enroll/ }));
+
+    expect(screen.getAllByPlaceholderText("• • • •")).toHaveLength(1);
   });
 });
