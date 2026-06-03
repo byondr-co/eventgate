@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { NoGuests } from "@/lib/illustrations";
 import { useFields, type RegistrationField } from "@/lib/events";
@@ -114,12 +116,12 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
         <CardTitle>Guests {guests.data && `(${count})`}</CardTitle>
       </CardHeader>
       <CardContent>
-        <input
+        <Input
           type="search"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search name, email, or phone…"
-          className="mb-3 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="mb-3 max-w-sm"
         />
         <div className="mb-4 flex flex-wrap gap-3">
           <SegmentedControl
@@ -259,18 +261,18 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                 <label htmlFor="page-size" className="text-muted-foreground">
                   Rows per page
                 </label>
-                <select
+                <Select
                   id="page-size"
                   value={pageSize}
                   onChange={(e) => onPageSize(Number(e.target.value))}
-                  className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+                  className="w-auto"
                 >
                   {PAGE_SIZES.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-muted-foreground">

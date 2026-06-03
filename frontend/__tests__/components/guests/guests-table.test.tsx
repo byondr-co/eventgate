@@ -264,3 +264,20 @@ describe("GuestsTable empty states", () => {
     );
   });
 });
+
+describe("GuestsTable primitive inputs", () => {
+  it("uses the Input primitive for search", () => {
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    expect(screen.getByPlaceholderText("Search name, email, or phone…")).toHaveAttribute(
+      "data-slot",
+      "input",
+    );
+  });
+
+  it("uses the Select primitive for rows per page", () => {
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 200);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    expect(screen.getByLabelText("Rows per page")).toHaveAttribute("data-slot", "select");
+  });
+});
