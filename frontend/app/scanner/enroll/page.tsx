@@ -114,27 +114,29 @@ export default function ScannerEnrollPage() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {showResume ? (
-              <button
-                type="button"
-                onClick={onResume}
-                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-              >
-                Open {ROLE_LABELS[device.role]}
-              </button>
-            ) : null}
+          {showResume || !resetting ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {showResume ? (
+                <button
+                  type="button"
+                  onClick={onResume}
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                >
+                  Open {ROLE_LABELS[device.role]}
+                </button>
+              ) : null}
 
-            {!resetting ? (
-              <button
-                type="button"
-                onClick={() => setResetting(true)}
-                className="rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100"
-              >
-                Reset &amp; re-enroll
-              </button>
-            ) : null}
-          </div>
+              {!resetting ? (
+                <button
+                  type="button"
+                  onClick={() => setResetting(true)}
+                  className="rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  Reset &amp; re-enroll
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
           {resetting ? (
             <form onSubmit={onConfirmReset} className="mt-3 space-y-2">
