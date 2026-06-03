@@ -10,7 +10,7 @@ vi.mock("@/lib/walkins", () => ({
 }));
 
 import WalkinClaimPage from "@/app/(public)/e/[orgSlug]/[eventSlug]/claim/[token]/page";
-import { writeClaim } from "@/lib/walkin-device";
+import { markInfoCompleted, writeClaim } from "@/lib/walkin-device";
 import { useClaim } from "@/lib/walkins";
 
 const mockUseClaim = vi.mocked(useClaim);
@@ -47,6 +47,24 @@ describe("WalkinClaimPage re-scan guard", () => {
     await waitFor(() => expect(screen.getByText("ENTRY CONFIRMED")).toBeInTheDocument());
     const lastCall = mockUseClaim.mock.calls.at(-1)!;
     expect(lastCall[3]).toMatchObject({ enabled: true });
+  });
+
+  it("offers Complete my info on a blocked re-scan when info isn't finished", async () => {
+    writeClaim("o", "e", "tok-1"); // claimed, info not completed
+    setClaim();
+    render(<WalkinClaimPage />);
+    await waitFor(() => expect(screen.getByText("Already checked in")).toBeInTheDocument());
+    const link = screen.getByRole("link", { name: /Complete my info/ });
+    // Next normalizes the trailing slash off the rendered anchor; the route resolves either way.
+    expect(link.getAttribute("href")).toMatch(/^\/e\/o\/e\/info\/tok-1\/?$/);
+  });
+
+  it("hides Complete my info once info is finished", async () => {
+    markInfoCompleted("o", "e", "tok-1");
+    setClaim();
+    render(<WalkinClaimPage />);
+    await waitFor(() => expect(screen.getByText("Already checked in")).toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: /Complete my info/ })).not.toBeInTheDocument();
   });
 
   it("allows re-showing confirmation for the SAME token (idempotent)", async () => {

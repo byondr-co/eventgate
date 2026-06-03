@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { claimedKey, getDeviceId, readClaim, writeClaim } from "@/lib/walkin-device";
+import {
+  claimedKey,
+  getDeviceId,
+  markInfoCompleted,
+  readClaim,
+  writeClaim,
+} from "@/lib/walkin-device";
 
 beforeEach(() => {
   localStorage.clear();
@@ -21,6 +27,21 @@ describe("walkin-device storage", () => {
     expect(typeof stored?.claimedAt).toBe("number");
     // A different event is independent.
     expect(readClaim("o", "other")).toBeNull();
+  });
+
+  it("tracks info completion per claim", () => {
+    writeClaim("o", "e", "tok-1");
+    expect(readClaim("o", "e")?.infoCompleted).toBe(false);
+    markInfoCompleted("o", "e", "tok-1");
+    expect(readClaim("o", "e")?.infoCompleted).toBe(true);
+  });
+
+  it("preserves info-completed when re-writing the same token, resets on a new token", () => {
+    markInfoCompleted("o", "e", "tok-1");
+    writeClaim("o", "e", "tok-1");
+    expect(readClaim("o", "e")?.infoCompleted).toBe(true);
+    writeClaim("o", "e", "tok-2");
+    expect(readClaim("o", "e")?.infoCompleted).toBe(false);
   });
 
   it("returns a stable device id across calls", () => {
