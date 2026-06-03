@@ -25,6 +25,7 @@ describe("illustrations", () => {
     const svg = container.querySelector("svg")!;
     expect(svg).toBeTruthy();
     expect(svg.getAttribute("stroke")).toBe("currentColor");
+    expect(svg.getAttribute("aria-hidden")).toBe("true");
     expect(svg.className.baseVal).toContain("size-10");
     expect(container.innerHTML).not.toMatch(/fill="#/);
   });

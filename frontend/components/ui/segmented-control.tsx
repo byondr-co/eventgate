@@ -7,6 +7,7 @@ type SegmentedControlProps<T extends string> = {
   value: T;
   onValueChange: (next: T) => void;
   className?: string;
+  "aria-label"?: string;
 };
 
 function SegmentedControl<T extends string>({
@@ -14,10 +15,13 @@ function SegmentedControl<T extends string>({
   value,
   onValueChange,
   className,
+  "aria-label": ariaLabel,
 }: SegmentedControlProps<T>) {
   return (
     <div
       data-slot="segmented-control"
+      role="group"
+      aria-label={ariaLabel}
       className={cn("inline-flex rounded-lg border border-border p-0.5", className)}
     >
       {options.map((opt) => {

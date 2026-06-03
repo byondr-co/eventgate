@@ -12,6 +12,15 @@ type FieldProps = {
   children: React.ReactNode;
 };
 
+/**
+ * Form field wrapper: label + control + helper/error.
+ *
+ * Field owns the error element and its stable `${htmlFor}-error` id, but does NOT
+ * inject a11y attributes into `children` (an opaque node). The control you pass must
+ * wire them itself when in an error state:
+ *   `aria-invalid={!!error}` and `aria-describedby={`${htmlFor}-error`}`.
+ * (Phase 2 may move to automatic wiring via cloneElement — see follow-up task.)
+ */
 function Field({ label, htmlFor, helper, error, optional, className, children }: FieldProps) {
   const errorId = htmlFor ? `${htmlFor}-error` : undefined;
   return (
