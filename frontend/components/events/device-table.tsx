@@ -2,7 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useDevices, useRevokeDevice, type Device } from "@/lib/devices";
+import { NoDevices } from "@/lib/illustrations";
 
 type Props = { orgSlug: string; eventSlug: string };
 
@@ -14,8 +16,8 @@ const ROLE_LABELS: Record<Device["role"], string> = {
 
 function deviceState(d: Device): { label: string; tone: string } {
   if (d.revoked_at) return { label: "Revoked", tone: "text-destructive" };
-  if (d.enrolled_at) return { label: "Enrolled", tone: "text-green-600" };
-  return { label: "Pending enrollment", tone: "text-amber-600" };
+  if (d.enrolled_at) return { label: "Enrolled", tone: "text-success" };
+  return { label: "Pending enrollment", tone: "text-muted-foreground" };
 }
 
 export function DeviceTable({ orgSlug, eventSlug }: Props) {
@@ -33,7 +35,11 @@ export function DeviceTable({ orgSlug, eventSlug }: Props) {
         ) : isError ? (
           <p className="text-sm text-destructive">Failed to load devices.</p>
         ) : !data || data.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No devices yet.</p>
+          <EmptyState
+            illustration={NoDevices}
+            title="No devices yet"
+            message="Create a device above, then open the enrollment page on that device to start scanning guests in."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
