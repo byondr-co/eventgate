@@ -76,7 +76,10 @@ export default function ScannerLayout({ children }: { children: React.ReactNode 
           {conflicts > 0 ? (
             <Link
               href="/scanner/escalations"
-              className="font-mono text-amber-300 hover:underline"
+              className={cn(
+                "font-mono hover:underline",
+                isLight ? "text-amber-700" : "text-amber-300",
+              )}
               aria-label={`${conflicts} conflicts pending escalation`}
             >
               ⚠ {conflicts} conflict{conflicts === 1 ? "" : "s"}
