@@ -19,6 +19,8 @@ Monochrome + semantic. Color carries meaning only:
 
 `Field`, `Input`, `Textarea`, `Select`, `Toggle`, `Slider`, `SegmentedControl`, `Button` (variants: default/secondary/outline/ghost/destructive/link; sizes incl. `icon`, `pill`), `EmptyState`.
 
+`Field` wraps a single control and, when given an `error`, automatically sets `aria-invalid` + `aria-describedby={`${htmlFor}-error`}` on that child (pass a single element as the child, and set the control's `id` to match `htmlFor`).
+
 ## Illustrations & guides
 
 - `@/lib/illustrations` — thin-line SVGs (1.4px, rounded, `currentColor`). Use inside `EmptyState` and `Guide`.
