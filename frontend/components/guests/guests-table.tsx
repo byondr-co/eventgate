@@ -6,7 +6,9 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { NoGuests } from "@/lib/illustrations";
 import { useFields, type RegistrationField } from "@/lib/events";
 import { fetchTelegramLink, useGuests, useSendQrEmail, type Guest } from "@/lib/guests";
 import { notify } from "@/lib/toast";
@@ -97,6 +99,12 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
     setPage(1);
     if (typeof window !== "undefined") window.localStorage.setItem(PAGE_SIZE_KEY, String(v));
   };
+  const clearFilters = () => {
+    setSearch("");
+    setGuestType("");
+    setEntryStatus("");
+    setPage(1);
+  };
   const stickyLeft = "sticky left-0 z-10 bg-card";
   const stickyRight = "sticky right-0 z-10 bg-card";
 
@@ -142,11 +150,26 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
           />
         </div>
         {guests.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {guests.data && rows.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            {search || guestType || entryStatus ? "No matches." : "No registrations yet."}
-          </p>
-        )}
+        {guests.data && rows.length === 0 ? (
+          search || guestType || entryStatus ? (
+            <EmptyState
+              illustration={NoGuests}
+              title="No matching guests"
+              message="Try a different search or clear the filters."
+              action={
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              illustration={NoGuests}
+              title="No registrations yet"
+              message="Guests appear here as they register or are imported."
+            />
+          )
+        ) : null}
         {rows.length > 0 && (
           <>
             <div className="overflow-x-auto">

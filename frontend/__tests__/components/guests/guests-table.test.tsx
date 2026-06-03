@@ -242,3 +242,25 @@ describe("GuestsTable frozen columns", () => {
     expect(actionsHeader.className).not.toContain("border-l");
   });
 });
+
+describe("GuestsTable empty states", () => {
+  it("shows the no-registrations EmptyState with no Clear filters button", () => {
+    setGuests([], 0);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    expect(screen.getByText("No registrations yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+  });
+
+  it("shows a filtered EmptyState and Clear filters resets the query", () => {
+    setGuests([], 0);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    fireEvent.click(screen.getByRole("button", { name: "Walk-in" }));
+    expect(screen.getByText("No matching guests")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(mockUseGuests).toHaveBeenLastCalledWith(
+      "o",
+      "e",
+      expect.objectContaining({ guestType: "", entryStatus: "", search: "", page: 1 }),
+    );
+  });
+});
