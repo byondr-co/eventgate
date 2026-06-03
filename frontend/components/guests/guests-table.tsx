@@ -188,7 +188,7 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                       </td>
                       <td className="py-2">
                         {g.entry_status === "checked_in" ? (
-                          <Badge className="bg-green-600 text-white">Checked-in</Badge>
+                          <Badge className="bg-success text-success-foreground">Checked-in</Badge>
                         ) : (
                           <span className="text-muted-foreground whitespace-nowrap">
                             {entryLabel(g.entry_status)}

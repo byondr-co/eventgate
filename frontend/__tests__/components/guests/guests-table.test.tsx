@@ -126,7 +126,7 @@ describe("GuestsTable entry status + numbering + pagination", () => {
     const inRow = screen.getByText("In").closest("tr")!;
     const checkedIn = within(inRow).getByText("Checked-in");
     expect(checkedIn).toBeInTheDocument();
-    expect(checkedIn.className).toContain("bg-green-600");
+    expect(checkedIn.className).toContain("bg-success");
     expect(screen.queryByText("checked_in")).not.toBeInTheDocument();
   });
 
