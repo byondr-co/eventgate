@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 
+import { cn } from "@/lib/utils";
 import { InstallButton } from "@/components/scanner/install-button";
 import { IOSInstallBanner } from "@/components/scanner/ios-install-banner";
 import { OfflineBanner } from "@/components/scanner/offline-banner";
@@ -30,6 +31,8 @@ const getOnlineServer = () => true;
 export default function ScannerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
+  // Enroll + unlock adopt the light theme (Plan M). Scan/escalations stay dark.
+  const isLight = pathname === "/scanner/enroll" || pathname === "/scanner/unlock";
   // useSyncExternalStore avoids the "setState in effect" lint trap — the
   // browser is the source of truth, we just subscribe and re-render.
   const online = useSyncExternalStore(subscribeOnline, getOnline, getOnlineServer);
@@ -55,8 +58,18 @@ export default function ScannerLayout({ children }: { children: React.ReactNode 
   }, [pathname, router]);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
-      <header className="flex items-center justify-between border-b border-neutral-800 px-4 py-2 text-xs">
+    <div
+      className={cn(
+        "min-h-screen",
+        isLight ? "bg-background text-foreground" : "bg-neutral-950 text-white",
+      )}
+    >
+      <header
+        className={cn(
+          "flex items-center justify-between border-b px-4 py-2 text-xs",
+          isLight ? "border-neutral-200" : "border-neutral-800",
+        )}
+      >
         <span className="font-mono">Eventgate Scanner</span>
         <div className="flex items-center gap-3">
           <InstallButton />
@@ -70,7 +83,16 @@ export default function ScannerLayout({ children }: { children: React.ReactNode 
             </Link>
           ) : null}
           <span
-            className={online ? "font-mono text-green-400" : "font-mono text-amber-400"}
+            className={cn(
+              "font-mono",
+              online
+                ? isLight
+                  ? "text-green-600"
+                  : "text-green-400"
+                : isLight
+                  ? "text-amber-600"
+                  : "text-amber-400",
+            )}
             aria-live="polite"
           >
             {online ? "● online" : `● offline${pending > 0 ? ` — ${pending} queued` : ""}`}
