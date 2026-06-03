@@ -15,7 +15,12 @@ class DeviceCreateSerializer(serializers.Serializer):
         if event is not None:
             label = attrs.get("label", "")
             role = attrs.get("role", "")
-            if ScannerDevice.objects.filter(event=event, label=label, role=role).exists():
+            # Only active (non-revoked) devices reserve a (label, role). Revoking a
+            # device frees its label so it can be re-created.
+            clash = ScannerDevice.objects.filter(
+                event=event, label=label, role=role, revoked_at__isnull=True
+            ).exists()
+            if clash:
                 raise serializers.ValidationError(
                     {"label": "A device with this label and role already exists for this event."}
                 )
