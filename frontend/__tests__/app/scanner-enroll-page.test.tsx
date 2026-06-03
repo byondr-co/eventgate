@@ -85,4 +85,19 @@ describe("ScannerEnrollPage already-enrolled actions", () => {
     await waitFor(() => expect(screen.getByText("Incorrect PIN.")).toBeInTheDocument());
     expect(mockClearDevice).not.toHaveBeenCalled();
   });
+
+  it("shows the human event name in the warning card when present", () => {
+    mockUseDevice.mockReturnValue({ ...DEVICE, event_name: "Launch Pilot" });
+    mockLoadSession.mockReturnValue(null);
+    render(<ScannerEnrollPage />);
+    expect(screen.getByText("Launch Pilot")).toBeInTheDocument();
+    expect(screen.queryByText("launch")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the slug when no event_name is stored", () => {
+    mockUseDevice.mockReturnValue(DEVICE); // DEVICE has event_slug "launch", no event_name
+    mockLoadSession.mockReturnValue(null);
+    render(<ScannerEnrollPage />);
+    expect(screen.getByText("launch")).toBeInTheDocument();
+  });
 });
