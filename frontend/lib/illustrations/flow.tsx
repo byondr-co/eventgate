@@ -55,15 +55,15 @@ export function OpenEnrollPage({ className }: IllustrationProps) {
 export function EnterPin({ className }: IllustrationProps) {
   return base(
     <>
-      <circle cx="8" cy="8" r="1" />
-      <circle cx="12" cy="8" r="1" />
-      <circle cx="16" cy="8" r="1" />
-      <circle cx="8" cy="12" r="1" />
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="16" cy="12" r="1" />
-      <circle cx="8" cy="16" r="1" />
-      <circle cx="12" cy="16" r="1" />
-      <circle cx="16" cy="16" r="1" />
+      <circle cx="8" cy="8" r="1" fill="currentColor" />
+      <circle cx="12" cy="8" r="1" fill="currentColor" />
+      <circle cx="16" cy="8" r="1" fill="currentColor" />
+      <circle cx="8" cy="12" r="1" fill="currentColor" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" />
+      <circle cx="16" cy="12" r="1" fill="currentColor" />
+      <circle cx="8" cy="16" r="1" fill="currentColor" />
+      <circle cx="12" cy="16" r="1" fill="currentColor" />
+      <circle cx="16" cy="16" r="1" fill="currentColor" />
     </>,
     className,
   );
