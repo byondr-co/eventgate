@@ -128,6 +128,21 @@ def test_create_duplicate_label_role_returns_400(setup):
     assert "label" in r2.data
 
 
+def test_enroll_returns_event_name(setup):
+    c, org, event = setup
+    r = c.post(
+        f"/api/v1/orgs/{org.slug}/events/{event.slug}/devices/",
+        {"label": "G1", "role": "scanner"},
+        format="json",
+    )
+    code = r.data["enrollment_code"]
+    anon = APIClient()
+    r2 = anon.post("/api/v1/devices/enroll/", {"enrollment_code": code}, format="json")
+    assert r2.status_code == 200
+    assert r2.data["event_name"] == event.name
+    assert r2.data["event_slug"] == event.slug
+
+
 def test_create_same_label_different_event_succeeds(setup, django_user_model):
     """Same label+role on a different event must still succeed."""
     c, org, event = setup

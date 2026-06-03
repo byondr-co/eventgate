@@ -20,7 +20,7 @@ export default function ScannerEnrollPage() {
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
 
-  const alreadyEnrolled = device ? `${device.label} (${device.event_slug})` : null;
+  const eventName = device ? (device.event_name ?? device.event_slug) : null;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +35,7 @@ export default function ScannerEnrollPage() {
         device_token: r.device_token,
         event_id: r.event_id,
         event_slug: r.event_slug,
+        event_name: r.event_name,
         org_slug: r.org_slug,
         label: r.label,
         role: r.role,
@@ -79,50 +80,75 @@ export default function ScannerEnrollPage() {
   return (
     <main className="mx-auto max-w-md px-4 py-10">
       <h1 className="text-2xl font-semibold">Enroll this device</h1>
-      <p className="mt-2 text-sm text-neutral-400">
+      <p className="mt-2 text-sm text-muted-foreground">
         Paste the one-time enrollment code your event organizer gave you. The device will bind to
         that event until revoked.
       </p>
 
-      {alreadyEnrolled && !busy ? (
-        <div className="mt-6 rounded-md border border-amber-500/40 bg-amber-950/30 p-4 text-sm">
-          <p className="font-medium text-amber-200">
-            This device is already enrolled as <span className="font-mono">{alreadyEnrolled}</span>.
-          </p>
-          <p className="mt-1 text-amber-300/80">
-            Enrolling again will overwrite the existing token. Reset first if that&apos;s
-            intentional.
-          </p>
-
-          {showResume ? (
-            <button
-              type="button"
-              onClick={onResume}
-              className="mt-3 block w-full rounded-md bg-white px-4 py-2.5 text-center text-sm font-medium text-neutral-950"
+      {device && !busy ? (
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+          <div className="flex gap-3">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              Open {ROLE_LABELS[device.role]}
-            </button>
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <div>
+              <p className="font-medium text-amber-900">
+                This device is already enrolled as <span className="font-mono">{device.label}</span>{" "}
+                for <span className="font-semibold">{eventName}</span>.
+              </p>
+              <p className="mt-1 text-amber-800/80">
+                Enrolling again will overwrite the existing token. Reset first if that&apos;s
+                intentional.
+              </p>
+            </div>
+          </div>
+
+          {showResume || !resetting ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {showResume ? (
+                <button
+                  type="button"
+                  onClick={onResume}
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                >
+                  Open {ROLE_LABELS[device.role]}
+                </button>
+              ) : null}
+
+              {!resetting ? (
+                <button
+                  type="button"
+                  onClick={() => setResetting(true)}
+                  className="rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  Reset &amp; re-enroll
+                </button>
+              ) : null}
+            </div>
           ) : null}
 
-          {!resetting ? (
-            <button
-              type="button"
-              onClick={() => setResetting(true)}
-              className="mt-3 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs hover:bg-neutral-800"
-            >
-              Reset &amp; re-enroll
-            </button>
-          ) : (
+          {resetting ? (
             <form onSubmit={onConfirmReset} className="mt-3 space-y-2">
               <label className="block">
-                <span className="text-xs text-amber-300/80">Enter the event PIN to reset</span>
+                <span className="text-xs text-amber-800/80">Enter the event PIN to reset</span>
                 <input
                   required
                   inputMode="numeric"
                   autoComplete="off"
                   value={resetPin}
                   onChange={(e) => setResetPin(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-center font-mono text-lg tracking-[0.4em]"
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-center font-mono text-lg tracking-[0.4em]"
                   placeholder="• • • •"
                 />
               </label>
@@ -141,14 +167,14 @@ export default function ScannerEnrollPage() {
                     setResetPin("");
                     setResetError(null);
                   }}
-                  className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs hover:bg-neutral-800"
+                  className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
                 >
                   Cancel
                 </button>
               </div>
-              {resetError ? <p className="text-xs text-red-400">{resetError}</p> : null}
+              {resetError ? <p className="text-xs text-red-600">{resetError}</p> : null}
             </form>
-          )}
+          ) : null}
         </div>
       ) : null}
 
@@ -161,7 +187,7 @@ export default function ScannerEnrollPage() {
             onChange={(e) => setCode(e.target.value)}
             rows={3}
             placeholder="Paste here"
-            className="mt-1 w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 font-mono text-sm break-all"
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm break-all"
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
@@ -170,11 +196,11 @@ export default function ScannerEnrollPage() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-md bg-white px-4 py-3 text-base font-medium text-neutral-950 disabled:opacity-50"
+          className="w-full rounded-md bg-primary px-4 py-3 text-base font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
         >
           {busy ? "Enrolling…" : "Enroll device"}
         </button>
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
       </form>
     </main>
   );
