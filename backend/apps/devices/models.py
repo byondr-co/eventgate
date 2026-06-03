@@ -49,9 +49,12 @@ class ScannerDevice(models.Model):
 
     class Meta:
         constraints: ClassVar = [
+            # Only active (non-revoked) devices are unique per (event, label, role);
+            # revoking a device frees its label for re-creation.
             models.UniqueConstraint(
                 fields=("event", "label", "role"),
-                name="unique_device_label_per_event_role",
+                condition=models.Q(revoked_at__isnull=True),
+                name="unique_active_device_label_per_event_role",
             ),
         ]
         indexes: ClassVar = [

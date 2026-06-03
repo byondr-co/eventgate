@@ -63,6 +63,29 @@ def test_same_label_ok_across_roles(event):
     assert ScannerDevice.objects.count() == 2
 
 
+def test_revoked_device_frees_label(event):
+    from django.utils import timezone
+
+    first = ScannerDevice.objects.create(
+        organization=event.organization,
+        event=event,
+        label="G1",
+        role="scanner",
+        device_token_hash="h",
+    )
+    first.revoked_at = timezone.now()
+    first.save(update_fields=["revoked_at"])
+    # Same (label, role) is allowed once the prior device is revoked.
+    ScannerDevice.objects.create(
+        organization=event.organization,
+        event=event,
+        label="G1",
+        role="scanner",
+        device_token_hash="h2",
+    )
+    assert ScannerDevice.objects.filter(label="G1", role="scanner").count() == 2
+
+
 def test_pin_session_links_device(event):
     d = ScannerDevice.objects.create(
         organization=event.organization,

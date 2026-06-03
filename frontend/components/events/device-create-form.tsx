@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { extractFieldErrors } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCreateDevice, type DeviceRole } from "@/lib/devices";
@@ -21,12 +22,14 @@ export function DeviceCreateForm({ orgSlug, eventSlug }: Props) {
   const [role, setRole] = useState<DeviceRole>("scanner");
   const [gate, setGate] = useState("");
   const [code, setCode] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setFieldErrors({});
+    setFormError(null);
     setCode(null);
     try {
       const r = await create.mutateAsync({ label, role, gate: gate || undefined });
@@ -34,7 +37,9 @@ export function DeviceCreateForm({ orgSlug, eventSlug }: Props) {
       setLabel("");
       setGate("");
     } catch (err) {
-      setError((err as Error).message);
+      const { fieldErrors: fe, formError: fe2 } = extractFieldErrors(err);
+      setFieldErrors(fe);
+      setFormError(fe2);
     }
   };
 
@@ -64,7 +69,14 @@ export function DeviceCreateForm({ orgSlug, eventSlug }: Props) {
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. Gate 1 Lane A"
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              aria-invalid={!!fieldErrors.label}
+              aria-describedby={fieldErrors.label ? "device-label-error" : undefined}
             />
+            {fieldErrors.label && (
+              <p id="device-label-error" className="mt-1 text-sm text-destructive" role="alert">
+                {fieldErrors.label}
+              </p>
+            )}
           </label>
           <label className="block">
             <span className="text-sm font-medium">Role</span>
@@ -92,7 +104,11 @@ export function DeviceCreateForm({ orgSlug, eventSlug }: Props) {
           <Button type="submit" disabled={create.isPending}>
             {create.isPending ? "Creating…" : "Create device"}
           </Button>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {formError && (
+            <p className="text-sm text-destructive" role="alert">
+              {formError}
+            </p>
+          )}
         </form>
 
         {code && (
