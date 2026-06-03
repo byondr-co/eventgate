@@ -15,21 +15,35 @@ type FieldProps = {
 /**
  * Form field wrapper: label + control + helper/error.
  *
- * Field owns the error element and its stable `${htmlFor}-error` id, but does NOT
- * inject a11y attributes into `children` (an opaque node). The control you pass must
- * wire them itself when in an error state:
- *   `aria-invalid={!!error}` and `aria-describedby={`${htmlFor}-error`}`.
- * (Phase 2 may move to automatic wiring via cloneElement — see follow-up task.)
+ * When `error` is set, Field wires the a11y attributes onto its child control
+ * automatically: `aria-invalid` and `aria-describedby={`${htmlFor}-error`}` (merging
+ * with any `aria-describedby` the control already had). This only happens when
+ * `children` is a single React element — pass a single control as the child.
  */
 function Field({ label, htmlFor, helper, error, optional, className, children }: FieldProps) {
   const errorId = htmlFor ? `${htmlFor}-error` : undefined;
+
+  const control =
+    error && React.isValidElement(children)
+      ? React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
+          "aria-invalid": true,
+          "aria-describedby":
+            [
+              (children as React.ReactElement<Record<string, unknown>>).props["aria-describedby"],
+              errorId,
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined,
+        })
+      : children;
+
   return (
     <div className={cn("space-y-1.5", className)} data-slot="field">
       <label htmlFor={htmlFor} className="flex items-center justify-between text-sm font-semibold">
         <span>{label}</span>
         {optional && <span className="font-normal text-muted-foreground">Optional</span>}
       </label>
-      {children}
+      {control}
       {error ? (
         <p id={errorId} role="alert" className="text-xs text-destructive">
           {error}
