@@ -161,4 +161,36 @@ describe("ScannerEnrollPage already-enrolled actions", () => {
     await waitFor(() => expect(mockPostEnroll).toHaveBeenCalledWith("FRESH"));
     expect(mockPostUnlock).not.toHaveBeenCalled();
   });
+
+  it("recovers (no stuck state) when the code is invalid after the PIN verifies", async () => {
+    mockUseDevice.mockReturnValue(DEVICE);
+    mockLoadSession.mockReturnValue(null);
+    mockPostUnlock.mockResolvedValueOnce({} as never);
+    mockPostEnroll.mockRejectedValueOnce(new Error("Unknown or already-used enrollment code."));
+    render(<ScannerEnrollPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("Paste here"), { target: { value: "BAD-CODE" } });
+    fireEvent.click(screen.getByRole("button", { name: /Enroll device/ }));
+    fireEvent.change(await screen.findByPlaceholderText("• • • •"), { target: { value: "1234" } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & enroll/ }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Unknown or already-used enrollment code.")).toBeInTheDocument(),
+    );
+    // Form recovered: the "Enroll device" button is back (not stuck on "Verifying…").
+    expect(screen.getByRole("button", { name: /Enroll device/ })).toBeInTheDocument();
+  });
+
+  it("opening reset cancels a pending overwrite prompt (only one PIN field)", async () => {
+    mockUseDevice.mockReturnValue(DEVICE);
+    mockLoadSession.mockReturnValue(null);
+    render(<ScannerEnrollPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("Paste here"), { target: { value: "NEW-CODE" } });
+    fireEvent.click(screen.getByRole("button", { name: /Enroll device/ }));
+    await screen.findByPlaceholderText("• • • •"); // overwrite prompt is open
+    fireEvent.click(screen.getByRole("button", { name: /Reset & re-enroll/ }));
+
+    expect(screen.getAllByPlaceholderText("• • • •")).toHaveLength(1);
+  });
 });

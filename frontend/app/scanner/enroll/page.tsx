@@ -85,15 +85,15 @@ export default function ScannerEnrollPage() {
       setOverwriteBusy(false);
       return;
     }
-    // PIN verified — proceed to overwrite the enrollment.
+    // PIN verified — leave the confirm state and proceed to overwrite.
+    setOverwriteBusy(false);
+    setOverwriting(false);
     setBusy(true);
     try {
       await runEnroll(code.trim());
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
-      setOverwriteBusy(false);
-      setOverwriting(false);
     }
   };
 
@@ -165,7 +165,14 @@ export default function ScannerEnrollPage() {
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
               <button
                 type="button"
-                onClick={() => setResetting(true)}
+                onClick={() => {
+                  // Opening reset cancels any pending overwrite confirmation so
+                  // the two PIN prompts can never appear at once.
+                  setOverwriting(false);
+                  setOverwritePin("");
+                  setOverwriteError(null);
+                  setResetting(true);
+                }}
                 className="rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100"
               >
                 Reset &amp; re-enroll
