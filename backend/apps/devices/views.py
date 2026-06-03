@@ -65,7 +65,7 @@ class OrgDeviceViewSet(viewsets.ViewSet):
 
 class DeviceEnrollView(APIView):
     """POST /api/v1/devices/enroll/  {"enrollment_code": "..."}
-    -> {device_id, device_token, event_id, event_slug, org_slug, label, role}
+    -> {device_id, device_token, event_id, event_slug, event_name, org_slug, label, role}
 
     Anonymous. Single-use code; subsequent attempts 404.
     """
@@ -88,6 +88,7 @@ class DeviceEnrollView(APIView):
                 "device_token": device_token,
                 "event_id": str(device.event_id),
                 "event_slug": device.event.slug,
+                "event_name": device.event.name,
                 "org_slug": device.organization.slug,
                 "label": device.label,
                 "role": device.role,
