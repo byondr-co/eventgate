@@ -20,33 +20,80 @@ export default function ScannerEnrollPage() {
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
 
+  // PIN-gated overwrite flow: re-enrolling on top of an already-enrolled device
+  // requires the current event PIN, mirroring the reset gate.
+  const [overwriting, setOverwriting] = useState(false);
+  const [overwritePin, setOverwritePin] = useState("");
+  const [overwriteBusy, setOverwriteBusy] = useState(false);
+  const [overwriteError, setOverwriteError] = useState<string | null>(null);
+
   const eventName = device ? (device.event_name ?? device.event_slug) : null;
+
+  // Exchange the code for a device token and leave for the unlock screen.
+  // `busy` is kept true through navigation: saveDevice() repopulates the device
+  // synchronously (useSyncExternalStore re-renders), and without this the
+  // "already enrolled" banner would flash for a frame before we leave.
+  const runEnroll = async (enrollmentCode: string) => {
+    const r = await postEnroll(enrollmentCode);
+    saveDevice({
+      device_id: r.device_id,
+      device_token: r.device_token,
+      event_id: r.event_id,
+      event_slug: r.event_slug,
+      event_name: r.event_name,
+      org_slug: r.org_slug,
+      label: r.label,
+      role: r.role,
+    });
+    router.replace("/scanner/unlock");
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const trimmed = code.trim();
+    if (!trimmed) {
+      setError("Enter the code given by the event organizer.");
+      return;
+    }
+    // Re-enrolling over an existing device is gated behind the event PIN.
+    if (device) {
+      setResetting(false);
+      setOverwriteError(null);
+      setOverwriting(true);
+      return;
+    }
     setBusy(true);
     try {
-      const trimmed = code.trim();
-      if (!trimmed) throw new Error("Enter the code given by the event organizer.");
-      const r = await postEnroll(trimmed);
-      saveDevice({
-        device_id: r.device_id,
-        device_token: r.device_token,
-        event_id: r.event_id,
-        event_slug: r.event_slug,
-        event_name: r.event_name,
-        org_slug: r.org_slug,
-        label: r.label,
-        role: r.role,
-      });
-      // Keep `busy` true through the navigation: saveDevice() populates the
-      // device synchronously (useSyncExternalStore re-renders), and without this
-      // the "already enrolled" banner would flash for a frame before we leave.
-      router.replace("/scanner/unlock");
+      await runEnroll(trimmed);
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
+    }
+  };
+
+  const onConfirmOverwrite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!device) return;
+    setOverwriteError(null);
+    setOverwriteBusy(true);
+    try {
+      // Verify the current event PIN before replacing the device token.
+      await postUnlock(device.device_token, overwritePin.trim());
+    } catch (err) {
+      setOverwriteError((err as Error).message);
+      setOverwriteBusy(false);
+      return;
+    }
+    // PIN verified — proceed to overwrite the enrollment.
+    setBusy(true);
+    try {
+      await runEnroll(code.trim());
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+      setOverwriteBusy(false);
+      setOverwriting(false);
     }
   };
 
@@ -108,37 +155,46 @@ export default function ScannerEnrollPage() {
                 for <span className="font-semibold">{eventName}</span>.
               </p>
               <p className="mt-1 text-amber-800/80">
-                Enrolling again will overwrite the existing token. Reset first if that&apos;s
-                intentional.
+                Re-enrolling replaces this device and needs the event PIN to confirm — or reset it
+                here first.
               </p>
             </div>
           </div>
 
-          {showResume || !resetting ? (
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+          {!resetting ? (
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <button
+                type="button"
+                onClick={() => setResetting(true)}
+                className="rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100"
+              >
+                Reset &amp; re-enroll
+              </button>
+
               {showResume ? (
                 <button
                   type="button"
                   onClick={onResume}
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                  className="group inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                 >
                   Open {ROLE_LABELS[device.role]}
-                </button>
-              ) : null}
-
-              {!resetting ? (
-                <button
-                  type="button"
-                  onClick={() => setResetting(true)}
-                  className="rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100"
-                >
-                  Reset &amp; re-enroll
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
                 </button>
               ) : null}
             </div>
-          ) : null}
-
-          {resetting ? (
+          ) : (
             <form onSubmit={onConfirmReset} className="mt-3 space-y-2">
               <label className="block">
                 <span className="text-xs text-amber-800/80">Enter the event PIN to reset</span>
@@ -174,11 +230,14 @@ export default function ScannerEnrollPage() {
               </div>
               {resetError ? <p className="text-xs text-red-600">{resetError}</p> : null}
             </form>
-          ) : null}
+          )}
         </div>
       ) : null}
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      <form
+        onSubmit={device && overwriting ? onConfirmOverwrite : onSubmit}
+        className="mt-6 space-y-4"
+      >
         <label className="block">
           <span className="text-sm font-medium">Enrollment code</span>
           <textarea
@@ -193,13 +252,56 @@ export default function ScannerEnrollPage() {
             spellCheck={false}
           />
         </label>
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-md bg-primary px-4 py-3 text-base font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-        >
-          {busy ? "Enrolling…" : "Enroll device"}
-        </button>
+
+        {device && overwriting ? (
+          <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-4">
+            <label className="block">
+              <span className="text-xs text-amber-800/80">
+                This replaces <span className="font-mono">{device.label}</span>. Enter the event PIN
+                to confirm.
+              </span>
+              <input
+                required
+                autoFocus
+                inputMode="numeric"
+                autoComplete="off"
+                value={overwritePin}
+                onChange={(e) => setOverwritePin(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-center font-mono text-lg tracking-[0.4em]"
+                placeholder="• • • •"
+              />
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={overwriteBusy || !overwritePin}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {overwriteBusy ? "Verifying…" : "Confirm & enroll"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOverwriting(false);
+                  setOverwritePin("");
+                  setOverwriteError(null);
+                }}
+                className="rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
+              >
+                Cancel
+              </button>
+            </div>
+            {overwriteError ? <p className="text-xs text-red-600">{overwriteError}</p> : null}
+          </div>
+        ) : (
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full rounded-md bg-primary px-4 py-3 text-base font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? "Enrolling…" : "Enroll device"}
+          </button>
+        )}
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
       </form>
     </main>
