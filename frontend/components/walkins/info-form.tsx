@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PublicEventField } from "@/lib/events";
+import { markInfoCompleted } from "@/lib/walkin-device";
 import { useCompleteInfo } from "@/lib/walkins";
 
 type Props = {
@@ -63,6 +64,8 @@ export function WalkinInfoForm({
 
     try {
       await complete.mutateAsync(form);
+      // Clear the "complete your info" reminder shown on a re-scan.
+      markInfoCompleted(orgSlug, eventSlug, token);
       setDone(true);
     } catch (err) {
       // useCompleteInfo surfaces the backend `detail` (already clean) or a status line.
