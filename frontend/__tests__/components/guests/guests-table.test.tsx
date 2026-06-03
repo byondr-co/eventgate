@@ -126,7 +126,7 @@ describe("GuestsTable entry status + numbering + pagination", () => {
     const inRow = screen.getByText("In").closest("tr")!;
     const checkedIn = within(inRow).getByText("Checked-in");
     expect(checkedIn).toBeInTheDocument();
-    expect(checkedIn.className).toContain("bg-green-600");
+    expect(checkedIn.className).toContain("bg-success");
     expect(screen.queryByText("checked_in")).not.toBeInTheDocument();
   });
 
@@ -197,8 +197,8 @@ describe("GuestsTable page-size persistence", () => {
   });
 });
 
-describe("GuestsTable chips filter", () => {
-  it("requests guest_type=walk_in when the Walk-in chip is clicked", () => {
+describe("GuestsTable segmented filters", () => {
+  it("requests guest_type=walk_in when the Walk-in segment is clicked", () => {
     setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
     wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
     fireEvent.click(screen.getByRole("button", { name: "Walk-in" }));
@@ -209,17 +209,17 @@ describe("GuestsTable chips filter", () => {
     );
   });
 
-  it("toggles a chip back off when clicked again", () => {
+  it("clears the entry filter when All is selected in the entry group", () => {
     setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
     wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
-    const chip = screen.getByRole("button", { name: "Checked-in" });
-    fireEvent.click(chip);
+    fireEvent.click(screen.getByRole("button", { name: "Checked-in" }));
     expect(mockUseGuests).toHaveBeenLastCalledWith(
       "o",
       "e",
       expect.objectContaining({ entryStatus: "checked_in" }),
     );
-    fireEvent.click(chip);
+    const entryGroup = screen.getByRole("group", { name: "Filter by entry status" });
+    fireEvent.click(within(entryGroup).getByRole("button", { name: "All" }));
     expect(mockUseGuests).toHaveBeenLastCalledWith(
       "o",
       "e",
@@ -240,5 +240,44 @@ describe("GuestsTable frozen columns", () => {
     expect(actionsHeader.className).toContain("sticky");
     expect(actionsHeader.className).toContain("right-0");
     expect(actionsHeader.className).not.toContain("border-l");
+  });
+});
+
+describe("GuestsTable empty states", () => {
+  it("shows the no-registrations EmptyState with no Clear filters button", () => {
+    setGuests([], 0);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    expect(screen.getByText("No registrations yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+  });
+
+  it("shows a filtered EmptyState and Clear filters resets the query", () => {
+    setGuests([], 0);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    fireEvent.click(screen.getByRole("button", { name: "Walk-in" }));
+    expect(screen.getByText("No matching guests")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(mockUseGuests).toHaveBeenLastCalledWith(
+      "o",
+      "e",
+      expect.objectContaining({ guestType: "", entryStatus: "", search: "", page: 1 }),
+    );
+  });
+});
+
+describe("GuestsTable primitive inputs", () => {
+  it("uses the Input primitive for search", () => {
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 1);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    expect(screen.getByPlaceholderText("Search name, email, or phone…")).toHaveAttribute(
+      "data-slot",
+      "input",
+    );
+  });
+
+  it("uses the Select primitive for rows per page", () => {
+    setGuests([guest({ id: "g1", full_name: "Solo" })], 200);
+    wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
+    expect(screen.getByLabelText("Rows per page")).toHaveAttribute("data-slot", "select");
   });
 });
