@@ -101,8 +101,8 @@ export default function ScannerWalkinPage() {
     return (
       <WalkinDisplay
         kind="full"
-        gate={device.label}
         scanner={device.label}
+        eventName={device.event_name}
         walkinCount={data.walkin_count}
         walkinCapacity={data.walkin_capacity}
       />
@@ -112,8 +112,8 @@ export default function ScannerWalkinPage() {
   return (
     <WalkinDisplay
       claimUrl={data.claim_url}
-      gate={device.label}
       scanner={device.label}
+      eventName={device.event_name}
       walkinCount={data.walkin_count}
       walkinCapacity={data.walkin_capacity}
     />
