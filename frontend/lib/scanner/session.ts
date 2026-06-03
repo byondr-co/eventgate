@@ -31,6 +31,8 @@ export type ScannerIdentity = {
   device_token: string;
   event_id: string;
   event_slug: string;
+  /** Human event name. Optional: sessions enrolled before Plan M lack it; consumers fall back to event_slug. */
+  event_name?: string;
   org_slug: string;
   label: string;
   role: ScannerRole;

@@ -13,6 +13,7 @@ export type EnrollResponse = {
   device_token: string;
   event_id: string;
   event_slug: string;
+  event_name: string;
   org_slug: string;
   label: string;
   role: "scanner" | "walkin_display" | "helpdesk";
