@@ -20,7 +20,7 @@ describe("EventDevicesPage setup guide", () => {
     expect(screen.getByText("Copy the code")).toBeInTheDocument();
     expect(screen.getByText("Open the enrollment page")).toBeInTheDocument();
     expect(screen.getByText("Enter the event PIN")).toBeInTheDocument();
-    expect(screen.getByRole("list")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(4);
   });
 
   it("no longer renders the old decimal instruction list", () => {
