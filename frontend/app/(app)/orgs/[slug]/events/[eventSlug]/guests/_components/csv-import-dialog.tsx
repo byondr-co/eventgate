@@ -93,7 +93,7 @@ export function CsvImportDialog({ orgSlug, eventSlug }: { orgSlug: string; event
                         <th key={i} className="py-2 pr-3 align-top">
                           <div className="font-medium">{h}</div>
                           <select
-                            className="mt-1 rounded border px-1 py-0.5 text-[0.7rem]"
+                            className="mt-1 rounded-md border border-input bg-transparent px-1 py-0.5 text-[0.7rem] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                             value={mapping[String(i)] ?? ""}
                             onChange={(e) =>
                               setMapping((m) => ({
