@@ -102,3 +102,13 @@ export function WalkinInfo({ className }: IllustrationProps) {
     className,
   );
 }
+
+export function Registered({ className }: IllustrationProps) {
+  return base(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </>,
+    className,
+  );
+}
