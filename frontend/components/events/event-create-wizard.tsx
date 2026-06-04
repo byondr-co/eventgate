@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useCreateEvent } from "@/lib/events";
 
 function slugify(name: string): string {
@@ -56,53 +58,57 @@ export function EventCreateWizard({ orgSlug }: { orgSlug: string }) {
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium">Event name</span>
-            <input
+          <Field label="Event name" htmlFor="event-name">
+            <Input
+              id="event-name"
               required
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
               placeholder={`byondr.co Conference ${new Date().getFullYear()}`}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">URL slug</span>
-            <input
+          </Field>
+          <Field
+            label="URL slug"
+            htmlFor="event-slug"
+            helper={
+              <>
+                Public form: /e/{orgSlug}/{slug || "your-slug"}/register
+              </>
+            }
+          >
+            <Input
+              id="event-slug"
               required
               value={slug}
               onChange={(e) => setSlug(slugify(e.target.value))}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+              className="font-mono"
             />
-            <span className="block mt-1 text-xs text-muted-foreground">
-              Public form: /e/{orgSlug}/{slug || "your-slug"}/register
-            </span>
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Venue (optional)</span>
-            <input
-              value={venue}
-              onChange={(e) => setVenue(e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Walk-in capacity</span>
-            <input
+          </Field>
+          <Field label="Venue" htmlFor="event-venue" optional>
+            <Input id="event-venue" value={venue} onChange={(e) => setVenue(e.target.value)} />
+          </Field>
+          <Field
+            label="Walk-in capacity"
+            htmlFor="event-walkin-capacity"
+            helper={
+              <>
+                Hard cap on total walk-in guests. <code>0</code> means unlimited. Editable later in
+                event settings.
+              </>
+            }
+          >
+            <Input
+              id="event-walkin-capacity"
               type="number"
               inputMode="numeric"
               min={0}
               step={1}
               value={walkinCapacity}
               onChange={(e) => setWalkinCapacity(e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+              className="font-mono"
               placeholder="0"
             />
-            <span className="block mt-1 text-xs text-muted-foreground">
-              Hard cap on total walk-in guests. <code>0</code> means unlimited. Editable later in
-              event settings.
-            </span>
-          </label>
+          </Field>
           <Button type="submit" className="w-full" disabled={create.isPending || !name || !slug}>
             {create.isPending ? "Creating…" : "Create event"}
           </Button>
