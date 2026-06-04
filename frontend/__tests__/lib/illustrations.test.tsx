@@ -11,6 +11,7 @@ const NAMES = [
   "InstallPWA",
   "ScanGuest",
   "WalkinInfo",
+  "Registered",
   "NoDevices",
   "NoGuests",
   "NoEvents",
