@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/events", () => ({ useEvents: vi.fn() }));
 
-import { EventsTable } from "@/components/events/events-table";
+import { EventsTable, eventStatusVariant } from "@/components/events/events-table";
+import type { EventStatus } from "@/lib/events";
 import { useEvents } from "@/lib/events";
 
 const mockEvents = vi.mocked(useEvents);
@@ -25,5 +26,19 @@ describe("EventsTable", () => {
     render(<EventsTable orgSlug="o" />);
     expect(screen.getByText("Gala")).toBeInTheDocument();
     expect(screen.getByText("open")).toBeInTheDocument();
+  });
+});
+
+describe("eventStatusVariant", () => {
+  const cases: Array<[EventStatus, string]> = [
+    ["draft", "outline"],
+    ["open", "secondary"],
+    ["live", "default"],
+    ["closed", "destructive"],
+    ["archived", "ghost"],
+  ];
+
+  it.each(cases)("status '%s' → variant '%s'", (status, expectedVariant) => {
+    expect(eventStatusVariant(status)).toBe(expectedVariant);
   });
 });
