@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useSetPin } from "@/lib/devices";
 
 type Props = { orgSlug: string; eventSlug: string };
@@ -47,35 +49,35 @@ export function PinManagementCard({ orgSlug, eventSlug }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4 max-w-sm">
-          <label className="block">
-            <span className="text-sm font-medium">New PIN</span>
-            <input
+        <form onSubmit={onSubmit} className="max-w-sm space-y-4">
+          <Field label="New PIN" htmlFor="event-pin">
+            <Input
+              id="event-pin"
               type="text"
               inputMode="numeric"
               autoComplete="off"
               value={pin}
               onChange={(e) => setPinValue(e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono tracking-widest"
+              className="font-mono tracking-widest"
               placeholder="At least 4 characters"
             />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Confirm PIN</span>
-            <input
+          </Field>
+          <Field label="Confirm PIN" htmlFor="event-pin-confirm">
+            <Input
+              id="event-pin-confirm"
               type="text"
               inputMode="numeric"
               autoComplete="off"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono tracking-widest"
+              className="font-mono tracking-widest"
             />
-          </label>
+          </Field>
           <Button type="submit" disabled={setPin.isPending}>
             {setPin.isPending ? "Saving…" : "Set / rotate PIN"}
           </Button>
           {error && <p className="text-sm text-destructive">{error}</p>}
-          {success && <p className="text-sm text-green-600">{success}</p>}
+          {success && <p className="text-sm text-success">{success}</p>}
         </form>
       </CardContent>
     </Card>
