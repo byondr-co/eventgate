@@ -190,6 +190,25 @@ describe("MembersTable", () => {
     expect(removeButtons).toHaveLength(1);
   });
 
+  it("shows the invite-success message in the success token color", async () => {
+    mockApi.mockImplementation((url: string, opts?: { method?: string }) => {
+      if (String(url).includes("/members/")) return Promise.resolve(MEMBERS_DATA);
+      if (String(url).includes("/invites/") && opts?.method === "POST")
+        return Promise.resolve({ id: "i9", email: "new@x.com", role: "admin" });
+      if (String(url).includes("/invites/")) return Promise.resolve(EMPTY_INVITES);
+      return Promise.resolve({});
+    });
+
+    wrap(<MembersTable slug="acme" />);
+    await waitFor(() => expect(screen.getByText("owner@x.com")).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText("teammate@example.com"), {
+      target: { value: "new@x.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Send invite/ }));
+    const msg = await screen.findByText(/Invite sent to new@x.com/);
+    expect(msg.className).toContain("text-success");
+  });
+
   it("calls cancel invite on Cancel button click", async () => {
     mockApi.mockImplementation((url: string) => {
       if (String(url).includes("/members/")) return Promise.resolve(MEMBERS_DATA);
