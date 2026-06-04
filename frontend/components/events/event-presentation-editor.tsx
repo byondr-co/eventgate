@@ -5,6 +5,8 @@ import { useState } from "react";
 import { FileDropZone } from "@/components/common/file-drop-zone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
 import { extractApiError } from "@/lib/api";
 import { useEvent, useUpdateEvent, useUploadBanner } from "@/lib/events";
 import { notify } from "@/lib/toast";
@@ -82,16 +84,15 @@ export function EventPresentationEditor({
             />
           </div>
         </div>
-        <label className="block">
-          <span className="text-sm font-medium">Description</span>
-          <textarea
+        <Field label="Description" htmlFor="event-description">
+          <Textarea
+            id="event-description"
             value={value}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder="A short welcome shown under the event name on the registration page."
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
-        </label>
+        </Field>
         <div className="flex items-center gap-3">
           <Button onClick={saveDescription} disabled={update.isPending}>
             {update.isPending ? "Saving…" : "Save description"}
