@@ -5,6 +5,8 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { extractApiError } from "@/lib/api";
 import { useAddField, useDeleteField, useFields, type FieldType } from "@/lib/events";
 
@@ -53,35 +55,30 @@ export function RegistrationFormBuilder({
         </CardHeader>
         <CardContent>
           <form onSubmit={onAdd} className="grid gap-3 sm:grid-cols-[1fr_1fr_140px_auto_auto]">
-            <input
+            <Input
               required
               placeholder="Label (English)"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
-            <input
+            <Input
               placeholder="Label (Khmer)"
               value={labelKm}
               onChange={(e) => setLabelKm(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as FieldType)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
+            <Select value={type} onChange={(e) => setType(e.target.value as FieldType)}>
               <option value="text">Text</option>
               <option value="email">Email</option>
               <option value="phone">Phone</option>
               <option value="textarea">Long text</option>
               <option value="select">Select</option>
-            </select>
+            </Select>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={required}
                 onChange={(e) => setRequired(e.target.checked)}
+                className="size-4 rounded accent-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               />
               Required
             </label>
