@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 // Mocks must be hoisted before component imports.
@@ -84,6 +84,23 @@ describe("WalkinInfoForm", () => {
     const img = container.querySelector("img");
     expect(img).not.toBeNull();
     expect(img?.getAttribute("src")).toContain("banner.webp");
+  });
+
+  it("marks non-required fields Optional and leaves required ones unmarked", () => {
+    setMutation();
+    wrap(
+      <WalkinInfoForm
+        orgSlug="o"
+        eventSlug="e"
+        token="t"
+        eventName="Test Event"
+        fields={[nameField, customField]}
+      />,
+    );
+    const company = screen.getByText(/Company/).closest("label")!;
+    expect(within(company).getByText("Optional")).toBeInTheDocument();
+    const fullName = screen.getByText(/Full name/).closest("label")!;
+    expect(within(fullName).queryByText("Optional")).not.toBeInTheDocument();
   });
 
   it("blocks submit with an inline error when a required field is empty", () => {

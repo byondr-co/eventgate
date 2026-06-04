@@ -5,6 +5,10 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { PublicEventField } from "@/lib/events";
 import { markInfoCompleted } from "@/lib/walkin-device";
 import { useCompleteInfo } from "@/lib/walkins";
@@ -73,9 +77,6 @@ export function WalkinInfoForm({
     }
   };
 
-  const inputClass = "mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
-  const errorClass = "mt-1 text-sm text-destructive";
-
   if (done) {
     return (
       <Card>
@@ -99,38 +100,36 @@ export function WalkinInfoForm({
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           {formError && (
-            <p className={errorClass} role="alert">
+            <p className="text-sm text-destructive" role="alert">
               {formError}
             </p>
           )}
 
           {sortedFields.map((f) => {
             const fieldId = `field-${f.field_key}`;
-            const err = fieldErrors[f.field_key];
+            const value = form[f.field_key] ?? "";
             return (
-              <div key={f.field_key} className="block">
-                <label htmlFor={fieldId} className="text-sm font-medium">
-                  {label(f)}
-                  {f.required ? <span className="text-destructive"> *</span> : null}
-                </label>
+              <Field
+                key={f.field_key}
+                label={label(f)}
+                htmlFor={fieldId}
+                optional={!f.required}
+                error={fieldErrors[f.field_key]}
+              >
                 {f.field_type === "textarea" ? (
-                  <textarea
+                  <Textarea
                     id={fieldId}
-                    value={form[f.field_key] ?? ""}
+                    value={value}
                     onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
-                    className={inputClass}
                     rows={3}
                     aria-required={f.required}
-                    aria-describedby={err ? `${fieldId}-error` : undefined}
                   />
                 ) : f.field_type === "select" ? (
-                  <select
+                  <Select
                     id={fieldId}
-                    value={form[f.field_key] ?? ""}
+                    value={value}
                     onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
-                    className={inputClass}
                     aria-required={f.required}
-                    aria-describedby={err ? `${fieldId}-error` : undefined}
                   >
                     <option value="" disabled>
                       Choose an option…
@@ -140,24 +139,17 @@ export function WalkinInfoForm({
                         {opt}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 ) : (
-                  <input
+                  <Input
                     id={fieldId}
                     type={f.field_type === "email" ? "email" : "text"}
-                    value={form[f.field_key] ?? ""}
+                    value={value}
                     onChange={(e) => setForm({ ...form, [f.field_key]: e.target.value })}
-                    className={inputClass}
                     aria-required={f.required}
-                    aria-describedby={err ? `${fieldId}-error` : undefined}
                   />
                 )}
-                {err && (
-                  <p id={`${fieldId}-error`} className={errorClass} role="alert">
-                    {err}
-                  </p>
-                )}
-              </div>
+              </Field>
             );
           })}
 
