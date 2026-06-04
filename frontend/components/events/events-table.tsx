@@ -7,7 +7,9 @@ import type { VariantProps } from "class-variance-authority";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { EventStatus } from "@/lib/events";
+import { NoEvents } from "@/lib/illustrations";
 import { useEvents } from "@/lib/events";
 
 type BadgeVariant = NonNullable<
@@ -51,9 +53,11 @@ export function EventsTable({ orgSlug }: { orgSlug: string }) {
       <CardContent>
         {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {!isLoading && events.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No events yet. Create your first one to get a public registration URL.
-          </p>
+          <EmptyState
+            illustration={NoEvents}
+            title="No events yet"
+            message="Create your first event to get a public registration URL."
+          />
         )}
         {events.length > 0 && (
           <ul className="divide-y">
