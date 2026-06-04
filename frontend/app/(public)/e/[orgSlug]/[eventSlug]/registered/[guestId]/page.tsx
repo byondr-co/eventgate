@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { RegistrationSuccess } from "@/components/guests/registration-success";
 
 type Props = {
@@ -13,14 +14,19 @@ export default async function RegisteredPage({ searchParams }: Props) {
       <div className="w-full max-w-md space-y-4">
         <RegistrationSuccess />
         {botUsername && token && (
-          <a
-            href={`https://t.me/${botUsername}?start=${encodeURIComponent(token)}`}
-            className="inline-flex w-full items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Button
+            variant="outline"
+            className="w-full"
+            render={
+              <a
+                href={`https://t.me/${botUsername}?start=${encodeURIComponent(token)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              />
+            }
           >
             Get on Telegram
-          </a>
+          </Button>
         )}
       </div>
     </main>
