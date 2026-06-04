@@ -21,4 +21,13 @@ describe("theme tokens", () => {
   it("maps success into the tailwind theme", () => {
     expect(css).toContain("--color-success: var(--success)");
   });
+
+  it("defines a warning token in both modes", () => {
+    const occurrences = css.match(/--warning:/g) ?? [];
+    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("maps warning into the tailwind theme", () => {
+    expect(css).toContain("--color-warning: var(--warning)");
+  });
 });
