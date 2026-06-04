@@ -41,9 +41,9 @@ export function StatsWidget({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
             <div
               className={`text-2xl font-semibold tabular-nums ${
                 t.tone === "warning"
-                  ? "text-amber-600 dark:text-amber-400"
+                  ? "text-warning"
                   : t.tone === "danger"
-                    ? "text-red-600 dark:text-red-400"
+                    ? "text-destructive"
                     : ""
               }`}
             >
