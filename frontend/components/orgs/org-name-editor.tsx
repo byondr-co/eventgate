@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { extractApiError } from "@/lib/api";
 import { useUpdateOrg } from "@/lib/orgs";
 
@@ -37,14 +38,15 @@ export function OrgNameEditor({ orgSlug, name }: Props) {
     return (
       <div className="flex items-center gap-2">
         <h1 className="text-2xl font-semibold">{name}</h1>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-sm"
           aria-label="Edit organization name"
-          className="text-sm text-muted-foreground hover:text-foreground"
           onClick={() => setEditing(true)}
         >
           ✎
-        </button>
+        </Button>
       </div>
     );
   }
@@ -61,7 +63,7 @@ export function OrgNameEditor({ orgSlug, name }: Props) {
           if (e.key === "Enter") save();
           else if (e.key === "Escape") cancel();
         }}
-        className="text-2xl font-semibold rounded border border-input bg-background px-2 py-1 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-ring"
+        className="w-full max-w-md rounded border border-input bg-background px-2 py-1 text-2xl font-semibold outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         disabled={mutation.isPending}
       />
       {mutation.isError && (

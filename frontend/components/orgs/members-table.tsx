@@ -5,6 +5,8 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { extractApiError } from "@/lib/api";
 import { useMe } from "@/lib/auth";
 import {
@@ -47,29 +49,24 @@ export function MembersTable({ slug }: { slug: string }) {
         </CardHeader>
         <CardContent>
           <form onSubmit={onInvite} className="grid gap-3 sm:grid-cols-[1fr_140px_auto]">
-            <input
+            <Input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="teammate@example.com"
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
+            <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
               <option value="owner">Owner</option>
               <option value="admin">Admin</option>
               <option value="manager">Manager</option>
               <option value="staff">Staff</option>
-            </select>
+            </Select>
             <Button type="submit" disabled={invite.isPending || !email}>
               {invite.isPending ? "Sending…" : "Send invite"}
             </Button>
           </form>
-          {success && <p className="mt-3 text-sm text-emerald-600">{success}</p>}
+          {success && <p className="mt-3 text-sm text-success">{success}</p>}
           {invite.isError && (
             <p className="mt-3 text-sm text-destructive">{extractApiError(invite.error)}</p>
           )}
@@ -106,7 +103,7 @@ export function MembersTable({ slug }: { slug: string }) {
                             updateRole.mutate({ membershipId: m.id, role: e.target.value })
                           }
                           disabled={updateRole.isPending || m.user_email === me.data?.email}
-                          className="rounded border border-input bg-background px-2 py-1 text-xs"
+                          className="rounded border border-input bg-transparent px-2 py-1 text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                         >
                           <option value="admin">Admin</option>
                           <option value="manager">Manager</option>
