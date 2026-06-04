@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useEvent, useUpdateEvent } from "@/lib/events";
 
 type Props = { orgSlug: string; eventSlug: string };
@@ -57,9 +59,9 @@ export function WalkinSettingsCard({ orgSlug, eventSlug }: Props) {
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4 max-w-sm">
-          <label className="block">
-            <span className="text-sm font-medium">Capacity</span>
-            <input
+          <Field label="Capacity" htmlFor="walkin-capacity">
+            <Input
+              id="walkin-capacity"
               type="number"
               inputMode="numeric"
               min={0}
@@ -67,15 +69,15 @@ export function WalkinSettingsCard({ orgSlug, eventSlug }: Props) {
               value={capacity}
               onChange={(e) => setCapacityDraft(e.target.value)}
               disabled={event.isLoading}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+              className="font-mono"
               placeholder="0"
             />
-          </label>
+          </Field>
           <Button type="submit" disabled={update.isPending || event.isLoading}>
             {update.isPending ? "Saving…" : "Save"}
           </Button>
           {error && <p className="text-sm text-destructive">{error}</p>}
-          {success && <p className="text-sm text-green-600">{success}</p>}
+          {success && <p className="text-sm text-success">{success}</p>}
         </form>
       </CardContent>
     </Card>
