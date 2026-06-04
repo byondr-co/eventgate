@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { extractApiError } from "@/lib/api";
 import { useCreateOrg } from "@/lib/orgs";
 
@@ -26,16 +28,18 @@ export function CreateOrgForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
-          <input
-            type="text"
-            required
-            minLength={2}
-            maxLength={200}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="byondr.co"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          <Field label="Organization name" htmlFor="org-name">
+            <Input
+              id="org-name"
+              type="text"
+              required
+              minLength={2}
+              maxLength={200}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="byondr.co"
+            />
+          </Field>
           <Button type="submit" disabled={create.isPending || !name} className="w-full">
             {create.isPending ? "Creating…" : "Create"}
           </Button>
