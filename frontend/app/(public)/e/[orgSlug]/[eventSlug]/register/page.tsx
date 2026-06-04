@@ -1,8 +1,10 @@
 import { getTranslations } from "next-intl/server";
 
 import { RegistrationForm } from "@/components/guests/registration-form";
+import { EmptyState } from "@/components/ui/empty-state";
 import { API_BASE } from "@/lib/api";
 import type { PublicEventDetail } from "@/lib/events";
+import { NoEvents } from "@/lib/illustrations";
 
 type Props = { params: Promise<{ orgSlug: string; eventSlug: string }> };
 
@@ -25,19 +27,25 @@ export default async function RegisterPage({ params }: Props) {
 
   if (!event) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-muted/30 p-6">
-        <p className="text-sm text-muted-foreground">{t("eventNotFound")}</p>
+      <main className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
+        <div className="w-full max-w-md">
+          <EmptyState illustration={NoEvents} title={t("eventNotFound")} />
+        </div>
       </main>
     );
   }
 
   if (!event.registration_open) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-muted/30 p-6">
-        <div className="text-center">
-          <h1 className="text-xl font-semibold">{event.name}</h1>
-          {event.venue ? <p className="mt-1 text-sm text-muted-foreground">{event.venue}</p> : null}
-          <p className="mt-4 text-sm text-muted-foreground">{t("registrationClosed")}</p>
+      <main className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
+        <div className="w-full max-w-md">
+          <EmptyState
+            illustration={NoEvents}
+            title={event.name}
+            message={
+              event.venue ? `${event.venue} · ${t("registrationClosed")}` : t("registrationClosed")
+            }
+          />
         </div>
       </main>
     );
