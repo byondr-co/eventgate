@@ -5,6 +5,9 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { NoLinks } from "@/lib/illustrations";
 import { useCreateShortUrl, useShortUrls, useUpdateShortUrl } from "@/lib/shorturls";
 import { notify } from "@/lib/toast";
 
@@ -47,18 +50,12 @@ export function LinksTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug:
         </CardHeader>
         <CardContent>
           <form onSubmit={onCreate} className="grid gap-3 sm:grid-cols-[1fr_180px_auto]">
-            <input
+            <Input
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Label (e.g. Instagram bio)"
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
-            <input
-              type="date"
-              value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
+            <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
             <Button type="submit" disabled={create.isPending}>
               {create.isPending ? "Creating…" : "New link"}
             </Button>
@@ -73,7 +70,11 @@ export function LinksTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug:
         <CardContent>
           {links.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
           {links.data && links.data.results.length === 0 && (
-            <p className="text-sm text-muted-foreground">No links yet.</p>
+            <EmptyState
+              illustration={NoLinks}
+              title="No links yet"
+              message="Create a registration link above to share it on social or in a bio."
+            />
           )}
           {links.data && links.data.results.length > 0 && (
             <table className="w-full text-sm">
@@ -98,7 +99,7 @@ export function LinksTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug:
                           if (e.target.value !== s.note)
                             update.mutate({ id: s.id, note: e.target.value });
                         }}
-                        className="w-full rounded border border-input bg-background px-2 py-1 text-xs"
+                        className="w-full rounded border border-input bg-transparent px-2 py-1 text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                       />
                     </td>
                     <td className="py-2">
@@ -108,7 +109,7 @@ export function LinksTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug:
                         onChange={(e) =>
                           update.mutate({ id: s.id, expires_at: e.target.value || null })
                         }
-                        className="rounded border border-input bg-background px-2 py-1 text-xs"
+                        className="rounded border border-input bg-transparent px-2 py-1 text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                       />
                     </td>
                     <td className="py-2 text-right space-x-2 whitespace-nowrap">
