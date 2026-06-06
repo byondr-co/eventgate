@@ -1,6 +1,8 @@
 import { WalkinInfoForm } from "@/components/walkins/info-form";
 import { API_BASE } from "@/lib/api";
 import type { PublicEventDetail } from "@/lib/events";
+import { EmptyState } from "@/components/ui/empty-state";
+import { NoEvents } from "@/lib/illustrations";
 
 type Props = {
   params: Promise<{ orgSlug: string; eventSlug: string; token: string }>;
@@ -24,8 +26,10 @@ export default async function WalkinInfoPage({ params }: Props) {
 
   if (!event) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-muted/30 p-6">
-        <p className="text-sm text-muted-foreground">Event not found.</p>
+      <main className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
+        <div className="w-full max-w-md">
+          <EmptyState illustration={NoEvents} title="Event not found" />
+        </div>
       </main>
     );
   }
