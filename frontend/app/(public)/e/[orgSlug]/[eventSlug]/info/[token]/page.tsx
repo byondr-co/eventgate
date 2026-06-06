@@ -1,7 +1,7 @@
+import { EmptyState } from "@/components/ui/empty-state";
 import { WalkinInfoForm } from "@/components/walkins/info-form";
 import { API_BASE } from "@/lib/api";
 import type { PublicEventDetail } from "@/lib/events";
-import { EmptyState } from "@/components/ui/empty-state";
 import { NoEvents } from "@/lib/illustrations";
 
 type Props = {
