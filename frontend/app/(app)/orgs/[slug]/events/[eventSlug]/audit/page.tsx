@@ -17,7 +17,7 @@ const PREFIXES = [
 export function resultClasses(result: AuditResult): string {
   if (result === "success") return "bg-success text-success-foreground";
   if (result === "warning") return "bg-warning text-warning-foreground";
-  return "bg-destructive text-white";
+  return "bg-destructive text-destructive-foreground";
 }
 
 export default function AuditPage() {

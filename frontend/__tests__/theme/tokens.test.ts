@@ -39,4 +39,13 @@ describe("theme tokens", () => {
   it("maps warning-foreground into the tailwind theme", () => {
     expect(css).toContain("--color-warning-foreground: var(--warning-foreground)");
   });
+
+  it("defines a destructive-foreground token in both modes", () => {
+    const occurrences = css.match(/--destructive-foreground:/g) ?? [];
+    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("maps destructive-foreground into the tailwind theme", () => {
+    expect(css).toContain("--color-destructive-foreground: var(--destructive-foreground)");
+  });
 });
