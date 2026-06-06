@@ -14,10 +14,10 @@ const PREFIXES = [
   { value: "helpdesk.", label: "Help desk" },
 ];
 
-function resultClasses(result: AuditResult): string {
-  if (result === "success") return "bg-green-600 text-white";
-  if (result === "warning") return "bg-amber-500 text-white";
-  return "bg-red-600 text-white";
+export function resultClasses(result: AuditResult): string {
+  if (result === "success") return "bg-success text-success-foreground";
+  if (result === "warning") return "bg-warning text-warning-foreground";
+  return "bg-destructive text-white";
 }
 
 export default function AuditPage() {
