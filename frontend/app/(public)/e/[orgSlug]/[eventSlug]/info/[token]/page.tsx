@@ -35,7 +35,7 @@ export default async function WalkinInfoPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-muted/30 p-6">
+    <main className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
       <div className="w-full max-w-md">
         <WalkinInfoForm
           orgSlug={orgSlug}

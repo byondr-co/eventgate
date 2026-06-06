@@ -9,6 +9,7 @@ describe("audit resultClasses", () => {
     expect(resultClasses("warning")).toContain("bg-warning");
     expect(resultClasses("warning")).toContain("text-warning-foreground");
     expect(resultClasses("error")).toContain("bg-destructive");
+    expect(resultClasses("error")).toContain("text-destructive-foreground");
   });
 
   it("uses no hardcoded green/amber/red", () => {
