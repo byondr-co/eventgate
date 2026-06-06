@@ -8,11 +8,11 @@ describe("audit resultClasses", () => {
     expect(resultClasses("success")).toContain("text-success-foreground");
     expect(resultClasses("warning")).toContain("bg-warning");
     expect(resultClasses("warning")).toContain("text-warning-foreground");
-    expect(resultClasses("danger")).toContain("bg-destructive");
+    expect(resultClasses("error")).toContain("bg-destructive");
   });
 
   it("uses no hardcoded green/amber/red", () => {
-    for (const r of ["success", "warning", "danger"] as const) {
+    for (const r of ["success", "warning", "error"] as const) {
       expect(resultClasses(r)).not.toMatch(/green-|amber-|red-/);
     }
   });
