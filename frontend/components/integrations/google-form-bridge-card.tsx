@@ -31,31 +31,38 @@ function onFormSubmit(e) {
 
   const values = e.namedValues || {};
   const submittedAt = new Date().toISOString();
-  const email = firstValue(values["Email"]);
-  const submissionId = [
-    "sheet",
-    e.range ? e.range.getRow() : submittedAt,
-    email || submittedAt
-  ].join("-");
+  const submissionId = submissionIdFor(e, submittedAt);
 
-  const response = UrlFetchApp.fetch(EVENTGATE_WEBHOOK_URL, {
-    method: "post",
-    contentType: "application/json",
-    headers: { "X-Eventgate-Bridge-Secret": EVENTGATE_BRIDGE_SECRET },
-    payload: JSON.stringify({
-      submission_id: submissionId,
-      submitted_at: submittedAt,
-      fields: values
-    }),
-    muteHttpExceptions: true
+  const response = postToEventgate({
+    submission_id: submissionId,
+    submitted_at: submittedAt,
+    fields: values
   });
 
   writeSyncStatus(e, response.getResponseCode() + " " + response.getContentText());
 }
 
-function firstValue(value) {
-  if (Array.isArray(value)) return value[0] || "";
-  return value || "";
+function submissionIdFor(e, submittedAt) {
+  if (!e.range) return ["manual", submittedAt].join("-");
+  const sheet = e.range.getSheet();
+  return ["sheet", sheet.getSheetId(), e.range.getRow()].join("-");
+}
+
+function postToEventgate(payload) {
+  const options = {
+    method: "post",
+    contentType: "application/json",
+    headers: { "X-Eventgate-Bridge-Secret": EVENTGATE_BRIDGE_SECRET },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  const first = UrlFetchApp.fetch(EVENTGATE_WEBHOOK_URL, options);
+  if (first.getResponseCode() >= 500) {
+    Utilities.sleep(1000);
+    return UrlFetchApp.fetch(EVENTGATE_WEBHOOK_URL, options);
+  }
+  return first;
 }
 
 function writeSyncStatus(e, status) {

@@ -145,6 +145,10 @@ describe("GoogleFormBridgeCard", () => {
       "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
     );
     expect(screen.getByText(/function onFormSubmit/)).toBeInTheDocument();
+    const script = screen.getByLabelText("Apps Script") as HTMLTextAreaElement;
+    expect(script.value).toContain("sheet.getSheetId()");
+    expect(script.value).toContain("function postToEventgate");
+    expect(script.value).not.toContain('values["Email"]');
   });
 
   it("adds a Google Form label mapping by patching the bridge field_mapping", async () => {

@@ -33,6 +33,15 @@ def event_field_keys(event: Event) -> set[str]:
     return set(RegistrationField.objects.filter(event=event).values_list("field_key", flat=True))
 
 
+def required_event_fields(event: Event) -> dict[str, str]:
+    return dict(
+        RegistrationField.objects.filter(event=event, required=True).values_list(
+            "field_key",
+            "label_en",
+        )
+    )
+
+
 class GoogleFormBridgeSerializer(serializers.ModelSerializer):
     webhook_url = serializers.SerializerMethodField()
     recent_submissions = serializers.SerializerMethodField()
@@ -59,6 +68,25 @@ class GoogleFormBridgeSerializer(serializers.ModelSerializer):
             validated[label] = target
 
         return validated
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        attrs = super().validate(attrs)
+        event = self.context["event"]
+        enabled = attrs.get("enabled", getattr(self.instance, "enabled", False))
+        mapping = attrs.get("field_mapping", getattr(self.instance, "field_mapping", {}) or {})
+
+        if enabled:
+            required = required_event_fields(event)
+            missing = set(required) - set(mapping.values())
+            if missing:
+                labels = ", ".join(required[key] or key for key in sorted(missing))
+                raise serializers.ValidationError(
+                    {
+                        "field_mapping": f"Enabled bridge requires mappings for required fields: {labels}."
+                    }
+                )
+
+        return attrs
 
     def get_webhook_url(self, obj: GoogleFormBridge) -> str:
         path = f"/api/v1/integrations/google-forms/{obj.id}/submissions/"

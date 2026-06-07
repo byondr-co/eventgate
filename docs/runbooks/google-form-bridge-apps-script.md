@@ -63,13 +63,8 @@ function onFormSubmit(e) {
   if (!EVENTGATE_BRIDGE_SECRET)
     throw new Error("Missing EVENTGATE_BRIDGE_SECRET script property.");
   const values = e.namedValues || {};
-  const email = firstValue(values["Email"]);
   const submittedAt = new Date().toISOString();
-  const submissionId = [
-    "sheet",
-    e.range ? e.range.getRow() : submittedAt,
-    email || submittedAt,
-  ].join("-");
+  const submissionId = submissionIdFor(e, submittedAt);
 
   const payload = {
     submission_id: submissionId,
@@ -82,6 +77,12 @@ function onFormSubmit(e) {
     e,
     response.getResponseCode() + " " + response.getContentText(),
   );
+}
+
+function submissionIdFor(e, submittedAt) {
+  if (!e.range) return ["manual", submittedAt].join("-");
+  const sheet = e.range.getSheet();
+  return ["sheet", sheet.getSheetId(), e.range.getRow()].join("-");
 }
 
 function postToEventgate(payload) {
@@ -99,11 +100,6 @@ function postToEventgate(payload) {
     return UrlFetchApp.fetch(EVENTGATE_WEBHOOK_URL, options);
   }
   return first;
-}
-
-function firstValue(value) {
-  if (Array.isArray(value)) return value[0] || "";
-  return value || "";
 }
 
 function writeSyncStatus(e, status) {
