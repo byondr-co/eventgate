@@ -1,6 +1,8 @@
+import type { ReactNode } from "react";
+
 import { cn } from "@/lib/utils";
 
-type Option<T extends string> = { value: T; label: string };
+type Option<T extends string> = { value: T; label: ReactNode };
 
 type SegmentedControlProps<T extends string> = {
   options: Option<T>[];
