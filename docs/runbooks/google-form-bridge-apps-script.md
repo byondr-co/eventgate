@@ -39,10 +39,14 @@ registration or CSV import.
    - Function: `onFormSubmit`
    - Event source: From spreadsheet
    - Event type: On form submit
-10. Submit a test Google Form response.
-11. Confirm the response row gets an Eventgate Sync value.
-12. Confirm the guest appears in Eventgate.
-13. Enable the bridge after the test passes.
+10. Return to Eventgate Settings and enable the bridge.
+11. Submit a test Google Form response.
+12. Confirm the response row gets an Eventgate Sync value without a disabled or
+    failed response.
+13. Confirm the guest appears in Eventgate.
+14. Confirm the QR email sends when email delivery is configured for this pilot.
+15. Keep the bridge enabled only after the test passes; disable it if rehearsal
+    fails or the bridge is not green by the 2026-06-12 cutoff.
 
 ## Sheet-bound script
 
