@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.audit.models import AuditEvent
@@ -404,3 +405,133 @@ def test_non_object_fields_with_submission_id_is_rejected_and_audited(setup):
     assert (
         AuditEvent.objects.filter(action="integration.google_form_submission_rejected").count() == 1
     )
+
+
+@pytest.mark.django_db
+@patch("apps.guests.tasks.send_qr_email_task.delay")
+def test_webhook_rejects_wrong_secret_without_guest_mutation(mock_delay, setup):
+    org, user, event, bridge, raw_secret = setup
+    client = APIClient()
+
+    resp = client.post(
+        f"/api/v1/integrations/google-forms/{bridge.id}/submissions/",
+        data=_payload(),
+        format="json",
+        HTTP_X_EVENTGATE_BRIDGE_SECRET="wrong",
+    )
+
+    assert resp.status_code == 401
+    assert Guest.objects.filter(event=event).count() == 0
+    assert GoogleFormSubmission.objects.filter(bridge=bridge).count() == 0
+    mock_delay.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("apps.guests.tasks.send_qr_email_task.delay")
+def test_webhook_rejects_non_object_payload_without_guest_mutation(mock_delay, setup):
+    org, user, event, bridge, raw_secret = setup
+    client = APIClient()
+
+    resp = client.post(
+        f"/api/v1/integrations/google-forms/{bridge.id}/submissions/",
+        data=["not", "an", "object"],
+        format="json",
+        HTTP_X_EVENTGATE_BRIDGE_SECRET=raw_secret,
+    )
+
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Payload must be a JSON object."
+    assert Guest.objects.filter(event=event).count() == 0
+    assert GoogleFormSubmission.objects.filter(bridge=bridge).count() == 0
+    mock_delay.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("apps.guests.tasks.send_qr_email_task.delay")
+def test_webhook_accepts_right_secret_and_returns_guest_id(mock_delay, setup):
+    org, user, event, bridge, raw_secret = setup
+    client = APIClient()
+
+    with TestCase.captureOnCommitCallbacks(execute=True) as callbacks:
+        resp = client.post(
+            f"/api/v1/integrations/google-forms/{bridge.id}/submissions/",
+            data=_payload(),
+            format="json",
+            HTTP_X_EVENTGATE_BRIDGE_SECRET=raw_secret,
+        )
+        mock_delay.assert_not_called()
+
+    assert resp.status_code == 201, resp.json()
+    assert resp.json()["status"] == "accepted"
+    guest = Guest.objects.get(event=event, email="alice@example.com")
+    assert resp.json()["guest_id"] == str(guest.id)
+    assert len(callbacks) == 1
+    mock_delay.assert_called_once_with(guest_id=str(guest.id))
+
+
+@pytest.mark.django_db
+@patch("apps.guests.tasks.send_qr_email_task.delay")
+def test_webhook_repeated_accepted_submission_returns_200_without_reenqueue(
+    mock_delay,
+    setup,
+):
+    org, user, event, bridge, raw_secret = setup
+    client = APIClient()
+    url = f"/api/v1/integrations/google-forms/{bridge.id}/submissions/"
+
+    with TestCase.captureOnCommitCallbacks(execute=True) as callbacks:
+        first = client.post(
+            url,
+            data=_payload(),
+            format="json",
+            HTTP_X_EVENTGATE_BRIDGE_SECRET=raw_secret,
+        )
+        second = client.post(
+            url,
+            data=_payload(),
+            format="json",
+            HTTP_X_EVENTGATE_BRIDGE_SECRET=raw_secret,
+        )
+        mock_delay.assert_not_called()
+
+    assert first.status_code == 201, first.json()
+    assert second.status_code == 200, second.json()
+    assert second.json()["status"] == "accepted"
+    assert Guest.objects.filter(event=event, email="alice@example.com").count() == 1
+    assert GoogleFormSubmission.objects.filter(bridge=bridge, submission_id="row-2").count() == 1
+    assert len(callbacks) == 1
+    mock_delay.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch("apps.guests.tasks.send_qr_email_task.delay")
+def test_webhook_replay_mismatch_returns_rejected_without_guest_mutation(mock_delay, setup):
+    org, user, event, bridge, raw_secret = setup
+    client = APIClient()
+    url = f"/api/v1/integrations/google-forms/{bridge.id}/submissions/"
+
+    with TestCase.captureOnCommitCallbacks(execute=True) as callbacks:
+        first = client.post(
+            url,
+            data=_payload(),
+            format="json",
+            HTTP_X_EVENTGATE_BRIDGE_SECRET=raw_secret,
+        )
+        replay = client.post(
+            url,
+            data=_payload(name="Alice Changed"),
+            format="json",
+            HTTP_X_EVENTGATE_BRIDGE_SECRET=raw_secret,
+        )
+        mock_delay.assert_not_called()
+
+    guest = Guest.objects.get(event=event, email="alice@example.com")
+    assert first.status_code == 201, first.json()
+    assert replay.status_code == 200, replay.json()
+    assert replay.json() == {
+        "status": "rejected",
+        "detail": "Submission replay payload does not match original payload.",
+    }
+    assert guest.full_name == "Alice"
+    assert len(callbacks) == 1
+    mock_delay.assert_called_once_with(guest_id=str(guest.id))
