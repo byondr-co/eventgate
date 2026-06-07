@@ -127,9 +127,10 @@ function writeSyncStatus(e, status) {
 If a row says failed but the Eventgate event is healthy:
 
 1. Fix the field mapping or secret.
-2. Open Apps Script.
-3. Select the failed row in the Sheet.
-4. Re-submit the form if possible, or use CSV import for the unsynced rows.
+2. Submit a new Google Form response with the corrected values, or use CSV
+   import for the unsynced rows.
+3. If you build a custom retry helper later, keep the original `submission_id`
+   when replaying the same row.
 
 Eventgate idempotency prevents duplicate guests when the same `submission_id` is
 sent twice.
