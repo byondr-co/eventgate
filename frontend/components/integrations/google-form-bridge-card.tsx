@@ -97,6 +97,7 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const fieldsReady = Boolean(fields.data);
   const fieldOptions = fields.data?.results ?? [];
   const fieldMapping = bridge?.field_mapping ?? {};
   const mappingEntries = Object.entries(fieldMapping);
@@ -104,7 +105,8 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
   const missingRequiredFields = fieldOptions.filter(
     (field) => field.required && !mappedFieldKeys.has(field.field_key),
   );
-  const requiredMappingsMissing = missingRequiredFields.length > 0;
+  const requiredMappingsMissing = fieldsReady && missingRequiredFields.length > 0;
+  const enableBlocked = !!bridge && !bridge.enabled && (!fieldsReady || requiredMappingsMissing);
   const script = useMemo(() => scriptFor(bridge?.webhook_url ?? ""), [bridge?.webhook_url]);
   const trimmedMappingLabel = mappingLabel.trim();
   const canSaveMapping =
@@ -160,8 +162,7 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
   };
 
   const onEnabledChange = async (checked: boolean) => {
-    if (checked && requiredMappingsMissing) {
-      await patchBridge({ enabled: false }, "Map required fields before enabling this bridge.");
+    if (checked && (!fieldsReady || requiredMappingsMissing)) {
       return;
     }
     await patchBridge({ enabled: checked }, checked ? "Bridge enabled." : "Bridge disabled.");
@@ -216,12 +217,19 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
               <input
                 type="checkbox"
                 checked={bridge.enabled}
-                disabled={update.isPending || requiredMappingsMissing}
+                disabled={update.isPending || enableBlocked}
                 onChange={(e) => void onEnabledChange(e.currentTarget.checked)}
                 className="size-4 rounded accent-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               />
               Enabled
             </label>
+
+            {!fieldsReady && !bridge.enabled && (
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+                Event fields are loading. Enabling will be available after required fields are
+                known.
+              </div>
+            )}
 
             {requiredMappingsMissing && (
               <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">

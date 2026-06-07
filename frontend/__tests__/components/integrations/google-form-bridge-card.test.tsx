@@ -225,6 +225,80 @@ describe("GoogleFormBridgeCard", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it("prevents enabling while event fields have not loaded", () => {
+    const update = vi.fn();
+    mockFields.mockReturnValue({
+      isLoading: true,
+    } as never);
+    mockBridges.mockReturnValue({
+      data: {
+        count: 1,
+        results: [
+          {
+            id: "b1",
+            name: "Click Cam Form",
+            enabled: false,
+            field_mapping: {},
+            duplicate_policy: "upsert_by_email",
+            webhook_url: "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
+            last_seen_at: null,
+            recent_submissions: [],
+            created_at: "2026-06-07T00:00:00Z",
+            updated_at: "2026-06-07T00:00:00Z",
+          },
+        ],
+      },
+      isLoading: false,
+    } as never);
+    mockUpdate.mockReturnValue({
+      mutateAsync: update,
+      isPending: false,
+    } as never);
+
+    render(<GoogleFormBridgeCard orgSlug="acme" eventSlug="launch" />);
+
+    const checkbox = screen.getByRole("checkbox", { name: "Enabled" });
+    expect(checkbox).toBeDisabled();
+    fireEvent.click(checkbox);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("allows disabling an enabled bridge even when required mappings are missing", async () => {
+    const update = vi.fn().mockResolvedValue({});
+    mockBridges.mockReturnValue({
+      data: {
+        count: 1,
+        results: [
+          {
+            id: "b1",
+            name: "Click Cam Form",
+            enabled: true,
+            field_mapping: { "Full Name": "name" },
+            duplicate_policy: "upsert_by_email",
+            webhook_url: "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
+            last_seen_at: null,
+            recent_submissions: [],
+            created_at: "2026-06-07T00:00:00Z",
+            updated_at: "2026-06-07T00:00:00Z",
+          },
+        ],
+      },
+      isLoading: false,
+    } as never);
+    mockUpdate.mockReturnValue({
+      mutateAsync: update,
+      isPending: false,
+    } as never);
+
+    render(<GoogleFormBridgeCard orgSlug="acme" eventSlug="launch" />);
+
+    const checkbox = screen.getByRole("checkbox", { name: "Enabled" });
+    expect(checkbox).not.toBeDisabled();
+    fireEvent.click(checkbox);
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ enabled: false }));
+  });
+
   it("shows create errors", async () => {
     const create = vi.fn().mockRejectedValue(new Error("Bridge limit reached."));
     mockBridges.mockReturnValue({
