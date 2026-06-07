@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { NoLinks } from "@/lib/illustrations";
 import { useCreateShortUrl, useShortUrls, useUpdateShortUrl } from "@/lib/shorturls";
 import { notify } from "@/lib/toast";
@@ -68,7 +69,7 @@ export function LinksTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug:
           <CardTitle>Short links {links.data && `(${links.data.count})`}</CardTitle>
         </CardHeader>
         <CardContent>
-          {links.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {links.isLoading && <TableSkeleton />}
           {links.data && links.data.results.length === 0 && (
             <EmptyState
               illustration={NoLinks}

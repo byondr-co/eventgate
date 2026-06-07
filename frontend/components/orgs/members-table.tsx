@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { extractApiError } from "@/lib/api";
 import { useMe } from "@/lib/auth";
 import {
@@ -78,7 +79,7 @@ export function MembersTable({ slug }: { slug: string }) {
           <CardTitle>Members</CardTitle>
         </CardHeader>
         <CardContent>
-          {members.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {members.isLoading && <TableSkeleton />}
           {members.data && (
             <table className="w-full text-sm">
               <thead className="text-muted-foreground">

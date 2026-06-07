@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { Select } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { NoGuests } from "@/lib/illustrations";
@@ -151,7 +152,7 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
             }}
           />
         </div>
-        {guests.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {guests.isLoading && <TableSkeleton />}
         {guests.data && rows.length === 0 ? (
           search || guestType || entryStatus ? (
             <EmptyState

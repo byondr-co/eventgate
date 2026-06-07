@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { extractApiError } from "@/lib/api";
 import { useAddField, useDeleteField, useFields, type FieldType } from "@/lib/events";
 
@@ -95,7 +96,7 @@ export function RegistrationFormBuilder({
           <CardTitle>Fields</CardTitle>
         </CardHeader>
         <CardContent>
-          {fields.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {fields.isLoading && <TableSkeleton />}
           {fields.data && (
             <table className="w-full text-sm">
               <thead className="text-muted-foreground">

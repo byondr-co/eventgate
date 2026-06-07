@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { useDevices, useRevokeDevice, type Device } from "@/lib/devices";
 import { NoDevices } from "@/lib/illustrations";
 
@@ -31,7 +32,7 @@ export function DeviceTable({ orgSlug, eventSlug }: Props) {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <TableSkeleton />
         ) : isError ? (
           <p className="text-sm text-destructive">Failed to load devices.</p>
         ) : !data || data.length === 0 ? (
