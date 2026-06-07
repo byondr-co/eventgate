@@ -1,0 +1,149 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/events", () => ({
+  useFields: vi.fn(),
+}));
+vi.mock("@/lib/google-form-bridge", () => ({
+  useGoogleFormBridges: vi.fn(),
+  useCreateGoogleFormBridge: vi.fn(),
+  useUpdateGoogleFormBridge: vi.fn(),
+  useRotateGoogleFormBridgeSecret: vi.fn(),
+}));
+
+import { GoogleFormBridgeCard } from "@/components/integrations/google-form-bridge-card";
+import { useFields } from "@/lib/events";
+import {
+  useCreateGoogleFormBridge,
+  useGoogleFormBridges,
+  useRotateGoogleFormBridgeSecret,
+  useUpdateGoogleFormBridge,
+} from "@/lib/google-form-bridge";
+
+const mockFields = vi.mocked(useFields);
+const mockBridges = vi.mocked(useGoogleFormBridges);
+const mockCreate = vi.mocked(useCreateGoogleFormBridge);
+const mockUpdate = vi.mocked(useUpdateGoogleFormBridge);
+const mockRotate = vi.mocked(useRotateGoogleFormBridgeSecret);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockFields.mockReturnValue({
+    data: {
+      results: [
+        {
+          field_key: "name",
+          label_en: "Full name",
+          label_km: "",
+          field_type: "text",
+          required: true,
+        },
+        {
+          field_key: "email",
+          label_en: "Email",
+          label_km: "",
+          field_type: "email",
+          required: true,
+        },
+        {
+          field_key: "phone_or_chat",
+          label_en: "Phone",
+          label_km: "",
+          field_type: "phone",
+          required: false,
+        },
+      ],
+    },
+  } as never);
+  mockCreate.mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  } as never);
+  mockUpdate.mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  } as never);
+  mockRotate.mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  } as never);
+});
+
+describe("GoogleFormBridgeCard", () => {
+  it("shows the empty setup state", () => {
+    mockBridges.mockReturnValue({
+      data: { count: 0, results: [] },
+      isLoading: false,
+    } as never);
+
+    render(<GoogleFormBridgeCard orgSlug="acme" eventSlug="launch" />);
+
+    expect(screen.getByText("Google Form bridge")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create bridge" })).toBeInTheDocument();
+  });
+
+  it("creates a bridge and displays the one-time secret", async () => {
+    const create = vi.fn().mockResolvedValue({
+      id: "b1",
+      name: "Click Cam Form",
+      enabled: false,
+      field_mapping: {},
+      duplicate_policy: "upsert_by_email",
+      webhook_url: "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
+      last_seen_at: null,
+      recent_submissions: [],
+      created_at: "2026-06-07T00:00:00Z",
+      updated_at: "2026-06-07T00:00:00Z",
+      secret: "secret-123",
+    });
+    mockBridges.mockReturnValue({
+      data: { count: 0, results: [] },
+      isLoading: false,
+    } as never);
+    mockCreate.mockReturnValue({
+      mutateAsync: create,
+      isPending: false,
+    } as never);
+
+    render(<GoogleFormBridgeCard orgSlug="acme" eventSlug="launch" />);
+    fireEvent.click(screen.getByRole("button", { name: "Create bridge" }));
+
+    expect(await screen.findByText(/secret-123/)).toBeInTheDocument();
+    expect(create).toHaveBeenCalledWith({
+      name: "Google Form",
+      enabled: false,
+      duplicate_policy: "upsert_by_email",
+      field_mapping: {},
+    });
+  });
+
+  it("shows existing webhook URL and Apps Script snippet", () => {
+    mockBridges.mockReturnValue({
+      data: {
+        count: 1,
+        results: [
+          {
+            id: "b1",
+            name: "Click Cam Form",
+            enabled: true,
+            field_mapping: { "Full Name": "name" },
+            duplicate_policy: "upsert_by_email",
+            webhook_url: "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
+            last_seen_at: null,
+            recent_submissions: [],
+            created_at: "2026-06-07T00:00:00Z",
+            updated_at: "2026-06-07T00:00:00Z",
+          },
+        ],
+      },
+      isLoading: false,
+    } as never);
+
+    render(<GoogleFormBridgeCard orgSlug="acme" eventSlug="launch" />);
+
+    expect(screen.getByLabelText("Webhook URL")).toHaveValue(
+      "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
+    );
+    expect(screen.getByText(/function onFormSubmit/)).toBeInTheDocument();
+  });
+});
