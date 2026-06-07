@@ -46,4 +46,14 @@ describe("DeviceTable", () => {
     expect(screen.getByText("Pending enrollment").className).toContain("text-muted-foreground");
     expect(screen.getByText("Revoked").className).toContain("text-destructive");
   });
+
+  it("shows a skeleton while loading", () => {
+    mockUseDevices.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+    } as unknown as ReturnType<typeof useDevices>);
+    const { container } = render(<DeviceTable orgSlug="o" eventSlug="e" />);
+    expect(container.querySelector('[data-slot="table-skeleton"]')).toBeTruthy();
+  });
 });

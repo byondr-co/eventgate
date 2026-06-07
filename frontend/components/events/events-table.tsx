@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import type { EventStatus } from "@/lib/events";
 import { NoEvents } from "@/lib/illustrations";
 import { useEvents } from "@/lib/events";
@@ -51,7 +52,7 @@ export function EventsTable({ orgSlug }: { orgSlug: string }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {isLoading && <TableSkeleton />}
         {!isLoading && events.length === 0 && (
           <EmptyState
             illustration={NoEvents}
