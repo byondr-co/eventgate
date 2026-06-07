@@ -140,15 +140,15 @@
 
 > **First-pilot customer:** The Click Cam. Brand is **Eventgate** (finalized 2026-05-30 via Plan J). Prod env split shipped in Plan J Waves 4–8 — pilot runs on the new prod infrastructure under the Eventgate brand on the byondr.co umbrella.
 
-| Resource | Staging | Production (pilot) |
-| --- | --- | --- |
-| Backend API | `https://api.eventgate-staging.byondr.co` | `https://api.eventgate.byondr.co` |
-| Dashboard | `https://eventgate-staging.byondr.co` | `https://eventgate.byondr.co` |
-| Scanner | `<dashboard>/scanner` | `<dashboard>/scanner` |
-| Walk-in display | `<dashboard>/scanner/walkin` | `<dashboard>/scanner/walkin` |
-| Sentry | `<personal-org>/eventgate-staging` | `<personal-org>/eventgate-prod` |
-| Telegram bot | `@eventgate_bot` | `@eventgate_bot` (same bot, webhook → prod) |
-| Tigris bucket | `eventgate-backend-staging-media` | `eventgate-backend-prod-media` |
+| Resource        | Staging                                   | Production (pilot)                          |
+| --------------- | ----------------------------------------- | ------------------------------------------- |
+| Backend API     | `https://api.eventgate-staging.byondr.co` | `https://api.eventgate.byondr.co`           |
+| Dashboard       | `https://eventgate-staging.byondr.co`     | `https://eventgate.byondr.co`               |
+| Scanner         | `<dashboard>/scanner`                     | `<dashboard>/scanner`                       |
+| Walk-in display | `<dashboard>/scanner/walkin`              | `<dashboard>/scanner/walkin`                |
+| Sentry          | `<personal-org>/eventgate-staging`        | `<personal-org>/eventgate-prod`             |
+| Telegram bot    | `@eventgate_bot`                          | `@eventgate_bot` (same bot, webhook → prod) |
+| Tigris bucket   | `eventgate-backend-staging-media`         | `eventgate-backend-prod-media`              |
 
 ### 1.5 End-to-end smoke (T-1 day)
 
@@ -159,6 +159,23 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 - [ ] Plan F §§0–9 all pass (no skipped boxes other than the ones explicitly deferred to pre-pilot QA in the findings doc).
 - [ ] Plan G §4 regression smoke passes — helpdesk inbox loads, audit page expandable rows toggle, dashboard polling widget updates, email QR still arrives, Telegram CTA present (when bot is enabled), pre-commit hook still rejects format violations.
 - [ ] Cross-device re-verification ([`2026-05-22-plan-f-cross-device-reverification.md`](./2026-05-22-plan-f-cross-device-reverification.md) Flows 1 + 2) re-run on pilot env — both Flow 1 (offline conflict) and Flow 2 (walk-in lifecycle) must PASS. Step 2d (claim-past-capacity) is now testable thanks to `73e5432` + `a386ca0`; verify the cap holds under a concurrent two-tab scan attempt at the cap boundary.
+
+### 1.5a Google Form bridge smoke (optional Plan N path)
+
+Run this section only if Click Cam keeps its Google Form as a live intake path.
+If any required check fails by 2026-06-12, disable the bridge and use native
+Eventgate registration or CSV import.
+
+- [ ] Event settings show a Google Form bridge with `enabled=true`.
+- [ ] The response Sheet has the Sheet-bound Apps Script from
+      `docs/runbooks/google-form-bridge-apps-script.md`.
+- [ ] A test Google Form response creates exactly one Eventgate guest.
+- [ ] The test guest receives one QR email.
+- [ ] Re-running the same row does not create a duplicate guest.
+- [ ] A bad test row writes `rejected` in the Sheet sync column and creates an
+      `integration.google_form_submission_rejected` audit row.
+- [ ] If the bridge is disabled, a test submission returns a clean disabled response
+      and creates no guest.
 
 ### 1.6 Capacity + observability dry run (T-1 day)
 
@@ -175,11 +192,11 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 
 ### 2.1 Roles
 
-| Role | Owner | Responsibilities | Channels |
-| --- | --- | --- | --- |
-| **Door Operator + Khmer Translator** | **Vatana** (The Click Cam staff) | Scanner devices, walk-in display, in-person help-desk handling, on-the-fly Khmer ↔ English translation for guests, escalations to Cloud Operator | Phone + Telegram DM (primary). Always-on phone with Telegram open. |
-| **Cloud Operator** | **Vinei** (`vinei.ro@squeeze-inc.co.jp`) | Backend + frontend health, deploys, rollbacks, Sentry triage, log diving, communication with customer | Laptop tethered to LTE; Sentry alerts → phone; Slack/Telegram backup |
-| **Customer Contact** | TBC — confirm with The Click Cam who owns the guest list | Owns the guest list, makes Approve/Void calls on manual-review items where ID isn't obvious | Walkie / radio to Door Operator |
+| Role                                 | Owner                                                    | Responsibilities                                                                                                                                 | Channels                                                             |
+| ------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| **Door Operator + Khmer Translator** | **Vatana** (The Click Cam staff)                         | Scanner devices, walk-in display, in-person help-desk handling, on-the-fly Khmer ↔ English translation for guests, escalations to Cloud Operator | Phone + Telegram DM (primary). Always-on phone with Telegram open.   |
+| **Cloud Operator**                   | **Vinei** (`vinei.ro@squeeze-inc.co.jp`)                 | Backend + frontend health, deploys, rollbacks, Sentry triage, log diving, communication with customer                                            | Laptop tethered to LTE; Sentry alerts → phone; Slack/Telegram backup |
+| **Customer Contact**                 | TBC — confirm with The Click Cam who owns the guest list | Owns the guest list, makes Approve/Void calls on manual-review items where ID isn't obvious                                                      | Walkie / radio to Door Operator                                      |
 
 > ⚠️ **Single-point-of-failure risk: Vatana wears two hats.** Door Operator and Khmer Translator collapsed into one person. If Vatana is heads-down on a door queue and a tricky Khmer translation question comes in (e.g., an ambiguous error string a guest doesn't understand), there's no fallback translator. **Mitigation options to confirm before T-7 days:** (a) surface a backup Door Op so Vatana can focus on translation when needed, OR (b) confirm Cloud Operator (or another teammate) has working Khmer they can deploy by phone, OR (c) ensure the Khmer copy review pass closes _every_ ambiguous string so on-the-fly translation isn't needed. **If Vatana is unreachable for >5 min** (sick, phone dead), the pilot has no door coverage at all — backup Door Op is the safest hedge.
 
@@ -224,13 +241,13 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 
 The result card is full-screen, ~1.5s on screen, tap to dismiss:
 
-| Card | Color | What it means | What to do |
-| --- | --- | --- | --- |
-| **CHECKED IN** | green ✓ | Success | Guest enters |
-| **ALREADY IN** | amber ! | Guest is already checked in (legitimate scan-twice) | Wave them through, no action |
-| **INVALID** | red ✕ | Wrong event or unknown QR | Check guest's QR is for today's event; if not, point them to the right event |
-| **SESSION EXPIRED** | red ✕ | Your device's session timed out | Re-enter PIN to unlock, retry scan |
-| **ERROR** | red ✕ | Network/server hiccup | Retry once; if it keeps happening, ping Cloud Operator |
+| Card                | Color   | What it means                                       | What to do                                                                   |
+| ------------------- | ------- | --------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **CHECKED IN**      | green ✓ | Success                                             | Guest enters                                                                 |
+| **ALREADY IN**      | amber ! | Guest is already checked in (legitimate scan-twice) | Wave them through, no action                                                 |
+| **INVALID**         | red ✕   | Wrong event or unknown QR                           | Check guest's QR is for today's event; if not, point them to the right event |
+| **SESSION EXPIRED** | red ✕   | Your device's session timed out                     | Re-enter PIN to unlock, retry scan                                           |
+| **ERROR**           | red ✕   | Network/server hiccup                               | Retry once; if it keeps happening, ping Cloud Operator                       |
 
 Note: a `conflict` (two devices checking in the same guest within an offline-replay window) does **not** appear on the scan card. It surfaces later in the `/scanner/escalations` queue once the offline replay reaches the server — see S3.
 
@@ -289,7 +306,7 @@ Note: a `conflict` (two devices checking in the same guest within an offline-rep
 - If it's a 4xx (validation, throttle, expected) → ignore.
 - If it's a 5xx (genuine server error):
   - One occurrence + no operator report = log it, watch for repeats.
-  - >3 occurrences in 5 min OR a Door Operator reports scanner errors → escalate to **§4 escalation paths**.
+  - > 3 occurrences in 5 min OR a Door Operator reports scanner errors → escalate to **§4 escalation paths**.
 
 #### C4 — Audit-row spot check (post-event)
 
@@ -317,29 +334,29 @@ curl -sS "<api>/orgs/<slug>/events/<event-slug>/audit/" \
 
 ### 4.1 Symptom → first action
 
-| Symptom | Owner | First action | Threshold to escalate further |
-| --- | --- | --- | --- |
-| Conflict row appears on `/scanner/escalations` | Door | S3 — tap "Send to help desk" on the row | Two+ conflicts within a 60s burst = pattern, see row below |
-| Multiple conflicts in <60s | Door + Cloud | Cloud queries `/audit/?action_prefix=checkin.conflict` to see the device split; for Vatana-solo (single device), conflicts can only come from offline-replay drains — usually benign | If audit rows show check-ins from a device that shouldn't exist → §4.2 (possible cross-device leak / shared enrollment code) |
-| Scanner won't unlock with PIN | Door | Re-enter PIN carefully (typo most likely) | Two PIN failures → message Cloud Operator; Vinei reads the PIN from `<dashboard>/orgs/<slug>/events/<event-slug>/settings` (he set it during pre-event) and confirms over phone/Telegram |
-| Result card stays on "ERROR" repeatedly | Door | Retry the scan once; if it persists, check connectivity (cellular vs Wi-Fi); offline mode is fine for check-ins | >5 sequential ERRORs on a known-good QR → message Cloud Operator → §4.2 |
-| Help-desk inbox empty when Door reported escalations | Cloud | Confirm Door tapped "Send to help desk" on `/scanner/escalations` (not just dismissed the row) | If Door confirms tap and no row arrived → §4.2 |
-| Stats widget tiles all zero / "Loading" forever | Cloud | DevTools → Network → check `/stats/` returns 200; if 401, refresh cookie (15-min JWT) | 500 from `/stats/` → §4.2 |
-| Walk-in tablet says "no slots" but cap not reached | Cloud | Check `walkin_capacity` on the event via the new settings card (§ shipped 2026-05-23); confirm guests in walk-in state count matches cap | Server-side cap looks wrong → §4.2 (model bug) |
-| Email QR didn't arrive for a new registration | Cloud | Resend dashboard → check delivery log; confirm address isn't bouncing | Resend domain unverified or Celery worker down → §4.2 |
-| Telegram bot stops replying | Cloud | `curl https://api.telegram.org/bot$TOKEN/getWebhookInfo` — check `last_error_message` and `url`; if URL drifted to a stale value, **re-run `flyctl ssh ... /app/.venv/bin/python manage.py setup_telegram_webhook`** (per §1.3 note) | Persistent failure → §4.2 |
-| Sentry alert: 500 spike >3 in 5 min | Cloud | Read the trace → identify the endpoint | If endpoint is on the door path (`/scanner/checkins/`, `/helpdesk/tickets/`, `/stats/`, `/walkin/*`) → §4.2 (rollback candidate) |
-| Fly app health check failing / 502 from dashboard | Cloud | `flyctl status` + `flyctl logs`; redeploy if a process crashed | Sustained failure >2 min → §5 rollback |
-| Database connection refused | Cloud | `flyctl postgres status` (if managed Postgres); restart if stuck | Sustained failure >2 min → §5 rollback + Fly support ticket |
-| CSV import status "Failed" with 0 imported (post-deploy) | Cloud | Check `flyctl logs` for `FileNotFoundError`; confirm Tigris secrets present (`flyctl secrets list \| grep BUCKET`). Re-upload should work if Tigris is healthy. | Persistent failure → §4.2; bucket creds or Tigris outage worth Fly support |
+| Symptom                                                  | Owner        | First action                                                                                                                                                                                                                         | Threshold to escalate further                                                                                                                                                            |
+| -------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Conflict row appears on `/scanner/escalations`           | Door         | S3 — tap "Send to help desk" on the row                                                                                                                                                                                              | Two+ conflicts within a 60s burst = pattern, see row below                                                                                                                               |
+| Multiple conflicts in <60s                               | Door + Cloud | Cloud queries `/audit/?action_prefix=checkin.conflict` to see the device split; for Vatana-solo (single device), conflicts can only come from offline-replay drains — usually benign                                                 | If audit rows show check-ins from a device that shouldn't exist → §4.2 (possible cross-device leak / shared enrollment code)                                                             |
+| Scanner won't unlock with PIN                            | Door         | Re-enter PIN carefully (typo most likely)                                                                                                                                                                                            | Two PIN failures → message Cloud Operator; Vinei reads the PIN from `<dashboard>/orgs/<slug>/events/<event-slug>/settings` (he set it during pre-event) and confirms over phone/Telegram |
+| Result card stays on "ERROR" repeatedly                  | Door         | Retry the scan once; if it persists, check connectivity (cellular vs Wi-Fi); offline mode is fine for check-ins                                                                                                                      | >5 sequential ERRORs on a known-good QR → message Cloud Operator → §4.2                                                                                                                  |
+| Help-desk inbox empty when Door reported escalations     | Cloud        | Confirm Door tapped "Send to help desk" on `/scanner/escalations` (not just dismissed the row)                                                                                                                                       | If Door confirms tap and no row arrived → §4.2                                                                                                                                           |
+| Stats widget tiles all zero / "Loading" forever          | Cloud        | DevTools → Network → check `/stats/` returns 200; if 401, refresh cookie (15-min JWT)                                                                                                                                                | 500 from `/stats/` → §4.2                                                                                                                                                                |
+| Walk-in tablet says "no slots" but cap not reached       | Cloud        | Check `walkin_capacity` on the event via the new settings card (§ shipped 2026-05-23); confirm guests in walk-in state count matches cap                                                                                             | Server-side cap looks wrong → §4.2 (model bug)                                                                                                                                           |
+| Email QR didn't arrive for a new registration            | Cloud        | Resend dashboard → check delivery log; confirm address isn't bouncing                                                                                                                                                                | Resend domain unverified or Celery worker down → §4.2                                                                                                                                    |
+| Telegram bot stops replying                              | Cloud        | `curl https://api.telegram.org/bot$TOKEN/getWebhookInfo` — check `last_error_message` and `url`; if URL drifted to a stale value, **re-run `flyctl ssh ... /app/.venv/bin/python manage.py setup_telegram_webhook`** (per §1.3 note) | Persistent failure → §4.2                                                                                                                                                                |
+| Sentry alert: 500 spike >3 in 5 min                      | Cloud        | Read the trace → identify the endpoint                                                                                                                                                                                               | If endpoint is on the door path (`/scanner/checkins/`, `/helpdesk/tickets/`, `/stats/`, `/walkin/*`) → §4.2 (rollback candidate)                                                         |
+| Fly app health check failing / 502 from dashboard        | Cloud        | `flyctl status` + `flyctl logs`; redeploy if a process crashed                                                                                                                                                                       | Sustained failure >2 min → §5 rollback                                                                                                                                                   |
+| Database connection refused                              | Cloud        | `flyctl postgres status` (if managed Postgres); restart if stuck                                                                                                                                                                     | Sustained failure >2 min → §5 rollback + Fly support ticket                                                                                                                              |
+| CSV import status "Failed" with 0 imported (post-deploy) | Cloud        | Check `flyctl logs` for `FileNotFoundError`; confirm Tigris secrets present (`flyctl secrets list \| grep BUCKET`). Re-upload should work if Tigris is healthy.                                                                      | Persistent failure → §4.2; bucket creds or Tigris outage worth Fly support                                                                                                               |
 
 ### 4.2 Escalation triggers (when "first action" didn't fix it)
 
-| Severity | Definition | Action |
-| --- | --- | --- |
-| **P1 — Door blocked** | Scanner check-in path broken for >2 min (no devices working) OR help-desk inbox not receiving tickets OR walk-in flow broken | Cloud Operator initiates §5 rollback **and** posts in customer comms channel ("we are investigating, fall back to paper list for now"). Door Operator manually checks guests against printed list. |
-| **P2 — Degraded** | Stats widget stale, audit page slow, Telegram bot down, email QR delayed but core door flows working | Cloud Operator investigates without rolling back; Door continues. Decide rollback if not resolved by midpoint of event. |
-| **P3 — Cosmetic / single-guest** | One guest's QR is mangled, one scanner needs re-enrolling, etc. | Door + Customer Contact handle in-line. Log for post-mortem. |
+| Severity                         | Definition                                                                                                                   | Action                                                                                                                                                                                             |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P1 — Door blocked**            | Scanner check-in path broken for >2 min (no devices working) OR help-desk inbox not receiving tickets OR walk-in flow broken | Cloud Operator initiates §5 rollback **and** posts in customer comms channel ("we are investigating, fall back to paper list for now"). Door Operator manually checks guests against printed list. |
+| **P2 — Degraded**                | Stats widget stale, audit page slow, Telegram bot down, email QR delayed but core door flows working                         | Cloud Operator investigates without rolling back; Door continues. Decide rollback if not resolved by midpoint of event.                                                                            |
+| **P3 — Cosmetic / single-guest** | One guest's QR is mangled, one scanner needs re-enrolling, etc.                                                              | Door + Customer Contact handle in-line. Log for post-mortem.                                                                                                                                       |
 
 ### 4.3 Paper fallback (P1 only)
 
@@ -526,12 +543,14 @@ Three paragraphs (one per role):
 - **Door Operator (Vatana for the first pilot)** — what surprised her, what was hard at the door, which Khmer strings tripped guests up, what she'd want changed before the next pilot.
 - **Cloud Operator (Vinei)** — what was hard about remote triage, was Sentry signal-to-noise OK, did the help-desk inbox surface everything that mattered.
 - **Customer Contact (The Click Cam side)** — was the manual-review handoff smooth? Did they trust the system? Anything they expected to be able to do that they couldn't?
+- **Google workflow** - did keeping Google Form intake reduce friction, or did it
+  create extra coordination work compared with Eventgate native registration?
 
 ### 6.8 Action items
 
 | Owner | Task | Due |
-| --- | --- | --- |
-|  |  |  |
+| ----- | ---- | --- |
+|       |      |     |
 
 Cross-link each action item to a Plan G+ or hygiene wave so it doesn't get lost.
 
@@ -585,7 +604,8 @@ flyctl storage create --app eventgate-backend-staging
 ```
 
 Verify after deploy:
-- `flyctl secrets list --app eventgate-backend-prod` shows BUCKET_NAME + AWS_* keys.
+
+- `flyctl secrets list --app eventgate-backend-prod` shows `BUCKET_NAME` + `AWS_*` keys.
 - Upload a banner via the dashboard; confirm it renders on the registration page. The
   banner URL **will** carry a `?X-Amz-...` signature — that is expected.
 
