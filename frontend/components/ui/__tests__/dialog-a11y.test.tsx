@@ -27,18 +27,18 @@ function Example() {
 
 describe("Dialog a11y", () => {
   it("opens with an accessible name and is axe-clean", async () => {
-    const { container } = render(<Example />);
+    render(<Example />);
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveAccessibleName("Confirm");
-    expect(await axe(container)).toHaveNoViolations();
+    expect(await axe(document.body)).toHaveNoViolations();
   });
 
   it("closes on Escape", async () => {
     render(<Example />);
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     await screen.findByRole("dialog");
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
