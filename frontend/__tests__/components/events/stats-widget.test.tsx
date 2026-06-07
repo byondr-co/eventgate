@@ -10,6 +10,16 @@ import { useEventStats } from "@/lib/event-stats";
 
 const mockStats = vi.mocked(useEventStats);
 
+it("renders skeleton tiles while loading", () => {
+  mockStats.mockReturnValue({
+    data: undefined,
+    isLoading: true,
+  } as unknown as ReturnType<typeof useEventStats>);
+  const { container } = render(<StatsWidget orgSlug="o" eventSlug="e" />);
+  expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThanOrEqual(6);
+  expect(screen.queryByText("Loading counts…")).not.toBeInTheDocument();
+});
+
 it("colors warning tiles with text-warning and danger tiles with text-destructive", () => {
   mockStats.mockReturnValue({
     data: {

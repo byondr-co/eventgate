@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEventStats } from "@/lib/event-stats";
 
 type Tile = { label: string; value: number; tone: "default" | "warning" | "danger" };
@@ -9,7 +10,13 @@ export function StatsWidget({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
   const { data, isLoading } = useEventStats(orgSlug, eventSlug);
 
   if (isLoading || !data) {
-    return <p className="text-sm text-muted-foreground">Loading counts…</p>;
+    return (
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-16" />
+        ))}
+      </div>
+    );
   }
 
   const tiles: Tile[] = [
