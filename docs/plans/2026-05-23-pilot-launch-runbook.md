@@ -163,8 +163,10 @@ Run the **Plan F verification checklist** ([`2026-05-21-plan-f-verification-chec
 ### 1.5a Google Form bridge smoke (optional Plan N path)
 
 Run this section only if Click Cam keeps its Google Form as a live intake path.
-If any required check fails by 2026-06-12, disable the bridge and use native
-Eventgate registration or CSV import.
+Run it no later than 2026-06-12 for the bridge go/no-go decision. At T-3 and
+T-1, re-run this section only if the bridge remains enabled. If any required
+check fails by 2026-06-12, disable the bridge and use native Eventgate
+registration or CSV import.
 
 - [ ] Event settings show a Google Form bridge with `enabled=true`.
 - [ ] The response Sheet has the Sheet-bound Apps Script from

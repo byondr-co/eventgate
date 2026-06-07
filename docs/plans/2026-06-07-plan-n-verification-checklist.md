@@ -1,8 +1,8 @@
 # Plan N verification checklist
 
 > **Scope:** Pilot reliability plus optional Google Form bridge. Run before the
-> 2026-06-12 T-7 gate. If the bridge section does not pass, disable the bridge and
-> continue with native Eventgate registration or CSV import.
+> 2026-06-12 T-7 gate. If the optional Google Form bridge subsection does not pass,
+> disable the bridge and continue with native Eventgate registration or CSV import.
 
 ## Section 0 - Code and deploy state
 
@@ -32,11 +32,14 @@
   curl -sS https://api.eventgate.byondr.co/api/health/
   ```
 
-## Section 1 - Ingress paths
+## Section 1 - Required ingress paths
 
 - [ ] Native Eventgate public registration creates a guest and sends QR email.
 - [ ] CSV import preview works.
 - [ ] CSV import commit processes a mixed valid/invalid file and produces the expected counters.
+
+### Optional Google Form bridge subsection
+
 - [ ] Google Form bridge creates a guest from a test Sheet submission.
 - [ ] Re-running the same Google Form submission does not create a duplicate guest or send a duplicate QR.
 - [ ] Google Form submission with missing required email is rejected and writes an audit row.
@@ -67,12 +70,12 @@
 - [ ] Redis is reachable.
 - [ ] Telegram CTA/link still works if bot is configured.
 - [ ] Printed fallback list is confirmed with Click Cam.
-- [ ] Bridge cutoff decision is recorded:
-  - Enabled for pilot
-  - Disabled for pilot
+- [ ] Bridge cutoff decision is recorded by 2026-06-12: decision
+      (`enabled` or `disabled`); owner; timestamp; reason.
 
 ## Acceptance criteria
 
 - Sections 0, 2, 3, and 4 pass.
-- Section 1 passes for native registration and CSV.
-- Google Form bridge is enabled only if all Google Form bridge checks pass.
+- Section 1 required ingress checks pass for native registration and CSV.
+- Optional Google Form bridge subsection passes if the bridge remains enabled.
+- Google Form bridge is enabled only if all optional Google Form bridge checks pass.
