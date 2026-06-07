@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.orgs",
     "apps.notifications",
+    "apps.integrations",
     "apps.events",
     "apps.guests",
     "apps.audit",

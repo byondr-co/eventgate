@@ -33,6 +33,7 @@ def register_guest(
     payload: dict[str, Any],
     source: str = "public_form",
     referrer: ShortUrl | None = None,
+    queue_qr_email_on_commit: bool = False,
 ) -> Guest:
     if not event.registration_open:
         raise EventNotOpen("Registration is closed for this event.")
@@ -72,7 +73,10 @@ def register_guest(
 
     from apps.guests.tasks import send_qr_email_task
 
-    send_qr_email_task.delay(guest_id=str(guest.id))
+    if queue_qr_email_on_commit:
+        transaction.on_commit(lambda: send_qr_email_task.delay(guest_id=str(guest.id)))
+    else:
+        send_qr_email_task.delay(guest_id=str(guest.id))
 
     return guest
 

@@ -19,6 +19,7 @@ class AuditEvent(models.Model):
         ("user", "User"),
         ("scanner_device", "Scanner device"),
         ("guest", "Guest"),
+        ("integration", "Integration"),
         ("system", "System"),
     )
     RESULTS = (("success", "Success"), ("warning", "Warning"), ("error", "Error"))
