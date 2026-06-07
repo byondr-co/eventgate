@@ -92,31 +92,101 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
   const update = useUpdateGoogleFormBridge(orgSlug, eventSlug, bridge?.id ?? "");
   const rotate = useRotateGoogleFormBridgeSecret(orgSlug, eventSlug, bridge?.id ?? "");
   const [oneTimeSecret, setOneTimeSecret] = useState<string | null>(null);
+  const [mappingLabel, setMappingLabel] = useState("");
+  const [mappingTarget, setMappingTarget] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const fieldOptions = fields.data?.results ?? [];
   const fieldMapping = bridge?.field_mapping ?? {};
   const mappingEntries = Object.entries(fieldMapping);
+  const mappedFieldKeys = new Set(Object.values(fieldMapping));
+  const missingRequiredFields = fieldOptions.filter(
+    (field) => field.required && !mappedFieldKeys.has(field.field_key),
+  );
+  const requiredMappingsMissing = missingRequiredFields.length > 0;
   const script = useMemo(() => scriptFor(bridge?.webhook_url ?? ""), [bridge?.webhook_url]);
+  const trimmedMappingLabel = mappingLabel.trim();
+  const canSaveMapping =
+    !!bridge && trimmedMappingLabel.length > 0 && mappingTarget.length > 0 && !update.isPending;
+
+  const clearFeedback = () => {
+    setError(null);
+    setSuccess(null);
+  };
+
+  const messageFromError = (err: unknown) =>
+    err instanceof Error ? err.message : "Something went wrong.";
 
   const onCreate = async () => {
-    const created = await create.mutateAsync({
-      name: "Google Form",
-      enabled: false,
-      duplicate_policy: "upsert_by_email",
-      field_mapping: {},
-    });
-    setOneTimeSecret(created.secret);
+    clearFeedback();
+    try {
+      const created = await create.mutateAsync({
+        name: "Google Form",
+        enabled: false,
+        duplicate_policy: "upsert_by_email",
+        field_mapping: {},
+      });
+      setOneTimeSecret(created.secret);
+      setSuccess("Bridge created. Copy the one-time secret before leaving this page.");
+    } catch (err) {
+      setError(messageFromError(err));
+    }
   };
 
   const onRotate = async () => {
     if (!bridge) return;
-    const rotated = await rotate.mutateAsync();
-    setOneTimeSecret(rotated.secret);
+    clearFeedback();
+    try {
+      const rotated = await rotate.mutateAsync();
+      setOneTimeSecret(rotated.secret);
+      setSuccess("Secret rotated. Copy the new one-time secret before leaving this page.");
+    } catch (err) {
+      setError(messageFromError(err));
+    }
   };
 
-  const patchBridge = async (input: BridgeInput) => {
-    if (!bridge) return;
-    await update.mutateAsync(input);
+  const patchBridge = async (input: BridgeInput, successMessage: string) => {
+    if (!bridge) return false;
+    clearFeedback();
+    try {
+      await update.mutateAsync(input);
+      setSuccess(successMessage);
+      return true;
+    } catch (err) {
+      setError(messageFromError(err));
+      return false;
+    }
+  };
+
+  const onEnabledChange = async (checked: boolean) => {
+    if (checked && requiredMappingsMissing) {
+      await patchBridge({ enabled: false }, "Map required fields before enabling this bridge.");
+      return;
+    }
+    await patchBridge({ enabled: checked }, checked ? "Bridge enabled." : "Bridge disabled.");
+  };
+
+  const onSaveDraftMapping = async () => {
+    if (!canSaveMapping) return;
+    const saved = await patchBridge(
+      {
+        field_mapping: {
+          ...fieldMapping,
+          [trimmedMappingLabel]: mappingTarget,
+        },
+      },
+      "Mapping saved.",
+    );
+    if (!saved) return;
+    setMappingLabel("");
+    setMappingTarget("");
+  };
+
+  const onRemoveMapping = async (googleLabel: string) => {
+    const nextMapping = { ...fieldMapping };
+    delete nextMapping[googleLabel];
+    await patchBridge({ field_mapping: nextMapping }, "Mapping removed.");
   };
 
   return (
@@ -146,11 +216,19 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
               <input
                 type="checkbox"
                 checked={bridge.enabled}
-                onChange={(e) => void patchBridge({ enabled: e.currentTarget.checked })}
+                disabled={update.isPending || requiredMappingsMissing}
+                onChange={(e) => void onEnabledChange(e.currentTarget.checked)}
                 className="size-4 rounded accent-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               />
               Enabled
             </label>
+
+            {requiredMappingsMissing && (
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+                Map required fields before enabling:{" "}
+                {missingRequiredFields.map((field) => field.label_en).join(", ")}.
+              </div>
+            )}
 
             <Field label="Webhook URL" htmlFor="google-bridge-webhook">
               <Input
@@ -163,12 +241,47 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
 
             <div className="space-y-2">
               <p className="text-sm font-semibold">Field mapping</p>
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px_auto]">
+                <Field label="Google Form label" htmlFor="google-bridge-mapping-label">
+                  <Input
+                    id="google-bridge-mapping-label"
+                    value={mappingLabel}
+                    onChange={(e) => setMappingLabel(e.currentTarget.value)}
+                    placeholder="Full Name"
+                  />
+                </Field>
+                <Field label="Eventgate field" htmlFor="google-bridge-mapping-target">
+                  <Select
+                    id="google-bridge-mapping-target"
+                    value={mappingTarget}
+                    onChange={(e) => setMappingTarget(e.currentTarget.value)}
+                  >
+                    <option value="">Select field</option>
+                    {fieldOptions.map((field) => (
+                      <option key={field.field_key} value={field.field_key}>
+                        {field.label_en}
+                        {field.required ? " *" : ""}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onSaveDraftMapping}
+                  disabled={!canSaveMapping}
+                  className="self-end"
+                >
+                  Add/update mapping
+                </Button>
+              </div>
               {mappingEntries.length > 0 ? (
                 <div className="space-y-2">
                   {mappingEntries.map(([googleLabel, target]) => (
                     <div
                       key={googleLabel}
-                      className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px]"
+                      className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px_auto]"
                     >
                       <Input
                         readOnly
@@ -179,20 +292,33 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
                         value={target}
                         aria-label={`Eventgate field for ${googleLabel}`}
                         onChange={(e) =>
-                          void patchBridge({
-                            field_mapping: {
-                              ...fieldMapping,
-                              [googleLabel]: e.currentTarget.value,
+                          void patchBridge(
+                            {
+                              field_mapping: {
+                                ...fieldMapping,
+                                [googleLabel]: e.currentTarget.value,
+                              },
                             },
-                          })
+                            "Mapping saved.",
+                          )
                         }
                       >
                         {fieldOptions.map((field) => (
                           <option key={field.field_key} value={field.field_key}>
                             {field.label_en}
+                            {field.required ? " *" : ""}
                           </option>
                         ))}
                       </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void onRemoveMapping(googleLabel)}
+                        disabled={update.isPending}
+                      >
+                        Remove
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -229,6 +355,12 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
         )}
 
         {oneTimeSecret && <OneTimeSecretBlock secret={oneTimeSecret} />}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        {success && <p className="text-sm text-success">{success}</p>}
       </CardContent>
     </Card>
   );
