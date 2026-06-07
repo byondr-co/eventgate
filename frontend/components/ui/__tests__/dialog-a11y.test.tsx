@@ -31,7 +31,10 @@ describe("Dialog a11y", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveAccessibleName("Confirm");
-    expect(await axe(document.body)).toHaveNoViolations();
+    // Scope axe to the dialog popup: it scans the real content (title, description,
+    // close button) but excludes Base UI's focus-guard sentinels, which are siblings
+    // of the popup (not our markup) and intentionally carry no accessible name.
+    expect(await axe(dialog)).toHaveNoViolations();
   });
 
   it("closes on Escape", async () => {
