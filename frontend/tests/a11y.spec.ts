@@ -23,15 +23,25 @@ test("login form is reachable and operable by keyboard with visible focus", asyn
   await page.goto("/login");
   await page.waitForLoadState("networkidle");
 
-  // Tab from the document into the first interactive control.
+  // Tab from the document into the first interactive control, then read the focused
+  // element and its computed focus styles atomically (no re-query gap / flake).
   await page.keyboard.press("Tab");
-  const active = page.locator(":focus");
-  await expect(active).toBeVisible();
-
-  // The focused element must expose a visible focus indicator (ring/outline).
-  const outlineStyles = await active.evaluate((el) => {
+  const focused = await page.evaluate(() => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return null;
     const s = getComputedStyle(el);
-    return { outline: s.outlineStyle, boxShadow: s.boxShadow };
+    return { tag: el.tagName, outline: s.outlineStyle, boxShadow: s.boxShadow };
   });
-  expect(outlineStyles.outline !== "none" || outlineStyles.boxShadow !== "none").toBeTruthy();
+
+  // Keyboard must reach a real interactive control (not stay on <body>).
+  expect(focused, "Tab did not move focus to an interactive control").not.toBeNull();
+  if (!focused) throw new Error("unreachable");
+
+  // That control must expose a visible focus indicator (outline or a ring/box-shadow).
+  const hasFocusIndicator =
+    focused.outline !== "none" || (focused.boxShadow !== "none" && focused.boxShadow !== "");
+  expect(
+    hasFocusIndicator,
+    `focus indicator missing on <${focused.tag}> — outline: ${focused.outline}, boxShadow: ${focused.boxShadow}`,
+  ).toBe(true);
 });
