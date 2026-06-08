@@ -46,3 +46,46 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  e2e:
+    # Browser-based accessibility checks that jsdom cannot do: real color-contrast
+    # (dual-theme axe sweep) and keyboard reachability / visible focus on /login.
+    # Runs the a11y spec only — healthcheck.spec.ts needs the backend and is excluded.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Accessibility e2e (dual-theme axe + keyboard)
+        # Explicit spec path: a bare `a11y` filter also matches healthcheck.spec.ts,
+        # which needs the backend and isn't run here. CI sets CI=true, so
+        # reuseExistingServer is false and Playwright boots its own `pnpm dev`
+        # server (see webServer in playwright.config.ts).
+        run: pnpm exec playwright test tests/a11y.spec.ts --project=chromium
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
