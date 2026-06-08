@@ -18,3 +18,20 @@ for (const theme of ["light", "dark"] as const) {
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
   });
 }
+
+test("login form is reachable and operable by keyboard with visible focus", async ({ page }) => {
+  await page.goto("/login");
+  await page.waitForLoadState("networkidle");
+
+  // Tab from the document into the first interactive control.
+  await page.keyboard.press("Tab");
+  const active = page.locator(":focus");
+  await expect(active).toBeVisible();
+
+  // The focused element must expose a visible focus indicator (ring/outline).
+  const outlineStyles = await active.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { outline: s.outlineStyle, boxShadow: s.boxShadow };
+  });
+  expect(outlineStyles.outline !== "none" || outlineStyles.boxShadow !== "none").toBeTruthy();
+});
