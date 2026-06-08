@@ -44,7 +44,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
-        <main id="main" tabIndex={-1} className="mx-auto max-w-6xl w-full flex-1 px-6 py-8">
+        <main
+          id="main"
+          tabIndex={-1}
+          className="mx-auto max-w-6xl w-full flex-1 px-6 py-8 focus:outline-none"
+        >
           {children}
         </main>
       </div>

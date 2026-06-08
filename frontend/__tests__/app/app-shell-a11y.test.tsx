@@ -29,6 +29,10 @@ describe("app shell a11y", () => {
     );
     const skip = screen.getByRole("link", { name: /skip to content/i });
     expect(skip).toHaveAttribute("href", "#main");
+    // The target landmark must exist and be focusable for the skip link to work.
+    const main = document.getElementById("main");
+    expect(main?.tagName).toBe("MAIN");
+    expect(main).toHaveAttribute("tabindex", "-1");
   });
 
   it("renders the theme toggle", () => {
