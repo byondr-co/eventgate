@@ -1,12 +1,15 @@
 import { render, screen } from "@testing-library/react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useTheme } from "next-themes";
 
 import { Providers } from "@/app/providers";
 
-beforeAll(() => {
+const originalMatchMedia = window.matchMedia;
+
+beforeEach(() => {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
+    configurable: true,
     value: (query: string) => ({
       matches: false,
       media: query,
@@ -15,6 +18,14 @@ beforeAll(() => {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     }),
+  });
+});
+
+afterEach(() => {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: originalMatchMedia,
   });
 });
 
