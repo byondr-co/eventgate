@@ -29,3 +29,12 @@ Monochrome + semantic. Color carries meaning only:
 ## Scanner
 
 `/scanner/*` is intentionally exempt — big/bold/colored screens stay. It only inherits token-safe changes.
+
+## Theme & accessibility
+
+- Theme is light / dark / system via `next-themes` (`attribute="class"`, mounted in `app/providers.tsx`; `<html>` carries `suppressHydrationWarning`). The `ThemeToggle` (`@/components/common/theme-toggle`) lives in the authenticated app-shell header. Public, auth, and scanner routes inherit the resolved theme (scanner forces its own); they have no inline switcher because they are one-shot flows.
+- a11y target is **WCAG 2.1 AA**. Color carries meaning only; fix contrast at the **token level** in `app/globals.css` (light + `.dark`), never per-page.
+- The app shell exposes a skip-to-content link to a focusable `#main` landmark.
+- Verification is layered:
+  - **Structural a11y** (roles/names/labels/aria) is asserted with `vitest-axe` in unit tests (e.g. `components/ui/__tests__/primitives-a11y.test.tsx`, `dialog-a11y.test.tsx`). jsdom cannot compute color contrast.
+  - **Color contrast + keyboard/focus** are asserted in a real browser via `@axe-core/playwright` in `tests/a11y.spec.ts` (dual-theme axe sweep + keyboard traversal). Run with `pnpm test:e2e` — it boots the app, so it is NOT part of the four-command merge gate (`pnpm test && pnpm exec tsc --noEmit && pnpm lint && pnpm format:check`); run it before merging UI changes.
