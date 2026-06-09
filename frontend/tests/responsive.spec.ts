@@ -22,9 +22,22 @@ async function assertNoHorizontalOverflow(page: Page) {
  * Intercept all client API calls (apiFetch uses a relative base in the browser, so they
  * hit this origin at /api/v1/...). Returns canned JSON by pathname, with a safe empty
  * default so unstubbed endpoints never hang the page.
+ *
+ * Also sets the `eventgate_access` cookie so the Next.js 16 proxy (proxy.ts) treats
+ * the session as authenticated and does not redirect to /login.
  */
 type StubOpts = { email?: string; org?: { name: string; slug: string } };
 async function stubApi(page: Page, opts: StubOpts = {}) {
+  // Satisfy the Next.js 16 proxy auth-guard (proxy.ts checks req.cookies.get("eventgate_access")).
+  await page.context().addCookies([
+    {
+      name: "eventgate_access",
+      value: "test-stub-token",
+      domain: "localhost",
+      path: "/",
+    },
+  ]);
+
   await page.route("**/api/v1/**", async (route: Route) => {
     const path = new URL(route.request().url()).pathname;
     const json = (body: unknown) =>
@@ -41,10 +54,6 @@ async function stubApi(page: Page, opts: StubOpts = {}) {
     return json({});
   });
 }
-
-// Keep stubApi referenced so lint/typecheck don't error on an unused export.
-// Later tasks in this file will call it directly.
-void (stubApi as unknown);
 
 // Public / auth / scanner routes render real responsive containers with no backend.
 const BACKEND_FREE_ROUTES = ["/login", "/scanner/enroll"];
@@ -64,9 +73,26 @@ test("login submit button meets the 24px touch-target floor @ 375px", async ({ p
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/login");
   await page.waitForLoadState("networkidle");
-  const submit = page.getByRole("button", { name: /send|sign in|link/i }).first();
+  const submit = page.getByRole("button", { name: /send sign-in link/i });
   const box = await submit.boundingBox();
   expect(box, "submit button not found").not.toBeNull();
   if (!box) throw new Error("unreachable");
   expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(24);
+});
+
+test.describe("app-shell header (F1)", () => {
+  for (const vp of VIEWPORTS) {
+    test(`header has no horizontal overflow @ ${vp.name} (${vp.width}px)`, async ({ page }) => {
+      await stubApi(page, {
+        email: "very.long.email.address@example-organization.coop",
+      });
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      // me is stubbed; org is NOT → the page body shows "Organization not found",
+      // but the shared (app) layout header renders fully and is what we measure.
+      await page.goto("/orgs/__qa__");
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByRole("link", { name: "Eventgate" })).toBeVisible();
+      await assertNoHorizontalOverflow(page);
+    });
+  }
 });

@@ -12,27 +12,27 @@ const OPTIONS: { value: ThemeValue; label: React.ReactNode }[] = [
   {
     value: "light",
     label: (
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-0 sm:gap-1.5">
         <SunIcon className="size-4" aria-hidden="true" />
-        Light
+        <span className="sr-only sm:not-sr-only">Light</span>
       </span>
     ),
   },
   {
     value: "dark",
     label: (
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-0 sm:gap-1.5">
         <MoonIcon className="size-4" aria-hidden="true" />
-        Dark
+        <span className="sr-only sm:not-sr-only">Dark</span>
       </span>
     ),
   },
   {
     value: "system",
     label: (
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-0 sm:gap-1.5">
         <MonitorIcon className="size-4" aria-hidden="true" />
-        System
+        <span className="sr-only sm:not-sr-only">System</span>
       </span>
     ),
   },
@@ -42,9 +42,9 @@ export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme, resolvedTheme } = useTheme();
 
   if (resolvedTheme === undefined) {
-    // Avoid SSR/client mismatch: reserve space (matching the live control's height and
-    // approximate width) until next-themes has resolved the theme on the client.
-    return <div className={cn("h-8 min-w-[13rem]", className)} aria-hidden="true" />;
+    // Reserve space until next-themes resolves on the client. Width matches the compact
+    // (icon-only) control below sm: and the full control at sm:+, avoiding a hydration jump.
+    return <div className={cn("h-8 w-[7.5rem] sm:w-[13rem]", className)} aria-hidden="true" />;
   }
 
   return (
