@@ -24,13 +24,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         <header className="border-b">
-          <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-3">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-6">
             <Link href="/" className="font-semibold">
               Eventgate
             </Link>
-            <div className="flex items-center gap-3 text-sm">
+            <div className="flex min-w-0 items-center gap-2 text-sm sm:gap-3">
               <ThemeToggle />
-              <span className="text-muted-foreground">{me.data?.email}</span>
+              <span className="hidden max-w-[12rem] truncate text-muted-foreground sm:inline">
+                {me.data?.email}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -47,7 +49,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <main
           id="main"
           tabIndex={-1}
-          className="mx-auto max-w-6xl w-full flex-1 px-6 py-8 focus:outline-none"
+          className="mx-auto max-w-6xl w-full flex-1 px-4 py-8 sm:px-6 focus:outline-none"
         >
           {children}
         </main>

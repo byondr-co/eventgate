@@ -82,6 +82,12 @@ jobs:
         # server (see webServer in playwright.config.ts).
         run: pnpm exec playwright test tests/a11y.spec.ts --project=chromium
 
+      - name: Responsive e2e (mobile/tablet overflow on critical paths)
+        # Explicit spec path: a bare filter also matches the backend-dependent
+        # healthcheck.spec.ts. Asserts no horizontal overflow at 375/768/1024 and a
+        # 24px touch-target floor; authenticated routes render via page.route stubs.
+        run: pnpm exec playwright test tests/responsive.spec.ts --project=chromium
+
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
