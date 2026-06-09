@@ -151,17 +151,20 @@ test.describe("event dashboard + tabs (F3)", () => {
   test("event tab strip is contained and scrollable @ 375px", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/orgs/__qa__/events/__ev__");
-    // Wait for the hydrated tab strip (it carries overflow-x-auto from Tailwind).
-    await page.waitForSelector('nav[aria-label="Event sections"].overflow-x-auto');
     const nav = page.getByRole("navigation", { name: "Event sections" });
-    const info = await nav.evaluate((el) => ({
-      overflowX: getComputedStyle(el).overflowX,
+    await expect(nav).toBeVisible();
+    // The tab strip exposes a horizontal-scroll affordance so all tabs stay reachable.
+    // Poll the computed style: in dev, Tailwind's CSS can apply a tick after the element
+    // mounts, so a one-shot read may catch the default `visible`. Polling fails cleanly on
+    // timeout (never hangs) and is not coupled to the class name.
+    await expect
+      .poll(() => nav.evaluate((el) => getComputedStyle(el).overflowX))
+      .toMatch(/^(auto|scroll)$/);
+    // ...and the strip is itself contained within the viewport (it never widens the page).
+    const { clientWidth, viewport } = await nav.evaluate((el) => ({
       clientWidth: el.clientWidth,
       viewport: window.innerWidth,
     }));
-    // The tab strip exposes a horizontal-scroll affordance (so all tabs are reachable)...
-    expect(["auto", "scroll"]).toContain(info.overflowX);
-    // ...and is itself contained within the viewport (it never widens the page).
-    expect(info.clientWidth).toBeLessThanOrEqual(info.viewport);
+    expect(clientWidth).toBeLessThanOrEqual(viewport);
   });
 });
