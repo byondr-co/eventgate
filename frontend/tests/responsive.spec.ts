@@ -74,7 +74,7 @@ for (const vp of VIEWPORTS) {
     test(`no horizontal overflow: ${route} @ ${vp.name} (${vp.width}px)`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await page.goto(route);
-      await page.waitForLoadState("networkidle");
+      await expect(page.locator("main").first()).toBeVisible();
       await assertNoHorizontalOverflow(page);
     });
   }
@@ -83,8 +83,8 @@ for (const vp of VIEWPORTS) {
 test("login submit button meets the 24px touch-target floor @ 375px", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/login");
-  await page.waitForLoadState("networkidle");
   const submit = page.getByRole("button", { name: /send sign-in link/i });
+  await expect(submit).toBeVisible();
   const box = await submit.boundingBox();
   expect(box, "submit button not found").not.toBeNull();
   if (!box) throw new Error("unreachable");
@@ -98,7 +98,6 @@ test("org dashboard header row has no overflow with a long name @ 375px (F2)", a
   });
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/orgs/__qa__");
-  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading", { name: /Phnom Penh Tech Founders/ })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 });
@@ -113,7 +112,6 @@ test.describe("app-shell header (F1)", () => {
       // me is stubbed; org is NOT → the page body shows "Organization not found",
       // but the shared (app) layout header renders fully and is what we measure.
       await page.goto("/orgs/__qa__");
-      await page.waitForLoadState("networkidle");
       await expect(page.getByRole("link", { name: "Eventgate" })).toBeVisible();
       await assertNoHorizontalOverflow(page);
     });
@@ -135,7 +133,7 @@ test.describe("event dashboard + tabs (F3)", () => {
     test(`event dashboard no page overflow @ ${vp.name}`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await page.goto("/orgs/__qa__/events/__ev__");
-      await page.waitForLoadState("networkidle");
+      await expect(page.getByRole("navigation", { name: "Event sections" })).toBeVisible();
       await assertNoHorizontalOverflow(page);
     });
   }
@@ -143,9 +141,9 @@ test.describe("event dashboard + tabs (F3)", () => {
   test("event tab strip is contained and scrollable @ 375px", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/orgs/__qa__/events/__ev__");
-    await page.waitForLoadState("networkidle");
+    // Wait for the hydrated tab strip (it carries overflow-x-auto from Tailwind).
+    await page.waitForSelector('nav[aria-label="Event sections"].overflow-x-auto');
     const nav = page.getByRole("navigation", { name: "Event sections" });
-    await expect(nav).toBeVisible();
     const info = await nav.evaluate((el) => ({
       overflowX: getComputedStyle(el).overflowX,
       clientWidth: el.clientWidth,
