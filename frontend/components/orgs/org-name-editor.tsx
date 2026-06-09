@@ -36,8 +36,8 @@ export function OrgNameEditor({ orgSlug, name }: Props) {
 
   if (!editing) {
     return (
-      <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-semibold">{name}</h1>
+      <div className="flex items-center gap-2 min-w-0">
+        <h1 className="text-2xl font-semibold min-w-0 break-words">{name}</h1>
         <Button
           type="button"
           variant="ghost"

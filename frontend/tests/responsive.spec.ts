@@ -102,6 +102,16 @@ test("org dashboard header row has no overflow with a long name @ 375px (F2)", a
   await assertNoHorizontalOverflow(page);
 });
 
+test("org dashboard header row has no overflow with a long UNBROKEN name @ 375px (F2)", async ({
+  page,
+}) => {
+  await stubApi(page, { org: { name: "A".repeat(60), slug: "__qa__" } });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/orgs/__qa__");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+});
+
 test.describe("app-shell header (F1)", () => {
   for (const vp of VIEWPORTS) {
     test(`header has no horizontal overflow @ ${vp.name} (${vp.width}px)`, async ({ page }) => {
