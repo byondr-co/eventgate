@@ -18,6 +18,15 @@ async function assertNoHorizontalOverflow(page: Page) {
   ).toBeLessThanOrEqual(overflow.innerWidth + 1);
 }
 
+/** Satisfy the Next.js 16 proxy auth-guard (proxy.ts checks req.cookies.get("eventgate_access")). */
+async function setAuthCookie(page: Page) {
+  await page
+    .context()
+    .addCookies([
+      { name: "eventgate_access", value: "test-stub-token", domain: "localhost", path: "/" },
+    ]);
+}
+
 /**
  * Intercept all client API calls (apiFetch uses a relative base in the browser, so they
  * hit this origin at /api/v1/...). Returns canned JSON by pathname, with a safe empty
@@ -28,15 +37,7 @@ async function assertNoHorizontalOverflow(page: Page) {
  */
 type StubOpts = { email?: string; org?: { name: string; slug: string } };
 async function stubApi(page: Page, opts: StubOpts = {}) {
-  // Satisfy the Next.js 16 proxy auth-guard (proxy.ts checks req.cookies.get("eventgate_access")).
-  await page.context().addCookies([
-    {
-      name: "eventgate_access",
-      value: "test-stub-token",
-      domain: "localhost",
-      path: "/",
-    },
-  ]);
+  await setAuthCookie(page);
 
   await page.route("**/api/v1/**", async (route: Route) => {
     const path = new URL(route.request().url()).pathname;
@@ -107,4 +108,53 @@ test.describe("app-shell header (F1)", () => {
       await assertNoHorizontalOverflow(page);
     });
   }
+});
+
+test.describe("event dashboard + tabs (F3)", () => {
+  test.beforeEach(async ({ page }) => {
+    await setAuthCookie(page);
+    await page.route("**/api/v1/**", async (route: Route) => {
+      const path = new URL(route.request().url()).pathname;
+      const json = (body: unknown) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(body),
+        });
+      if (path.endsWith("/auth/me/")) return json({ email: "user@example.com" });
+      if (path.endsWith("/orgs/__qa__/events/__ev__/")) {
+        return json({ name: "QA Event", slug: "__ev__", status: "live", venue: "Hall A" });
+      }
+      // Counts (guests, helpdesk tickets) carry query strings; their pathname ends in "/"
+      // → empty page, so badges read 0 and the tab strip still renders.
+      if (path.endsWith("/")) return json({ results: [], count: 0 });
+      return json({});
+    });
+  });
+
+  for (const vp of VIEWPORTS) {
+    test(`event dashboard no page overflow @ ${vp.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto("/orgs/__qa__/events/__ev__");
+      await page.waitForLoadState("networkidle");
+      await assertNoHorizontalOverflow(page);
+    });
+  }
+
+  test("event tab strip is contained and scrollable @ 375px", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/orgs/__qa__/events/__ev__");
+    await page.waitForLoadState("networkidle");
+    const nav = page.getByRole("navigation", { name: "Event sections" });
+    await expect(nav).toBeVisible();
+    const info = await nav.evaluate((el) => ({
+      overflowX: getComputedStyle(el).overflowX,
+      clientWidth: el.clientWidth,
+      viewport: window.innerWidth,
+    }));
+    // The tab strip exposes a horizontal-scroll affordance (so all tabs are reachable)...
+    expect(["auto", "scroll"]).toContain(info.overflowX);
+    // ...and is itself contained within the viewport (it never widens the page).
+    expect(info.clientWidth).toBeLessThanOrEqual(info.viewport);
+  });
 });
