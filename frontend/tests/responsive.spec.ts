@@ -80,6 +80,18 @@ test("login submit button meets the 24px touch-target floor @ 375px", async ({ p
   expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(24);
 });
 
+test("org dashboard header row has no overflow with a long name @ 375px (F2)", async ({ page }) => {
+  await stubApi(page, {
+    email: "user@example.com",
+    org: { name: "Phnom Penh Tech Founders & Builders Community Association", slug: "__qa__" },
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/orgs/__qa__");
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("heading", { name: /Phnom Penh Tech Founders/ })).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+});
+
 test.describe("app-shell header (F1)", () => {
   for (const vp of VIEWPORTS) {
     test(`header has no horizontal overflow @ ${vp.name} (${vp.width}px)`, async ({ page }) => {

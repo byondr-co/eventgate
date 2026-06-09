@@ -17,8 +17,8 @@ export default function OrgDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <OrgNameEditor orgSlug={slug} name={org.name} />
           <p className="text-sm text-muted-foreground">
             {org.slug} · {org.role}
