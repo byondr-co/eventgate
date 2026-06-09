@@ -24,4 +24,32 @@ describe("SegmentedControl", () => {
     fireEvent.click(screen.getByRole("button", { name: "Walk-in" }));
     expect(onChange).toHaveBeenCalledWith("walkin");
   });
+
+  it("renders a ReactNode label while keeping the accessible name from text", () => {
+    render(
+      <SegmentedControl
+        options={[
+          {
+            value: "light",
+            label: (
+              <span>
+                <span aria-hidden="true">☀</span> Light
+              </span>
+            ),
+          },
+          {
+            value: "dark",
+            label: (
+              <span>
+                <span aria-hidden="true">☾</span> Dark
+              </span>
+            ),
+          },
+        ]}
+        value="light"
+        onValueChange={() => {}}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Light" })).toHaveAttribute("aria-pressed", "true");
+  });
 });
