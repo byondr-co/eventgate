@@ -35,7 +35,11 @@ async function setAuthCookie(page: Page) {
  * Also sets the `eventgate_access` cookie so the Next.js 16 proxy (proxy.ts) treats
  * the session as authenticated and does not redirect to /login.
  */
-type StubOpts = { email?: string; org?: { name: string; slug: string } };
+type StubOpts = {
+  email?: string;
+  org?: { name: string; slug: string };
+  event?: { orgSlug: string; eventSlug: string; data: Record<string, unknown> };
+};
 async function stubApi(page: Page, opts: StubOpts = {}) {
   await setAuthCookie(page);
 
@@ -49,6 +53,12 @@ async function stubApi(page: Page, opts: StubOpts = {}) {
     }
     if (opts.org && path.endsWith(`/orgs/${opts.org.slug}/`)) {
       return json({ name: opts.org.name, slug: opts.org.slug, role: "owner" });
+    }
+    if (
+      opts.event &&
+      path.endsWith(`/orgs/${opts.event.orgSlug}/events/${opts.event.eventSlug}/`)
+    ) {
+      return json(opts.event.data);
     }
     // List endpoints (events, members, guests, …) → empty page.
     if (path.endsWith("/")) return json({ results: [], count: 0 });
@@ -112,23 +122,12 @@ test.describe("app-shell header (F1)", () => {
 
 test.describe("event dashboard + tabs (F3)", () => {
   test.beforeEach(async ({ page }) => {
-    await setAuthCookie(page);
-    await page.route("**/api/v1/**", async (route: Route) => {
-      const path = new URL(route.request().url()).pathname;
-      const json = (body: unknown) =>
-        route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(body),
-        });
-      if (path.endsWith("/auth/me/")) return json({ email: "user@example.com" });
-      if (path.endsWith("/orgs/__qa__/events/__ev__/")) {
-        return json({ name: "QA Event", slug: "__ev__", status: "live", venue: "Hall A" });
-      }
-      // Counts (guests, helpdesk tickets) carry query strings; their pathname ends in "/"
-      // → empty page, so badges read 0 and the tab strip still renders.
-      if (path.endsWith("/")) return json({ results: [], count: 0 });
-      return json({});
+    await stubApi(page, {
+      event: {
+        orgSlug: "__qa__",
+        eventSlug: "__ev__",
+        data: { name: "QA Event", slug: "__ev__", status: "live", venue: "Hall A" },
+      },
     });
   });
 
