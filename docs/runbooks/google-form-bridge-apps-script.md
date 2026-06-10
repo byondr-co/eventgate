@@ -123,7 +123,7 @@ function initializeEventgateSetup() {
 
   if (issues.length > 0) {
     ui.alert(
-      "Eventgate setup initialized with warnings:\\n\\n- " + issues.join("\\n- ")
+      "Eventgate setup initialized with warnings:\n\n- " + issues.join("\n- ")
     );
     return;
   }
@@ -144,7 +144,7 @@ function checkEventgateSetup() {
   const issues = setupIssues(sheet);
 
   if (issues.length > 0) {
-    ui.alert("Eventgate setup needs attention:\\n\\n- " + issues.join("\\n- "));
+    ui.alert("Eventgate setup needs attention:\n\n- " + issues.join("\n- "));
     return;
   }
 
@@ -191,7 +191,7 @@ function syncSelectedRowToEventgate() {
   }
 
   const result = syncSheetRow(sheet, rowNumber, fieldsFromRow(sheet, rowNumber));
-  const detail = result.detail ? "\\n\\n" + result.detail : "";
+  const detail = result.detail ? "\n\n" + result.detail : "";
   ui.alert("Eventgate sync complete: " + result.sync + detail);
 }
 
@@ -549,6 +549,11 @@ If a row says failed but the Eventgate event is healthy:
 Eventgate idempotency prevents duplicate guests when the same `submission_id` is
 sent twice. For unchanged rows, the script keeps both `submission_id` and
 fallback `submitted_at` stable.
+
+Warning: if the Sheet row is changed after Eventgate already accepted it, a
+manual replay is rejected by Eventgate payload hashing. Fix the row only when
+you intend Eventgate to reject the changed replay and write the reason into
+`Eventgate Detail`.
 
 ## Disable procedure
 
