@@ -18,6 +18,7 @@ type FakeResponse = {
 };
 
 type ScriptHarness = {
+  onFormSubmit: (event: { range: FakeRange; namedValues?: Record<string, string[]> }) => void;
   syncSelectedRowToEventgate: () => void;
   resultFromResponse: (response: FakeResponse) => SyncResult;
   matchingSubmitTriggers: () => FakeTrigger[];
@@ -228,6 +229,7 @@ function loadScript({
     "Utilities",
     "Date",
     `${script}; return {
+      onFormSubmit,
       syncSelectedRowToEventgate,
       resultFromResponse,
       matchingSubmitTriggers,
@@ -276,7 +278,8 @@ describe("googleFormBridgeAppsScript", () => {
     expect(script).toContain("function syncSelectedRowToEventgate()");
     expect(script).toContain("function onFormSubmit(e)");
     expect(script).toContain("const sheet = e.range.getSheet();");
-    expect(script).toContain("const fields = e.namedValues || fieldsFromRow(sheet, rowNumber);");
+    expect(script).toContain("syncSheetRow(sheet, rowNumber, fieldsFromRow(sheet, rowNumber));");
+    expect(script).not.toContain("e.namedValues");
     expect(script).toContain("ScriptApp.getProjectTriggers()");
     expect(script).toContain('ScriptApp.newTrigger("onFormSubmit")');
     expect(script).toContain(".forSpreadsheet(SpreadsheetApp.getActive())");
@@ -384,6 +387,55 @@ describe("googleFormBridgeAppsScript", () => {
     expect(payloads[0].submitted_at).toBe("2026-06-10T01:00:00.000Z");
     expect(payloads[1].submitted_at).toBe(payloads[0].submitted_at);
     expect(sheet.valueForHeader(2, "Eventgate Submitted At")).toBe(payloads[0].submitted_at);
+  });
+
+  it("builds identical payloads for automatic submit and manual sync of the same row", () => {
+    const sheet = new FakeSheet([
+      [
+        "Timestamp",
+        "Full Name",
+        "Email",
+        "Eventgate Sync",
+        "Eventgate Guest ID",
+        "Eventgate Detail",
+        "Eventgate Synced At",
+      ],
+      ["not a timestamp", "Ada Lovelace", "", "", "", "", ""],
+    ]);
+    const { harness, payloads } = loadScript({
+      date: makeFakeDate([
+        "2026-06-10T01:00:00.000Z",
+        "2026-06-10T01:00:01.000Z",
+        "2026-06-10T01:00:02.000Z",
+        "2026-06-10T01:00:03.000Z",
+      ]),
+      responses: [
+        makeResponse(201, { status: "accepted", guest_id: "guest-1" }),
+        makeResponse(200, { status: "duplicate", guest_id: "guest-1" }),
+      ],
+      sheet,
+    });
+
+    harness.onFormSubmit({
+      range: sheet.getRange(2, 1),
+      namedValues: {
+        Email: [""],
+        "Full Name": ["Different value from event payload"],
+        "Unexpected Form Field": ["ignored"],
+      },
+    });
+    harness.syncSelectedRowToEventgate();
+
+    expect(payloads).toHaveLength(2);
+    expect(payloads[1]).toMatchObject({
+      submission_id: payloads[0].submission_id,
+      submitted_at: payloads[0].submitted_at,
+      fields: payloads[0].fields,
+    });
+    expect(payloads[0].fields).toEqual({
+      Timestamp: ["not a timestamp"],
+      "Full Name": ["Ada Lovelace"],
+    });
   });
 
   it("ignores same-handler triggers from a different source and creates the spreadsheet trigger", () => {

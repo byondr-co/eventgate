@@ -83,8 +83,7 @@ function onFormSubmit(e) {
 
   const sheet = e.range.getSheet();
   const rowNumber = e.range.getRow();
-  const fields = e.namedValues || fieldsFromRow(sheet, rowNumber);
-  syncSheetRow(sheet, rowNumber, fields);
+  syncSheetRow(sheet, rowNumber, fieldsFromRow(sheet, rowNumber));
 }
 
 function syncSelectedRowToEventgate() {
