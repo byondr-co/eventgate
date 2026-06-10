@@ -1,5 +1,14 @@
 # Handoff — 2026-06-03 (post Plan L + pilot-feedback round)
 
+> **SUPERSEDED (2026-06-11).** Since this doc: Plan M (scanner-UI polish, NOT
+> the Google integration named below), the monochrome UI rollout (#60–#69),
+> Plan N (pilot reliability + Google Form bridge, merged `d4cc509`), and the
+> UI/UX-deepening lane (#71 #73 #74 #75 #76) all shipped; Plan O (bridge Sheet
+> operations) is open as PR #77. The "Plan M — Google Form integration"
+> candidate below became Plan N. Current state: `docs/handoff-2026-05-20.md`
+> (rolling, top section) and `docs/plans/2026-06-11-t7-gate-prep.md` (T-7 gate
+> 2026-06-12).
+
 > **For a fresh Claude in a new chat session.** Plan L and its hotfixes shipped, plus a large batch of pilot-feedback fixes/improvements. This doc captures the current state, what shipped, the open backlog, banked gotchas, and candidate next directions. The next session should **open with brainstorming** to pick the next plan with the user (no direction is pre-committed).
 
 ## One-line state
