@@ -2,6 +2,257 @@ import { describe, expect, it } from "vitest";
 
 import { googleFormBridgeAppsScript } from "@/lib/google-form-bridge-apps-script";
 
+type CellValue = Date | number | string | null | undefined;
+type ResponseBody = Record<string, unknown> | string;
+
+type SyncResult = {
+  sync: string;
+  guestId: string | null;
+  detail: string;
+  clearGuestId: boolean;
+};
+
+type FakeResponse = {
+  getResponseCode: () => number;
+  getContentText: () => string;
+};
+
+type ScriptHarness = {
+  syncSelectedRowToEventgate: () => void;
+  resultFromResponse: (response: FakeResponse) => SyncResult;
+  matchingSubmitTriggers: () => FakeTrigger[];
+  ensureSubmitTrigger: () => { created: boolean; count: number };
+  submittedAtForRow: (sheet: FakeSheet, rowNumber: number) => string;
+  fieldsFromRow: (sheet: FakeSheet, rowNumber: number) => Record<string, string[]>;
+  writeSyncResult: (sheet: FakeSheet, rowNumber: number, result: SyncResult) => void;
+};
+
+class FakeRange {
+  constructor(
+    private readonly sheet: FakeSheet,
+    private readonly row: number,
+    private readonly column: number,
+    private readonly rowCount = 1,
+    private readonly columnCount = 1,
+  ) {}
+
+  getRow() {
+    return this.row;
+  }
+
+  getSheet() {
+    return this.sheet;
+  }
+
+  getValue() {
+    return this.sheet.readCell(this.row, this.column);
+  }
+
+  getValues() {
+    return Array.from({ length: this.rowCount }, (_, rowIndex) =>
+      Array.from({ length: this.columnCount }, (_, columnIndex) =>
+        this.sheet.readCell(this.row + rowIndex, this.column + columnIndex),
+      ),
+    );
+  }
+
+  setValue(value: CellValue) {
+    this.sheet.writeCell(this.row, this.column, value);
+  }
+}
+
+class FakeSheet {
+  readonly hiddenColumns: number[] = [];
+
+  constructor(
+    private readonly data: CellValue[][],
+    private readonly activeRow = 2,
+    private readonly activeColumn = 1,
+  ) {}
+
+  getSheetId() {
+    return 456;
+  }
+
+  getLastColumn() {
+    return Math.max(...this.data.map((row) => row.length));
+  }
+
+  getRange(row: number, column: number, rowCount = 1, columnCount = 1) {
+    return new FakeRange(this, row, column, rowCount, columnCount);
+  }
+
+  getActiveRange() {
+    return new FakeRange(this, this.activeRow, this.activeColumn);
+  }
+
+  hideColumns(column: number) {
+    this.hiddenColumns.push(column);
+  }
+
+  readCell(row: number, column: number) {
+    return this.data[row - 1]?.[column - 1] ?? "";
+  }
+
+  writeCell(row: number, column: number, value: CellValue) {
+    this.data[row - 1] ??= [];
+    this.data[row - 1][column - 1] = value;
+  }
+
+  valueForHeader(rowNumber: number, header: string) {
+    const columnIndex = this.data[0].indexOf(header);
+    return columnIndex === -1 ? undefined : this.data[rowNumber - 1][columnIndex];
+  }
+}
+
+class FakeTrigger {
+  constructor(
+    private readonly handlerFunction: string,
+    private readonly eventType: string,
+    private readonly sourceId: string | null,
+  ) {}
+
+  getHandlerFunction() {
+    return this.handlerFunction;
+  }
+
+  getEventType() {
+    return this.eventType;
+  }
+
+  getTriggerSourceId() {
+    return this.sourceId;
+  }
+}
+
+function makeResponse(code: number, body: ResponseBody): FakeResponse {
+  return {
+    getResponseCode: () => code,
+    getContentText: () => (typeof body === "string" ? body : JSON.stringify(body)),
+  };
+}
+
+function makeFakeDate(isoValues: string[]): DateConstructor {
+  let callCount = 0;
+
+  class FakeDate extends Date {
+    constructor(value?: string | number | Date) {
+      if (arguments.length === 0) {
+        super(isoValues[Math.min(callCount, isoValues.length - 1)]);
+        callCount += 1;
+        return;
+      }
+
+      super(value as string | number | Date);
+    }
+  }
+
+  return FakeDate as unknown as DateConstructor;
+}
+
+function loadScript({
+  sheet = new FakeSheet([["Timestamp"], ["2026-06-10T00:00:00.000Z"]]),
+  responses = [],
+  triggers = [],
+  activeSpreadsheetId = "spreadsheet-1",
+  date = Date,
+}: {
+  sheet?: FakeSheet;
+  responses?: FakeResponse[];
+  triggers?: FakeTrigger[];
+  activeSpreadsheetId?: string;
+  date?: DateConstructor;
+} = {}) {
+  const payloads: Array<Record<string, unknown>> = [];
+  const createdTriggers: Array<{ handler: string; spreadsheetId: string }> = [];
+  const spreadsheet = { getId: () => activeSpreadsheetId };
+
+  const SpreadsheetApp = {
+    getUi: () => ({
+      alert: () => undefined,
+      createMenu: () => ({
+        addItem() {
+          return this;
+        },
+        addSeparator() {
+          return this;
+        },
+        addToUi() {
+          return this;
+        },
+      }),
+    }),
+    getActive: () => spreadsheet,
+    getActiveSheet: () => sheet,
+  };
+  const ScriptApp = {
+    EventType: { ON_FORM_SUBMIT: "ON_FORM_SUBMIT" },
+    getProjectTriggers: () => triggers,
+    newTrigger: (handler: string) => ({
+      forSpreadsheet(selectedSpreadsheet: typeof spreadsheet) {
+        return {
+          onFormSubmit() {
+            return {
+              create() {
+                createdTriggers.push({
+                  handler,
+                  spreadsheetId: selectedSpreadsheet.getId(),
+                });
+              },
+            };
+          },
+        };
+      },
+    }),
+  };
+  const PropertiesService = {
+    getScriptProperties: () => ({
+      getProperty: () => "secret-123",
+    }),
+  };
+  const UrlFetchApp = {
+    fetch: (_url: string, options: { payload: string }) => {
+      payloads.push(JSON.parse(options.payload) as Record<string, unknown>);
+      return responses.shift() ?? makeResponse(201, { status: "accepted", guest_id: "guest-1" });
+    },
+  };
+  const Utilities = { sleep: () => undefined };
+  const script = googleFormBridgeAppsScript(
+    "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
+  );
+  const evaluate = new Function(
+    "SpreadsheetApp",
+    "ScriptApp",
+    "PropertiesService",
+    "UrlFetchApp",
+    "Utilities",
+    "Date",
+    `${script}; return {
+      syncSelectedRowToEventgate,
+      resultFromResponse,
+      matchingSubmitTriggers,
+      ensureSubmitTrigger,
+      submittedAtForRow,
+      fieldsFromRow,
+      writeSyncResult
+    };`,
+  );
+
+  return {
+    createdTriggers,
+    harness: evaluate(
+      SpreadsheetApp,
+      ScriptApp,
+      PropertiesService,
+      UrlFetchApp,
+      Utilities,
+      date,
+    ) as ScriptHarness,
+    payloads,
+    sheet,
+  };
+}
+
 describe("googleFormBridgeAppsScript", () => {
   it("generates the Sheet menu, setup helpers, structured columns, and manual row sync", () => {
     const script = googleFormBridgeAppsScript(
@@ -36,6 +287,7 @@ describe("googleFormBridgeAppsScript", () => {
     expect(script).toContain('const GUEST_ID_COLUMN_NAME = "Eventgate Guest ID";');
     expect(script).toContain('const DETAIL_COLUMN_NAME = "Eventgate Detail";');
     expect(script).toContain('const SYNCED_AT_COLUMN_NAME = "Eventgate Synced At";');
+    expect(script).toContain('const SUBMITTED_AT_COLUMN_NAME = "Eventgate Submitted At";');
     expect(script).toContain("const EVENTGATE_COLUMNS = [");
     expect(script).toContain("function submittedAtForRow(sheet, rowNumber)");
     expect(script).toContain("sheet.getRange(rowNumber, 1).getValue()");
@@ -49,5 +301,101 @@ describe("googleFormBridgeAppsScript", () => {
     expect(script).toContain("function postToEventgate(payload)");
     expect(script).toContain("if (first.getResponseCode() >= 500)");
     expect(script).not.toContain('values["Email"]');
+  });
+
+  it("preserves existing guest ID for generic rejected replay mismatch responses", () => {
+    const sheet = new FakeSheet([
+      [
+        "Timestamp",
+        "Eventgate Guest ID",
+        "Eventgate Sync",
+        "Eventgate Detail",
+        "Eventgate Synced At",
+      ],
+      ["2026-06-10T01:00:00.000Z", "guest-existing", "", "", ""],
+    ]);
+    const { harness } = loadScript({ sheet });
+
+    const result = harness.resultFromResponse(
+      makeResponse(400, { status: "rejected", detail: "Submission replay mismatch." }),
+    );
+    harness.writeSyncResult(sheet, 2, result);
+
+    expect(result.clearGuestId).toBe(false);
+    expect(sheet.valueForHeader(2, "Eventgate Sync")).toBe("rejected");
+    expect(sheet.valueForHeader(2, "Eventgate Guest ID")).toBe("guest-existing");
+  });
+
+  it("clears existing guest ID for unauthorized or disabled responses without guest ID", () => {
+    const sheet = new FakeSheet([
+      [
+        "Timestamp",
+        "Eventgate Guest ID",
+        "Eventgate Sync",
+        "Eventgate Detail",
+        "Eventgate Synced At",
+      ],
+      ["2026-06-10T01:00:00.000Z", "guest-existing", "", "", ""],
+    ]);
+    const { harness } = loadScript({ sheet });
+
+    harness.writeSyncResult(sheet, 2, harness.resultFromResponse(makeResponse(401, "")));
+    expect(sheet.valueForHeader(2, "Eventgate Guest ID")).toBe("");
+
+    sheet.writeCell(2, 2, "guest-existing");
+    harness.writeSyncResult(
+      sheet,
+      2,
+      harness.resultFromResponse(makeResponse(400, { detail: "Bridge is disabled." })),
+    );
+    expect(sheet.valueForHeader(2, "Eventgate Guest ID")).toBe("");
+  });
+
+  it("reuses the same submitted_at when re-syncing a row with an unparseable timestamp", () => {
+    const sheet = new FakeSheet([
+      [
+        "Timestamp",
+        "Full Name",
+        "Eventgate Sync",
+        "Eventgate Guest ID",
+        "Eventgate Detail",
+        "Eventgate Synced At",
+      ],
+      ["not a timestamp", "Ada Lovelace", "", "", "", ""],
+    ]);
+    const { harness, payloads } = loadScript({
+      date: makeFakeDate([
+        "2026-06-10T01:00:00.000Z",
+        "2026-06-10T01:00:01.000Z",
+        "2026-06-10T01:00:02.000Z",
+        "2026-06-10T01:00:03.000Z",
+      ]),
+      responses: [
+        makeResponse(201, { status: "accepted", guest_id: "guest-1" }),
+        makeResponse(200, { status: "duplicate", guest_id: "guest-1" }),
+      ],
+      sheet,
+    });
+
+    harness.syncSelectedRowToEventgate();
+    harness.syncSelectedRowToEventgate();
+
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0].submitted_at).toBe("2026-06-10T01:00:00.000Z");
+    expect(payloads[1].submitted_at).toBe(payloads[0].submitted_at);
+    expect(sheet.valueForHeader(2, "Eventgate Submitted At")).toBe(payloads[0].submitted_at);
+  });
+
+  it("ignores same-handler triggers from a different source and creates the spreadsheet trigger", () => {
+    const { createdTriggers, harness } = loadScript({
+      activeSpreadsheetId: "active-spreadsheet",
+      triggers: [new FakeTrigger("onFormSubmit", "ON_FORM_SUBMIT", "different-spreadsheet")],
+    });
+
+    expect(harness.matchingSubmitTriggers()).toHaveLength(0);
+    expect(harness.ensureSubmitTrigger()).toEqual({ created: true, count: 1 });
+    expect(createdTriggers).toEqual([
+      { handler: "onFormSubmit", spreadsheetId: "active-spreadsheet" },
+    ]);
   });
 });

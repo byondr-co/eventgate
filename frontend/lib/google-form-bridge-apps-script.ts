@@ -6,11 +6,13 @@ const STATUS_COLUMN_NAME = "Eventgate Sync";
 const GUEST_ID_COLUMN_NAME = "Eventgate Guest ID";
 const DETAIL_COLUMN_NAME = "Eventgate Detail";
 const SYNCED_AT_COLUMN_NAME = "Eventgate Synced At";
+const SUBMITTED_AT_COLUMN_NAME = "Eventgate Submitted At";
 const EVENTGATE_COLUMNS = [
   STATUS_COLUMN_NAME,
   GUEST_ID_COLUMN_NAME,
   DETAIL_COLUMN_NAME,
-  SYNCED_AT_COLUMN_NAME
+  SYNCED_AT_COLUMN_NAME,
+  SUBMITTED_AT_COLUMN_NAME
 ];
 
 function onOpen() {
@@ -158,12 +160,36 @@ function ensureSubmitTrigger() {
 }
 
 function matchingSubmitTriggers() {
+  const activeSpreadsheetId = activeSpreadsheetSourceId();
   return ScriptApp.getProjectTriggers().filter(function (trigger) {
     return (
       trigger.getHandlerFunction() === "onFormSubmit" &&
-      trigger.getEventType() === ScriptApp.EventType.ON_FORM_SUBMIT
+      trigger.getEventType() === ScriptApp.EventType.ON_FORM_SUBMIT &&
+      triggerMatchesActiveSpreadsheet(trigger, activeSpreadsheetId)
     );
   });
+}
+
+function activeSpreadsheetSourceId() {
+  const spreadsheet = SpreadsheetApp.getActive();
+  if (!spreadsheet || typeof spreadsheet.getId !== "function") return "";
+  return String(spreadsheet.getId() || "");
+}
+
+function triggerMatchesActiveSpreadsheet(trigger, activeSpreadsheetId) {
+  if (!activeSpreadsheetId || typeof trigger.getTriggerSourceId !== "function") {
+    return true;
+  }
+
+  let triggerSourceId = "";
+  try {
+    triggerSourceId = String(trigger.getTriggerSourceId() || "");
+  } catch (err) {
+    return true;
+  }
+
+  if (!triggerSourceId) return true;
+  return triggerSourceId === activeSpreadsheetId;
 }
 
 function setupIssues(sheet) {
@@ -206,11 +232,18 @@ function ensureEventgateColumns(sheet) {
     if (headers.indexOf(columnName) !== -1) return;
     lastColumn += 1;
     sheet.getRange(HEADER_ROW, lastColumn).setValue(columnName);
+    hideInternalColumn(sheet, columnName, lastColumn);
     created.push(columnName);
     headers = getHeaders(sheet);
   });
 
   return { columns: getHeaderMap(sheet), created: created };
+}
+
+function hideInternalColumn(sheet, columnName, columnNumber) {
+  if (columnName !== SUBMITTED_AT_COLUMN_NAME) return;
+  if (typeof sheet.hideColumns !== "function") return;
+  sheet.hideColumns(columnNumber);
 }
 
 function getHeaders(sheet) {
@@ -254,13 +287,25 @@ function normalizeCellValue(value) {
 }
 
 function submittedAtForRow(sheet, rowNumber) {
+  const columns = ensureEventgateColumns(sheet).columns;
+  const existing = isoTimestampFromCellValue(
+    sheet.getRange(rowNumber, columns[SUBMITTED_AT_COLUMN_NAME]).getValue()
+  );
+  if (existing) return existing;
+
   const value = sheet.getRange(rowNumber, 1).getValue();
+  const stableSubmittedAt = isoTimestampFromCellValue(value) || new Date().toISOString();
+  sheet.getRange(rowNumber, columns[SUBMITTED_AT_COLUMN_NAME]).setValue(stableSubmittedAt);
+  return stableSubmittedAt;
+}
+
+function isoTimestampFromCellValue(value) {
   if (value instanceof Date) return value.toISOString();
   if (value) {
     const parsed = new Date(value);
     if (!isNaN(parsed.getTime())) return parsed.toISOString();
   }
-  return new Date().toISOString();
+  return "";
 }
 
 function submissionIdFor(sheet, rowNumber) {
@@ -334,7 +379,7 @@ function resultFromResponse(response) {
       sync: "rejected",
       guestId: guestId,
       detail: detail || code + " " + shorten(text),
-      clearGuestId: !guestId
+      clearGuestId: false
     };
   }
 
