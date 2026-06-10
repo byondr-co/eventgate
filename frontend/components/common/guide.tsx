@@ -13,9 +13,17 @@ type GuideProps = {
   className?: string;
 };
 
+const STEP_GRID: Record<1 | 2 | 3 | 4, string> = {
+  1: "", // single column everywhere
+  2: "sm:grid-cols-2", // 2-up from sm; no lg class needed
+  3: "sm:grid-cols-2 lg:grid-cols-3",
+  4: "sm:grid-cols-2 lg:grid-cols-4",
+};
+
 function Guide({ steps, className }: GuideProps) {
+  const cols = Math.min(Math.max(steps.length, 1), 4) as 1 | 2 | 3 | 4;
   return (
-    <ol className={cn("grid gap-4 sm:grid-cols-2 lg:grid-cols-4", className)}>
+    <ol className={cn("grid gap-4", STEP_GRID[cols], className)}>
       {steps.map((step, i) => {
         const Illustration = step.illustration;
         return (
