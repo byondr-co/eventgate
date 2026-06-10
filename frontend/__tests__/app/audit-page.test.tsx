@@ -20,6 +20,7 @@ describe("AuditPage", () => {
     } as unknown as AuditQueryResult);
     render(<AuditPage />);
     expect(screen.getByRole("status")).toHaveTextContent("Loading…");
+    // sr-only announcements are allowed; a VISIBLE "Loading…" (the old CardTitle text) is not
     expect(screen.queryByText("Loading…", { ignore: ".sr-only" })).toBeNull();
     expect(
       document.querySelector('[data-slot="card-title"] [data-slot="skeleton"]'),
