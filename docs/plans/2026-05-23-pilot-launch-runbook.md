@@ -168,12 +168,25 @@ T-1, re-run this section only if the bridge remains enabled. If any required
 check fails by 2026-06-12, disable the bridge and use native Eventgate
 registration or CSV import.
 
-- [ ] Event settings show a Google Form bridge with `enabled=true`.
+- [ ] Event settings show a Google Form bridge with field mapping configured,
+      webhook URL copied, and one-time secret copied. Keep it disabled until
+      Sheet setup passes.
 - [ ] The response Sheet has the Sheet-bound Apps Script from
       `docs/runbooks/google-form-bridge-apps-script.md`.
+- [ ] The Sheet menu shows Eventgate -> Initialize setup, Check setup, Sync
+      selected row, and Initialize columns only.
+- [ ] Eventgate -> Initialize setup has been run and Eventgate -> Check setup
+      reports the setup is ready.
+- [ ] Event settings show the Google Form bridge with `enabled=true`.
 - [ ] A test Google Form response creates exactly one Eventgate guest.
+- [ ] The test response row gets structured sync output:
+      `Eventgate Sync=accepted`, `Eventgate Guest ID=<uuid>`,
+      `Eventgate Detail` blank or non-blocking, and `Eventgate Synced At`
+      populated.
 - [ ] The test guest receives one QR email.
 - [ ] Re-running the same row does not create a duplicate guest.
+- [ ] Eventgate -> Sync selected row can replay the accepted test row without
+      creating another guest or duplicate QR email.
 - [ ] A bad test row writes `rejected` in the Sheet sync column and creates an
       `integration.google_form_submission_rejected` audit row.
 - [ ] If the bridge is disabled, a test submission returns a clean disabled response
