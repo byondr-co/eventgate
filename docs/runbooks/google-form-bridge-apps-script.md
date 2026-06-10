@@ -521,8 +521,9 @@ function shorten(value) {
 
 ## Manual selected-row sync
 
-Use this when a row did not sync because the trigger was missing, the bridge was
-disabled during setup, or the operator wants to replay a row.
+Use this when a row never reached Eventgate because the trigger was missing, a
+network request failed before Eventgate responded, or the operator wants to
+replay an unchanged row for confirmation.
 
 1. Open the response Sheet.
 2. Select any cell in the response row.
@@ -538,9 +539,11 @@ current Sheet row, excluding Eventgate-managed columns.
 
 ## Manual retry
 
-If a row says failed but the Eventgate event is healthy:
+Use this for rows that did not reach Eventgate, such as rows submitted before
+the trigger existed or rows with a transient network failure before Eventgate
+responded:
 
-1. Fix the field mapping, secret, or bridge enabled state.
+1. Fix the trigger, network, secret, or bridge enabled state.
 2. Select any cell in the failed response row.
 3. Open Eventgate -> Sync selected row.
 4. Confirm `Eventgate Sync`, `Eventgate Guest ID`, `Eventgate Detail`, and
@@ -550,7 +553,13 @@ Eventgate idempotency prevents duplicate guests when the same `submission_id` is
 sent twice. For unchanged rows, the script keeps both `submission_id` and
 fallback `submitted_at` stable.
 
-Warning: if the Sheet row is changed after Eventgate already accepted it, a
+If Eventgate already processed the row as `rejected`, `disabled`, `duplicate`,
+or `accepted`, selected-row sync replays that stored result; it does not
+reprocess the row after configuration changes. To send corrected values after a
+processed rejection, submit a new Google Form response or use CSV import for the
+corrected row.
+
+Warning: if the Sheet row is changed after Eventgate already processed it, a
 manual replay is rejected by Eventgate payload hashing. Fix the row only when
 you intend Eventgate to reject the changed replay and write the reason into
 `Eventgate Detail`.
