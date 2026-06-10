@@ -20,6 +20,35 @@ it("renders skeleton tiles while loading", () => {
   expect(screen.queryByText("Loading counts…")).not.toBeInTheDocument();
 });
 
+it("announces loading and hides the tile skeletons from assistive tech", () => {
+  mockStats.mockReturnValue({
+    data: undefined,
+    isLoading: true,
+  } as unknown as ReturnType<typeof useEventStats>);
+  render(<StatsWidget orgSlug="o" eventSlug="e" />);
+  const status = screen.getByRole("status");
+  expect(status).toHaveTextContent("Loading…");
+  const hidden = status.querySelector('[aria-hidden="true"]');
+  expect(hidden).not.toBeNull();
+  expect(hidden?.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(6);
+});
+
+it("renders no skeleton once loaded", () => {
+  mockStats.mockReturnValue({
+    data: {
+      checked_in: 1,
+      registered_not_arrived: 2,
+      displayed: 3,
+      manual_review: 0,
+      open_escalations: 0,
+      conflicts_recent_15min: 0,
+    },
+    isLoading: false,
+  } as unknown as ReturnType<typeof useEventStats>);
+  render(<StatsWidget orgSlug="o" eventSlug="e" />);
+  expect(screen.queryByRole("status")).toBeNull();
+});
+
 it("colors warning tiles with text-warning and danger tiles with text-destructive", () => {
   mockStats.mockReturnValue({
     data: {

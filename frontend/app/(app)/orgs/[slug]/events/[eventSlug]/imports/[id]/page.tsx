@@ -7,7 +7,31 @@ import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useImportStatus } from "@/lib/csv-imports";
+
+export function ImportDetailSkeleton() {
+  return (
+    <div role="status">
+      <span className="sr-only">Loading…</span>
+      <div aria-hidden="true" className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-8 w-28" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-24" />
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Skeleton className="h-2 w-full rounded" />
+            <Skeleton className="h-4 w-64" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
 
 export default function ImportDetailPage() {
   const { slug, eventSlug, id } = useParams<{
@@ -25,7 +49,7 @@ export default function ImportDetailPage() {
   }, [data?.status, qc, slug, eventSlug]);
 
   if (isLoading || !data) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <ImportDetailSkeleton />;
   }
 
   const pct =

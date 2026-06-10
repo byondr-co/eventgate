@@ -4,12 +4,39 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useOrgs } from "@/lib/orgs";
+
+export function OrgListSkeleton() {
+  return (
+    <div role="status">
+      <span className="sr-only">Loading…</span>
+      <div aria-hidden="true" className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-7 w-44" />
+          <Skeleton className="h-9 w-36" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function OrgList() {
   const { data, isLoading, isError } = useOrgs();
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading) return <OrgListSkeleton />;
   if (isError) return <p className="text-sm text-destructive">Failed to load.</p>;
 
   const orgs = data?.results ?? [];
