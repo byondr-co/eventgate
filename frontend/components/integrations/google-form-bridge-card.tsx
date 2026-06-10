@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useFields } from "@/lib/events";
+import { googleFormBridgeAppsScript } from "@/lib/google-form-bridge-apps-script";
 import {
   type BridgeInput,
   useCreateGoogleFormBridge,
@@ -18,69 +19,6 @@ import {
 } from "@/lib/google-form-bridge";
 
 type Props = { orgSlug: string; eventSlug: string };
-
-function scriptFor(webhookUrl: string) {
-  return `const EVENTGATE_WEBHOOK_URL = ${JSON.stringify(webhookUrl)};
-const EVENTGATE_BRIDGE_SECRET = PropertiesService.getScriptProperties().getProperty("EVENTGATE_BRIDGE_SECRET");
-const STATUS_COLUMN_NAME = "Eventgate Sync";
-
-function onFormSubmit(e) {
-  if (!EVENTGATE_BRIDGE_SECRET) {
-    throw new Error("Missing EVENTGATE_BRIDGE_SECRET script property.");
-  }
-
-  const values = e.namedValues || {};
-  const submittedAt = new Date().toISOString();
-  const submissionId = submissionIdFor(e, submittedAt);
-
-  const response = postToEventgate({
-    submission_id: submissionId,
-    submitted_at: submittedAt,
-    fields: values
-  });
-
-  writeSyncStatus(e, response.getResponseCode() + " " + response.getContentText());
-}
-
-function submissionIdFor(e, submittedAt) {
-  if (!e.range) return ["manual", submittedAt].join("-");
-  const sheet = e.range.getSheet();
-  return ["sheet", sheet.getSheetId(), e.range.getRow()].join("-");
-}
-
-function postToEventgate(payload) {
-  const options = {
-    method: "post",
-    contentType: "application/json",
-    headers: { "X-Eventgate-Bridge-Secret": EVENTGATE_BRIDGE_SECRET },
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true
-  };
-
-  const first = UrlFetchApp.fetch(EVENTGATE_WEBHOOK_URL, options);
-  if (first.getResponseCode() >= 500) {
-    Utilities.sleep(1000);
-    return UrlFetchApp.fetch(EVENTGATE_WEBHOOK_URL, options);
-  }
-  return first;
-}
-
-function writeSyncStatus(e, status) {
-  if (!e.range) return;
-
-  const sheet = e.range.getSheet();
-  const headerRow = 1;
-  const headers = sheet.getRange(headerRow, 1, 1, sheet.getLastColumn()).getValues()[0];
-  let col = headers.indexOf(STATUS_COLUMN_NAME) + 1;
-
-  if (col === 0) {
-    col = sheet.getLastColumn() + 1;
-    sheet.getRange(headerRow, col).setValue(STATUS_COLUMN_NAME);
-  }
-
-  sheet.getRange(e.range.getRow(), col).setValue(status);
-}`;
-}
 
 function OneTimeSecretBlock({ secret }: { secret: string }) {
   return (
@@ -114,7 +52,10 @@ export function GoogleFormBridgeCard({ orgSlug, eventSlug }: Props) {
   );
   const requiredMappingsMissing = fieldsReady && missingRequiredFields.length > 0;
   const enableBlocked = !!bridge && !bridge.enabled && (!fieldsReady || requiredMappingsMissing);
-  const script = useMemo(() => scriptFor(bridge?.webhook_url ?? ""), [bridge?.webhook_url]);
+  const script = useMemo(
+    () => googleFormBridgeAppsScript(bridge?.webhook_url ?? ""),
+    [bridge?.webhook_url],
+  );
   const trimmedMappingLabel = mappingLabel.trim();
   const canSaveMapping =
     !!bridge && trimmedMappingLabel.length > 0 && mappingTarget.length > 0 && !update.isPending;
