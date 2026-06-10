@@ -149,6 +149,12 @@ describe("GoogleFormBridgeCard", () => {
     expect(script.value).toContain("sheet.getSheetId()");
     expect(script.value).toContain("function postToEventgate");
     expect(script.value).not.toContain('values["Email"]');
+    expect(script.value).toContain("function onOpen()");
+    expect(script.value).toContain('.createMenu("Eventgate")');
+    expect(script.value).toContain("function initializeEventgateSetup()");
+    expect(script.value).toContain("function syncSelectedRowToEventgate()");
+    expect(script.value).toContain("Eventgate Guest ID");
+    expect(script.value).toContain("Eventgate Synced At");
   });
 
   it("adds a Google Form label mapping by patching the bridge field_mapping", async () => {

@@ -1,93 +1,5 @@
-# Google Form bridge Apps Script install guide
-
-Use this for the Click Cam pilot when the customer wants to keep using a Google Form
-or its response Sheet while Eventgate owns QR issuance, guest records, scanning,
-help desk, and audit.
-
-## When to use this bridge
-
-Use it only when all are true:
-
-- The customer already has a Google Form or response Sheet.
-- Eventgate native registration is not the preferred intake path for this pilot.
-- A test form submission has synced into Eventgate before the T-7 gate.
-
-If the bridge is not green by 2026-06-12, disable it and use Eventgate native
-registration or CSV import.
-
-## Eventgate setup
-
-1. Open the event in Eventgate.
-2. Go to Settings.
-3. Create a Google Form bridge.
-4. Configure the field mapping.
-5. Copy the webhook URL.
-6. Copy the one-time secret.
-7. Keep the bridge disabled until the Apps Script is installed.
-
-## Google Sheet setup
-
-1. Open the Google Form response Sheet. Do not install this script from the
-   Google Form editor; the bridge is response Sheet bound.
-2. Open Extensions -> Apps Script.
-3. Paste the script below.
-4. Replace the `EVENTGATE_WEBHOOK_URL` constant with the bridge URL copied from
-   Eventgate.
-5. Open Project Settings -> Script properties.
-6. Add `EVENTGATE_BRIDGE_SECRET` with the one-time bridge secret copied from
-   Eventgate.
-7. Save the script.
-8. Reload the response Sheet.
-9. In the Sheet menu bar, open Eventgate -> Initialize setup.
-10. Complete the Google authorization prompt if it appears.
-11. In the Sheet menu bar, open Eventgate -> Check setup and confirm it says
-    setup looks ready.
-12. Return to Eventgate Settings and enable the bridge.
-13. Submit a test Google Form response.
-14. Confirm the response row gets these operator-facing result columns:
-    - `Eventgate Sync` = `accepted`
-    - `Eventgate Guest ID` = the created guest UUID
-    - `Eventgate Detail` blank or non-blocking detail text
-    - `Eventgate Synced At` = a recent timestamp
-15. Leave `Eventgate Submitted At` alone if it appears or is hidden; the script
-    owns it for stable manual replay timestamps.
-16. Confirm the guest appears in Eventgate.
-17. Confirm the QR email sends when email delivery is configured for this pilot.
-18. Keep the bridge enabled only after the test passes; disable it if rehearsal
-    fails or the bridge is not green by the 2026-06-12 cutoff.
-
-## Eventgate-managed columns
-
-The script creates these columns at the end of the response Sheet:
-
-| Column | Meaning |
-| --- | --- |
-| `Eventgate Sync` | Operator-facing result: `accepted`, `duplicate`, `updated`, `rejected`, `disabled`, `unauthorized`, or `failed`. |
-| `Eventgate Guest ID` | Eventgate guest UUID when the webhook returns one. |
-| `Eventgate Detail` | Error or diagnostic text. |
-| `Eventgate Synced At` | Timestamp when the script last wrote a sync result. |
-| `Eventgate Submitted At` | Internal managed timestamp used to keep fallback `submitted_at` stable for selected-row replay. The script hides this column when it creates it. |
-
-Do not rename or delete these columns after setup. Do not edit
-`Eventgate Submitted At`; if it is deleted, unchanged manual replays can lose
-their stable fallback timestamp. If a column is missing, use Eventgate ->
-Initialize columns only to recreate it.
-
-## Eventgate Sheet menu
-
-Reload the response Sheet after saving the script so the Eventgate menu appears.
-
-| Menu item | Use it for |
-| --- | --- |
-| Initialize setup | Creates managed columns and installs the form-submit trigger idempotently. |
-| Check setup | Confirms the bridge URL, secret, managed columns, and trigger are present. |
-| Sync selected row | Manually syncs the currently selected response row. |
-| Initialize columns only | Recreates missing managed columns without changing triggers. |
-
-## Sheet-bound script
-
-```javascript
-const EVENTGATE_WEBHOOK_URL = "https://api.eventgate.byondr.co/api/v1/integrations/google-forms/BRIDGE_ID/submissions/";
+export function googleFormBridgeAppsScript(webhookUrl: string): string {
+  return `const EVENTGATE_WEBHOOK_URL = ${JSON.stringify(webhookUrl)};
 const BRIDGE_SECRET_PROPERTY = "EVENTGATE_BRIDGE_SECRET";
 const HEADER_ROW = 1;
 const STATUS_COLUMN_NAME = "Eventgate Sync";
@@ -123,7 +35,7 @@ function initializeEventgateSetup() {
 
   if (issues.length > 0) {
     ui.alert(
-      "Eventgate setup initialized with warnings:\n\n- " + issues.join("\n- ")
+      "Eventgate setup initialized with warnings:\\n\\n- " + issues.join("\\n- ")
     );
     return;
   }
@@ -144,7 +56,7 @@ function checkEventgateSetup() {
   const issues = setupIssues(sheet);
 
   if (issues.length > 0) {
-    ui.alert("Eventgate setup needs attention:\n\n- " + issues.join("\n- "));
+    ui.alert("Eventgate setup needs attention:\\n\\n- " + issues.join("\\n- "));
     return;
   }
 
@@ -191,7 +103,7 @@ function syncSelectedRowToEventgate() {
   }
 
   const result = syncSheetRow(sheet, rowNumber, fieldsFromRow(sheet, rowNumber));
-  const detail = result.detail ? "\n\n" + result.detail : "";
+  const detail = result.detail ? "\\n\\n" + result.detail : "";
   ui.alert("Eventgate sync complete: " + result.sync + detail);
 }
 
@@ -516,56 +428,5 @@ function shorten(value) {
   const text = String(value || "");
   if (text.length <= 240) return text;
   return text.slice(0, 237) + "...";
+}`;
 }
-```
-
-## Manual selected-row sync
-
-Use this when a row never reached Eventgate because the trigger was missing, a
-network request failed before Eventgate responded, or the operator wants to
-replay an unchanged row for confirmation.
-
-1. Open the response Sheet.
-2. Select any cell in the response row.
-3. Open Eventgate -> Sync selected row.
-4. Confirm the Eventgate-managed columns update for that row.
-
-The script allows re-syncing any row, including one already marked `accepted`.
-Eventgate idempotency prevents duplicate guests and duplicate QR emails when the
-row payload is unchanged. If the row was edited after it was already processed,
-Eventgate rejects the replay and writes the reason into `Eventgate Detail`.
-Automatic submits and manual sync both build the Eventgate payload from the
-current Sheet row, excluding Eventgate-managed columns.
-
-## Manual retry
-
-Use this for rows that did not reach Eventgate, such as rows submitted before
-the trigger existed or rows with a transient network failure before Eventgate
-responded:
-
-1. Fix the trigger, network, secret, or bridge enabled state.
-2. Select any cell in the failed response row.
-3. Open Eventgate -> Sync selected row.
-4. Confirm `Eventgate Sync`, `Eventgate Guest ID`, `Eventgate Detail`, and
-   `Eventgate Synced At` update for that row.
-
-Eventgate idempotency prevents duplicate guests when the same `submission_id` is
-sent twice. For unchanged rows, the script keeps both `submission_id` and
-fallback `submitted_at` stable.
-
-If Eventgate already processed the row as `rejected`, `disabled`, `duplicate`,
-or `accepted`, selected-row sync replays that stored result; it does not
-reprocess the row after configuration changes. To send corrected values after a
-processed rejection, submit a new Google Form response or use CSV import for the
-corrected row.
-
-Warning: if the Sheet row is changed after Eventgate already processed it, a
-manual replay is rejected by Eventgate payload hashing. Fix the row only when
-you intend Eventgate to reject the changed replay and write the reason into
-`Eventgate Detail`.
-
-## Disable procedure
-
-1. In Eventgate Settings, uncheck Enabled for the bridge.
-2. Leave the Apps Script installed if the customer still wants logs.
-3. Unsynced rows can be imported by CSV before the event.
