@@ -11,10 +11,13 @@ export function StatsWidget({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6" aria-hidden="true">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-16" />
-        ))}
+      <div role="status">
+        <span className="sr-only">Loading…</span>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6" aria-hidden="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-16" />
+          ))}
+        </div>
       </div>
     );
   }
