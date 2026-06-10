@@ -10,6 +10,22 @@
 
 ---
 
+## Final Implementation Notes
+
+The final branch intentionally differs from the first draft snippets in this
+plan in three places:
+
+- Automatic submit and manual selected-row sync both build payload fields from
+  the response Sheet row via `fieldsFromRow(sheet, rowNumber)`. They do not use
+  `e.namedValues`, because that can produce a different payload hash from a
+  later manual replay of the same row.
+- The generated script creates an internal `Eventgate Submitted At` column to
+  keep fallback `submitted_at` stable when the Sheet timestamp cell is blank or
+  unparseable.
+- Generic `rejected` responses preserve an existing `Eventgate Guest ID`.
+  Unauthorized responses and disabled responses without a returned guest ID can
+  clear the guest ID.
+
 ## Current State
 
 - Branch: `topic/google-form-bridge-sheet-ops-design`.
@@ -257,8 +273,7 @@ function onFormSubmit(e) {
 
   const sheet = e.range.getSheet();
   const rowNumber = e.range.getRow();
-  const fields = e.namedValues || fieldsFromRow(sheet, rowNumber);
-  syncSheetRow(sheet, rowNumber, fields);
+  syncSheetRow(sheet, rowNumber, fieldsFromRow(sheet, rowNumber));
 }
 
 function syncSelectedRowToEventgate() {
@@ -510,7 +525,7 @@ function resultFromResponse(response) {
       sync: "rejected",
       guestId: guestId,
       detail: detail || code + " " + shorten(text),
-      clearGuestId: !guestId
+      clearGuestId: false
     };
   }
 

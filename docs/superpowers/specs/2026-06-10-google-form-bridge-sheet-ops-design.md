@@ -163,14 +163,16 @@ The script maps responses into Sheet columns as follows:
 | 201 body `status=accepted` | `accepted` | `guest_id` | blank unless body has `detail` |
 | 200 body `status=duplicate` | `duplicate` | `guest_id` | body `detail` if present |
 | 200 body `status=updated` | `updated` | `guest_id` | body `detail` if present |
-| 200 body `status=rejected` | `rejected` | blank or existing value cleared | body `detail` |
+| 200 body `status=rejected` | `rejected` | unchanged unless Eventgate returns `guest_id` | body `detail` |
 | 400 body `detail=Bridge is disabled.` | `disabled` | blank or existing value cleared | body `detail` |
 | 401 | `unauthorized` | blank or existing value cleared | body `detail` or `Invalid bridge secret.` |
 | network error or parse error | `failed` | unchanged | short exception message |
 | 5xx after retry | `failed` | unchanged | HTTP status and response text |
 
-For rejected, disabled, and unauthorized results, the script should clear
-`Eventgate Guest ID` unless Eventgate returns a guest ID.
+For generic rejected results, including replay mismatch and validation
+rejections, the script should preserve any existing `Eventgate Guest ID` unless
+Eventgate returns a new guest ID. For disabled and unauthorized results, the
+script should clear `Eventgate Guest ID` unless Eventgate returns a guest ID.
 
 For transient failures where Eventgate may or may not have processed the row,
 the script should keep any existing guest ID and write the failure detail.
