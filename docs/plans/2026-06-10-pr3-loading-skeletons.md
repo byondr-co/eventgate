@@ -30,22 +30,31 @@
 
 ### File map
 
+> **CORRECTION (2026-06-10, post-Task-1 review):** unit tests in this repo live
+> in the root `frontend/__tests__/` mirror tree, NOT co-located `__tests__`
+> dirs. `__tests__/components/ui/table-skeleton.test.tsx` and
+> `__tests__/components/events/stats-widget.test.tsx` ALREADY EXIST and must be
+> **extended**, not duplicated. Test paths in the task bodies below are
+> superseded by this table; test code in the task bodies is otherwise still
+> correct. Follow the existing files' style: `vi.mock` calls above imports,
+> flat `__tests__/app/<page-name>-page.test.tsx` naming for page tests.
+
 | File | Change |
 |---|---|
 | `components/ui/table-skeleton.tsx` | retrofit announcement pattern |
-| `components/ui/__tests__/table-skeleton.test.tsx` | **new** test |
+| `__tests__/components/ui/table-skeleton.test.tsx` | **extend** existing test |
 | `components/events/stats-widget.tsx` | retrofit tile-skeleton announcement |
-| `components/events/__tests__/stats-widget.test.tsx` | **new** test |
+| `__tests__/components/events/stats-widget.test.tsx` | **extend** existing test |
 | `components/orgs/org-list.tsx` | + `OrgListSkeleton`, use it |
-| `components/orgs/__tests__/org-list.test.tsx` | **new** test |
+| `__tests__/components/orgs/org-list.test.tsx` | **new** test |
 | `app/(app)/orgs/[slug]/page.tsx` | + `OrgDashboardSkeleton`, use it |
-| `app/(app)/orgs/[slug]/__tests__/page.test.tsx` | **new** test |
+| `__tests__/app/org-dashboard-page.test.tsx` | **new** test |
 | `app/(app)/orgs/[slug]/events/[eventSlug]/page.tsx` | + `EventDashboardSkeleton`, use it |
-| `app/(app)/orgs/[slug]/events/[eventSlug]/__tests__/page.test.tsx` | **new** test |
+| `__tests__/app/event-dashboard-page.test.tsx` | **new** test |
 | `app/(app)/orgs/[slug]/events/[eventSlug]/imports/[id]/page.tsx` | + `ImportDetailSkeleton`, use it |
-| `app/(app)/orgs/[slug]/events/[eventSlug]/imports/[id]/__tests__/page.test.tsx` | **new** test |
+| `__tests__/app/import-detail-page.test.tsx` | **new** test |
 | `app/(app)/orgs/[slug]/events/[eventSlug]/audit/page.tsx` | skeleton title + `TableSkeleton` body |
-| `app/(app)/orgs/[slug]/events/[eventSlug]/audit/__tests__/page.test.tsx` | **new** test |
+| `__tests__/app/audit-page.test.tsx` | **new** test |
 
 Named exports from page files are established in this repo (`audit/page.tsx` already exports `resultClasses`), so exporting `OrgDashboardSkeleton` etc. from page files is fine.
 

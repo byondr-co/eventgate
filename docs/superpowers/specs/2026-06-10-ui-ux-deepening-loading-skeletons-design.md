@@ -85,8 +85,12 @@ TDD per the lane's process (RTL + vitest, mocked query hooks):
 - Per site: skeleton (`role="status"`) renders while the hook reports
   `isLoading`; loaded content renders (and skeleton does not) once data
   resolves.
-- New `TableSkeleton` unit test (none exists today) for the `role="status"` +
-  sr-only + `aria-hidden` structure.
+- Unit tests live in the repo's root `__tests__/` mirror tree
+  (`__tests__/components/...`, `__tests__/app/...`) — the dominant convention.
+  The existing `__tests__/components/ui/table-skeleton.test.tsx` and
+  `__tests__/components/events/stats-widget.test.tsx` are **extended** with the
+  `role="status"` + sr-only + `aria-hidden` assertions; the five page/list
+  tests are new files in that tree.
 - Merge gate: `pnpm test && pnpm exec tsc --noEmit && pnpm lint && pnpm format:check`,
   plus a local `pnpm test:e2e` (a11y spec) run before merge since this touches
   UI (per `frontend/docs/ui-style-note.md`).
