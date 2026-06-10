@@ -34,7 +34,16 @@ describe("Guide", () => {
     }));
 
   it.each([
-    { n: 1, expectClasses: [], absentClasses: ["sm:grid-cols-2", "lg:grid-cols-4"] },
+    {
+      n: 0,
+      expectClasses: [],
+      absentClasses: ["sm:grid-cols-2", "lg:grid-cols-3", "lg:grid-cols-4"],
+    },
+    {
+      n: 1,
+      expectClasses: [],
+      absentClasses: ["sm:grid-cols-2", "lg:grid-cols-3", "lg:grid-cols-4"],
+    },
     {
       n: 2,
       expectClasses: ["sm:grid-cols-2"],
@@ -57,9 +66,12 @@ describe("Guide", () => {
     },
   ])("derives grid classes from $n step(s)", ({ n, expectClasses, absentClasses }) => {
     render(<Guide steps={makeSteps(n)} />);
-    const list = screen.getByRole("list");
-    for (const c of expectClasses) expect(list.className).toContain(c);
-    for (const c of absentClasses) expect(list.className).not.toContain(c);
+    const classes = screen.getByRole("list").className.split(" ");
+    for (const c of expectClasses) expect(classes).toContain(c);
+    for (const c of absentClasses) expect(classes).not.toContain(c);
+    expect(classes).toContain("grid");
+    expect(classes).toContain("gap-4");
+    expect(screen.queryAllByRole("listitem")).toHaveLength(n);
   });
 
   it("still merges a caller-provided className", () => {
