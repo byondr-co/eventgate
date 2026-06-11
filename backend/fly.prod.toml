@@ -48,7 +48,10 @@ primary_region = "sin"
   # (per-command billing) they generate constant idle SUBSCRIBE/PUBLISH/BRPOP
   # traffic. Combined with CELERY_TASK_IGNORE_RESULT this cuts idle command volume
   # dramatically.
-  worker = "celery -A config worker --loglevel=INFO --concurrency=4 --without-gossip --without-mingle --without-heartbeat"
+  # --concurrency=2: the worker Machine has 512MB; 4 prefork children OOM'd
+  # (Sentry EVENTGATE-PROD-5/6, SIGKILL on ForkPoolWorker-4). Tasks are
+  # I/O-bound (email/QR), so 2 children are plenty at pilot volume.
+  worker = "celery -A config worker --loglevel=INFO --concurrency=2 --without-gossip --without-mingle --without-heartbeat"
   beat = "celery -A config beat --loglevel=INFO"
 
 # HTTP listener is bound to the `app` process group only.
