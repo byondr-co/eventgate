@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from datetime import datetime, time
+
 from django.conf import settings
 from django.db.models import F
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.http import require_GET
 from rest_framework import mixins, status, viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -14,6 +18,23 @@ from apps.common.permissions import IsOrgMember
 from apps.events.models import Event
 from apps.shorturls.models import ShortUrl
 from apps.shorturls.services import generate_short_code
+
+
+def _parse_expires_at(value: object) -> datetime | None:
+    """Accept None, ISO datetime, or date-only (YYYY-MM-DD) strings."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        return value if timezone.is_aware(value) else timezone.make_aware(value)
+    if isinstance(value, str):
+        dt = parse_datetime(value)
+        if dt is not None:
+            return dt if timezone.is_aware(dt) else timezone.make_aware(dt)
+        # Defensive fallback: modern parse_datetime already accepts date-only strings.
+        d = parse_date(value)
+        if d is not None:
+            return timezone.make_aware(datetime.combine(d, time.min))
+    raise ValidationError({"expires_at": ["Enter a valid date (YYYY-MM-DD) or ISO 8601 datetime."]})
 
 
 @require_GET
@@ -62,7 +83,7 @@ class EventShortUrlListView(viewsets.GenericViewSet, mixins.ListModelMixin):
             target_url=target,
             event=event,
             note=request.data.get("note", ""),
-            expires_at=request.data.get("expires_at") or None,
+            expires_at=_parse_expires_at(request.data.get("expires_at")),
         )
         return Response(_serialize(su), status=status.HTTP_201_CREATED)
 
@@ -78,7 +99,7 @@ class EventShortUrlDetailView(viewsets.GenericViewSet):
         if "note" in request.data:
             su.note = request.data["note"]
         if "expires_at" in request.data:
-            su.expires_at = request.data["expires_at"] or None
+            su.expires_at = _parse_expires_at(request.data["expires_at"])
         if "is_active" in request.data:
             su.is_active = bool(request.data["is_active"])
         su.save(update_fields=["note", "expires_at", "is_active"])

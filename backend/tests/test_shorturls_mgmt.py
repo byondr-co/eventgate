@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import datetime as dt
+
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone as tz
 from rest_framework.test import APIClient
 
 from apps.events.models import Event
@@ -93,3 +96,116 @@ def test_patch_short_url_note_and_disable():
     su.refresh_from_db()
     assert su.note == "updated"
     assert su.is_active is False
+
+
+# --- expires_at validation tests (EVENTGATE-PROD-3) ---
+
+
+def test_create_short_url_date_only_expires_at():
+    """POST with date-only string → 201, serialised expires_at contains the date, DB row is aware."""
+    owner = _make_user("exp1@x.com")
+    org = _make_org("Exp1", owner)
+    event = _event(org)
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    url = f"/api/v1/orgs/{org.slug}/events/{event.slug}/short-urls/"
+    r = c.post(url, {"expires_at": "2026-12-31"}, format="json")
+    assert r.status_code == 201, r.content
+    body = r.json()
+    assert body["expires_at"] is not None
+    assert body["expires_at"].startswith("2026-12-31T00:00:00")
+    # DB row must be timezone-aware
+    su = ShortUrl.objects.get(id=body["id"])
+    assert tz.is_aware(su.expires_at)
+
+
+def test_create_short_url_iso_datetime_expires_at():
+    """POST with ISO datetime string → 201, serialised expires_at starts with expected value."""
+    owner = _make_user("exp2@x.com")
+    org = _make_org("Exp2", owner)
+    event = _event(org)
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    url = f"/api/v1/orgs/{org.slug}/events/{event.slug}/short-urls/"
+    r = c.post(url, {"expires_at": "2026-12-31T10:00:00Z"}, format="json")
+    assert r.status_code == 201, r.content
+    body = r.json()
+    assert body["expires_at"] is not None
+    assert body["expires_at"].startswith("2026-12-31T10:00:00")
+
+
+def test_create_short_url_invalid_expires_at_returns_400():
+    """POST with garbage expires_at → 400 with 'expires_at' key in response."""
+    owner = _make_user("exp3@x.com")
+    org = _make_org("Exp3", owner)
+    event = _event(org)
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    url = f"/api/v1/orgs/{org.slug}/events/{event.slug}/short-urls/"
+    r = c.post(url, {"expires_at": "not-a-date"}, format="json")
+    assert r.status_code == 400, r.content
+    assert "expires_at" in r.json()
+
+
+def test_create_short_url_null_expires_at():
+    """POST with no/null expires_at → 201, expires_at is None."""
+    owner = _make_user("exp4@x.com")
+    org = _make_org("Exp4", owner)
+    event = _event(org)
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    url = f"/api/v1/orgs/{org.slug}/events/{event.slug}/short-urls/"
+    r = c.post(url, {}, format="json")
+    assert r.status_code == 201, r.content
+    assert r.json()["expires_at"] is None
+
+
+def test_patch_short_url_date_only_expires_at():
+    """PATCH with date-only string → 200, serialised expires_at contains the date."""
+    owner = _make_user("exp5@x.com")
+    org = _make_org("Exp5", owner)
+    event = _event(org)
+    su = ShortUrl.objects.create(short_code="patchexp1", target_url="https://x", event=event)
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    url = f"/api/v1/orgs/{org.slug}/events/{event.slug}/short-urls/{su.id}/"
+    r = c.patch(url, {"expires_at": "2026-12-31"}, format="json")
+    assert r.status_code == 200, r.content
+    body = r.json()
+    assert body["expires_at"] is not None
+    assert body["expires_at"].startswith("2026-12-31T00:00:00")
+
+
+def test_patch_short_url_null_expires_at_clears_expiry():
+    """PATCH with expires_at=None on a ShortUrl that HAS an expiry → 200, expires_at cleared."""
+    owner = _make_user("exp7@x.com")
+    org = _make_org("Exp7", owner)
+    event = _event(org)
+    su = ShortUrl.objects.create(
+        short_code="patchexp3",
+        target_url="https://x",
+        event=event,
+        expires_at=tz.make_aware(dt.datetime(2026, 12, 31)),
+    )
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    url = f"/api/v1/orgs/{org.slug}/events/{event.slug}/short-urls/{su.id}/"
+    r = c.patch(url, {"expires_at": None}, format="json")
+    assert r.status_code == 200, r.content
+    assert r.json()["expires_at"] is None
+    su.refresh_from_db()
+    assert su.expires_at is None
+
+
+def test_patch_short_url_invalid_expires_at_returns_400():
+    """PATCH with garbage expires_at → 400 with 'expires_at' key in response."""
+    owner = _make_user("exp6@x.com")
+    org = _make_org("Exp6", owner)
+    event = _event(org)
+    su = ShortUrl.objects.create(short_code="patchexp2", target_url="https://x", event=event)
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    url = f"/api/v1/orgs/{org.slug}/events/{event.slug}/short-urls/{su.id}/"
+    r = c.patch(url, {"expires_at": "garbage"}, format="json")
+    assert r.status_code == 400, r.content
+    assert "expires_at" in r.json()
