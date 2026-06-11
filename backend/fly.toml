@@ -29,7 +29,8 @@ primary_region = "sin"
 # single-worker deploy doesn't need.
 [processes]
   app = "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -"
-  worker = "celery -A config worker --loglevel=INFO --concurrency=4 --without-gossip --without-mingle --without-heartbeat"
+  # --concurrency=2 matches prod (512MB Machines OOM'd with 4 prefork children).
+  worker = "celery -A config worker --loglevel=INFO --concurrency=2 --without-gossip --without-mingle --without-heartbeat"
   beat = "celery -A config beat --loglevel=INFO"
 
 # HTTP listener is bound to the `app` process group only.
