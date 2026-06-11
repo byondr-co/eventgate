@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import datetime as dt
+
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone as tz
 from rest_framework.test import APIClient
 
 from apps.events.models import Event
@@ -110,10 +113,8 @@ def test_create_short_url_date_only_expires_at():
     assert r.status_code == 201, r.content
     body = r.json()
     assert body["expires_at"] is not None
-    assert "2026-12-3" in body["expires_at"]
+    assert body["expires_at"].startswith("2026-12-31T00:00:00")
     # DB row must be timezone-aware
-    from django.utils import timezone as tz
-
     su = ShortUrl.objects.get(id=body["id"])
     assert tz.is_aware(su.expires_at)
 
@@ -172,7 +173,28 @@ def test_patch_short_url_date_only_expires_at():
     assert r.status_code == 200, r.content
     body = r.json()
     assert body["expires_at"] is not None
-    assert "2026-12-3" in body["expires_at"]
+    assert body["expires_at"].startswith("2026-12-31T00:00:00")
+
+
+def test_patch_short_url_null_expires_at_clears_expiry():
+    """PATCH with expires_at=None on a ShortUrl that HAS an expiry → 200, expires_at cleared."""
+    owner = _make_user("exp7@x.com")
+    org = _make_org("Exp7", owner)
+    event = _event(org)
+    su = ShortUrl.objects.create(
+        short_code="patchexp3",
+        target_url="https://x",
+        event=event,
+        expires_at=tz.make_aware(dt.datetime(2026, 12, 31)),
+    )
+    c = APIClient()
+    c.force_authenticate(user=owner)
+    url = f"/api/v1/orgs/{org.slug}/events/{event.slug}/short-urls/{su.id}/"
+    r = c.patch(url, {"expires_at": None}, format="json")
+    assert r.status_code == 200, r.content
+    assert r.json()["expires_at"] is None
+    su.refresh_from_db()
+    assert su.expires_at is None
 
 
 def test_patch_short_url_invalid_expires_at_returns_400():

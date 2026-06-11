@@ -30,6 +30,7 @@ def _parse_expires_at(value: object) -> datetime | None:
         dt = parse_datetime(value)
         if dt is not None:
             return dt if timezone.is_aware(dt) else timezone.make_aware(dt)
+        # Defensive fallback: modern parse_datetime already accepts date-only strings.
         d = parse_date(value)
         if d is not None:
             return timezone.make_aware(datetime.combine(d, time.min))
