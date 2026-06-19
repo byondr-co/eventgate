@@ -152,11 +152,77 @@ def _normalized_email(mapped: dict[str, str]) -> str:
 
 
 @transaction.atomic
+def preview_google_form_submission(
+    *,
+    bridge: GoogleFormBridge,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    submission_id = str(payload.get("submission_id") or "").strip() or "test"
+    digest = payload_hash(payload)
+    submitted_at = _submission_time(payload.get("submitted_at"))
+    fields = payload.get("fields")
+    if not isinstance(fields, dict):
+        raise GoogleFormBridgeError("fields must be an object.")
+
+    record_seen_labels(bridge, fields)
+
+    submission, _created = GoogleFormSubmission.objects.update_or_create(
+        bridge=bridge,
+        submission_id=submission_id,
+        defaults={
+            "organization": bridge.organization,
+            "event": bridge.event,
+            "kind": "test",
+            "status": "accepted",
+            "guest": None,
+            "payload_hash": digest,
+            "received_payload": payload,
+            "submitted_at": submitted_at,
+            "processed_at": timezone.now(),
+            "error": "",
+        },
+    )
+
+    try:
+        mapped = map_google_fields(bridge, fields)
+        if not _normalized_email(mapped):
+            raise GoogleFormBridgeError("A submission must include an email to register a guest.")
+        result: dict[str, Any] = {"status": "test_accepted", "mapped": mapped}
+    except GoogleFormBridgeError as exc:
+        reason = _validation_detail(exc)
+        submission.status = "rejected"
+        submission.error = reason
+        submission.save(update_fields=["status", "error", "updated_at"])
+        result = {"status": "test_rejected", "detail": reason}
+
+    write_audit(
+        organization=bridge.organization,
+        event=bridge.event,
+        guest=None,
+        actor_type="integration",
+        actor_id=str(bridge.id),
+        action="integration.google_form_test_submission",
+        result="success" if result["status"] == "test_accepted" else "error",
+        details={
+            "bridge_id": str(bridge.id),
+            "submission_id": submission_id,
+            "payload_hash": digest,
+            "status": result["status"],
+        },
+    )
+    bridge.mark_seen()
+    return result
+
+
+@transaction.atomic
 def process_google_form_submission(
     *,
     bridge: GoogleFormBridge,
     payload: dict[str, Any],
 ) -> dict[str, Any]:
+    if bridge.test_mode:
+        return preview_google_form_submission(bridge=bridge, payload=payload)
+
     submission_id = str(payload.get("submission_id") or "").strip()
     if not submission_id:
         raise GoogleFormBridgeError("submission_id is required.")

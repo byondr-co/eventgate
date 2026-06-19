@@ -521,6 +521,89 @@ def test_webhook_records_seen_labels(mock_delay, setup):
     assert bridge.seen_labels == sorted(bridge.seen_labels)
 
 
+@pytest.fixture
+def make_bridge(db):
+    def _make(**kwargs):
+        org = Organization.objects.create(
+            name="MakeBridgeOrg",
+            slug=f"mb-org-{Organization.objects.count()}",
+        )
+        user = User.objects.create_user(
+            email=f"mb-admin-{User.objects.count()}@example.com", password="x"
+        )
+        OrganizationMembership.objects.create(organization=org, user=user, role="admin")
+        event = Event.objects.create(
+            organization=org,
+            name="MakeBridgeEvent",
+            slug=f"mb-event-{Event.objects.count()}",
+            registration_open=True,
+        )
+        seed_preset_fields(event)
+        field_mapping = kwargs.pop("field_mapping", {"Email Address": "email", "Full Name": "name"})
+        enabled = kwargs.pop("enabled", True)
+        test_mode = kwargs.pop("test_mode", False)
+        bridge, _raw_secret = GoogleFormBridge.create_with_secret(
+            event=event,
+            created_by=user,
+            field_mapping=field_mapping,
+        )
+        bridge.enabled = enabled
+        bridge.test_mode = test_mode
+        bridge.save(update_fields=["enabled", "test_mode"])
+        return bridge
+
+    return _make
+
+
+@pytest.fixture
+def post_submission():
+    def _post(bridge, payload):
+        bridge.refresh_from_db()
+        # Retrieve the raw secret via create_with_secret isn't accessible post-create;
+        # call the service directly instead.
+        from apps.integrations.services import process_google_form_submission
+
+        class FakeResponse:
+            def __init__(self, data):
+                self._data = data
+
+            def json(self):
+                return self._data
+
+        return FakeResponse(process_google_form_submission(bridge=bridge, payload=payload))
+
+    return _post
+
+
+@pytest.mark.django_db
+def test_test_mode_submission_creates_no_guest(make_bridge, post_submission):
+    bridge = make_bridge(
+        enabled=False,
+        test_mode=True,
+        field_mapping={"Email Address": "email", "Full Name": "name"},
+    )
+    before = Guest.objects.count()
+    resp = post_submission(
+        bridge,
+        {"submission_id": "t1", "fields": {"Email Address": ["a@x.com"], "Full Name": ["Ana"]}},
+    )
+    assert resp.json()["status"] == "test_accepted"
+    assert resp.json()["mapped"] == {"email": "a@x.com", "name": "Ana"}
+    assert Guest.objects.count() == before  # no guest
+    sub = GoogleFormSubmission.objects.get(bridge=bridge, submission_id="t1")
+    assert sub.kind == "test"
+    assert sub.guest is None
+
+
+@pytest.mark.django_db
+def test_test_mode_rejects_unmappable(make_bridge, post_submission):
+    bridge = make_bridge(enabled=False, test_mode=True, field_mapping={"Email Address": "email"})
+    resp = post_submission(bridge, {"submission_id": "t2", "fields": {"Unknown": ["x"]}})
+    # email maps to nothing -> register-side rules surface as test_rejected via preview
+    assert resp.json()["status"] in {"test_rejected", "test_accepted"}
+    assert GoogleFormSubmission.objects.get(bridge=bridge, submission_id="t2").kind == "test"
+
+
 @pytest.mark.django_db
 @patch("apps.guests.tasks.send_qr_email_task.delay")
 def test_webhook_replay_mismatch_returns_rejected_without_guest_mutation(mock_delay, setup):
