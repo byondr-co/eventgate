@@ -16,7 +16,11 @@ from apps.integrations.serializers import (
     GoogleFormBridgeCreateSerializer,
     GoogleFormBridgeSerializer,
 )
-from apps.integrations.services import GoogleFormBridgeError, process_google_form_submission
+from apps.integrations.services import (
+    GoogleFormBridgeError,
+    process_google_form_submission,
+    suggest_field_targets,
+)
 from apps.orgs.views import StandardPagination
 
 
@@ -127,6 +131,18 @@ class GoogleFormBridgeRotateSecretView(APIView):
         ).data
         body["secret"] = raw_secret
         return Response(body)
+
+
+class GoogleFormBridgeDetectedFieldsView(APIView):
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+
+    def get(self, request: Request, org_slug: str, event_slug: str, bridge_id: Any) -> Response:
+        event = get_object_or_404(Event, organization=request.organization, slug=event_slug)
+        bridge = get_object_or_404(GoogleFormBridge, id=bridge_id, event=event)
+        return Response(
+            {"seen_labels": bridge.seen_labels or [], "suggestions": suggest_field_targets(bridge)}
+        )
 
 
 class GoogleFormSubmissionWebhookView(APIView):

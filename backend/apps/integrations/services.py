@@ -18,6 +18,17 @@ from apps.integrations.models import GoogleFormBridge, GoogleFormSubmission
 
 PRESET_TARGETS = {"name", "email", "phone_or_chat"}
 
+_PRESET_KEYWORDS: tuple[tuple[str, str], ...] = (
+    ("email", "email"),
+    ("e-mail", "email"),
+    ("name", "name"),
+    ("phone", "phone_or_chat"),
+    ("mobile", "phone_or_chat"),
+    ("tel", "phone_or_chat"),
+    ("telegram", "phone_or_chat"),
+    ("chat", "phone_or_chat"),
+)
+
 
 class GoogleFormBridgeError(Exception):
     """Raised when a Google Form submission cannot be accepted."""
@@ -33,6 +44,27 @@ def valid_field_keys(bridge: GoogleFormBridge) -> set[str]:
         RegistrationField.objects.filter(event=bridge.event).values_list("field_key", flat=True)
     )
     return event_keys | PRESET_TARGETS
+
+
+def suggest_field_targets(bridge: GoogleFormBridge) -> dict[str, str]:
+    allowed = valid_field_keys(bridge)
+    field_rows = list(
+        RegistrationField.objects.filter(event=bridge.event).values_list("field_key", "label_en")
+    )
+    out: dict[str, str] = {}
+    for label in bridge.seen_labels or []:
+        low = label.strip().lower()
+        target: str | None = next(
+            (t for kw, t in _PRESET_KEYWORDS if kw in low and t in allowed), None
+        )
+        if target is None:
+            for fk, le in field_rows:
+                if low == fk.lower() or (le and low == le.lower()) or fk.lower() in low:
+                    target = fk
+                    break
+        if target:
+            out[label] = target
+    return out
 
 
 def map_google_fields(bridge: GoogleFormBridge, fields: dict[str, Any]) -> dict[str, str]:

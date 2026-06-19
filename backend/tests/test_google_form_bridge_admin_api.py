@@ -198,6 +198,60 @@ def test_admin_api_rejects_staff_members(setup, method):
     assert resp.status_code == 403
 
 
+def bridge_detected_fields_url(org: Organization, event: Event, bridge: GoogleFormBridge) -> str:
+    return f"{bridge_detail_url(org, event, bridge)}detected-fields/"
+
+
+@pytest.fixture
+def bridge_with_labels(db):
+    def _factory(labels: list[str]):
+        org = Organization.objects.create(name="LabelOrg", slug="labelorg")
+        user = User.objects.create_user(email="owner@labelorg.com", password="x")
+        OrganizationMembership.objects.create(organization=org, user=user, role="owner")
+        event = Event.objects.create(
+            organization=org,
+            name="LabelEvent",
+            slug="labelevent",
+            registration_open=True,
+        )
+        from apps.events.services import seed_preset_fields
+
+        seed_preset_fields(event)
+        bridge, _ = GoogleFormBridge.create_with_secret(event=event, created_by=user)
+        bridge.seen_labels = labels
+        bridge.save(update_fields=["seen_labels"])
+        return org, event, bridge, user
+
+    return _factory
+
+
+@pytest.fixture
+def api_client_owner():
+    from rest_framework.test import APIClient as _APIClient
+
+    client = _APIClient()
+
+    def _authenticate(user):
+        client.force_authenticate(user=user)
+        return client
+
+    return _authenticate
+
+
+@pytest.mark.django_db
+def test_detected_fields_returns_labels_and_suggestions(bridge_with_labels, api_client_owner):
+    org, event, bridge, user = bridge_with_labels(["Email Address", "Full Name", "Mobile"])
+    client = api_client_owner(user)
+    url = bridge_detected_fields_url(org, event, bridge)
+    resp = client.get(url)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body["seen_labels"]) == {"Email Address", "Full Name", "Mobile"}
+    assert body["suggestions"]["Email Address"] == "email"
+    assert body["suggestions"]["Full Name"] == "name"
+    assert body["suggestions"]["Mobile"] == "phone_or_chat"
+
+
 def request_bridge_endpoint(
     client: APIClient,
     method: str,
