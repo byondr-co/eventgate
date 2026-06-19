@@ -600,7 +600,8 @@ def test_test_mode_rejects_unmappable(make_bridge, post_submission):
     bridge = make_bridge(enabled=False, test_mode=True, field_mapping={"Email Address": "email"})
     resp = post_submission(bridge, {"submission_id": "t2", "fields": {"Unknown": ["x"]}})
     # email maps to nothing -> register-side rules surface as test_rejected via preview
-    assert resp.json()["status"] in {"test_rejected", "test_accepted"}
+    assert resp.json()["status"] == "test_rejected"
+    assert "detail" in resp.json()
     assert GoogleFormSubmission.objects.get(bridge=bridge, submission_id="t2").kind == "test"
 
 
