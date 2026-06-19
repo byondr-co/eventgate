@@ -55,6 +55,16 @@ def map_google_fields(bridge: GoogleFormBridge, fields: dict[str, Any]) -> dict[
     return out
 
 
+def record_seen_labels(bridge: GoogleFormBridge, fields: dict[str, Any]) -> None:
+    incoming = {str(k) for k in fields if str(k).strip()}
+    if not incoming:
+        return
+    merged = sorted(set(bridge.seen_labels or []) | incoming)
+    if merged != (bridge.seen_labels or []):
+        bridge.seen_labels = merged
+        bridge.save(update_fields=["seen_labels", "updated_at"])
+
+
 def _submission_time(raw: Any):
     if not raw or not isinstance(raw, str):
         return None
@@ -187,6 +197,8 @@ def process_google_form_submission(
         fields = payload.get("fields")
         if not isinstance(fields, dict):
             raise GoogleFormBridgeError("fields must be an object.")
+
+        record_seen_labels(bridge, fields)
 
         if not bridge.enabled:
             raise GoogleFormBridgeError("Bridge is disabled.")

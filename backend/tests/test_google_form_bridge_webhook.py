@@ -505,6 +505,24 @@ def test_webhook_repeated_accepted_submission_returns_200_without_reenqueue(
 
 @pytest.mark.django_db
 @patch("apps.guests.tasks.send_qr_email_task.delay")
+def test_webhook_records_seen_labels(mock_delay, setup):
+    org, user, event, bridge, raw_secret = setup
+
+    process_google_form_submission(
+        bridge=bridge,
+        payload=_payload(submission_id="row-seen-labels"),
+    )
+    bridge.refresh_from_db()
+
+    assert "Full Name" in bridge.seen_labels
+    assert "Email" in bridge.seen_labels
+    assert "Phone" in bridge.seen_labels
+    assert "Company" in bridge.seen_labels
+    assert bridge.seen_labels == sorted(bridge.seen_labels)
+
+
+@pytest.mark.django_db
+@patch("apps.guests.tasks.send_qr_email_task.delay")
 def test_webhook_replay_mismatch_returns_rejected_without_guest_mutation(mock_delay, setup):
     org, user, event, bridge, raw_secret = setup
     client = APIClient()
