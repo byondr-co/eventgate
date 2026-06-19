@@ -18,6 +18,7 @@ from apps.integrations.serializers import (
 )
 from apps.integrations.services import (
     GoogleFormBridgeError,
+    map_google_fields,
     process_google_form_submission,
     suggest_field_targets,
 )
@@ -142,6 +143,37 @@ class GoogleFormBridgeDetectedFieldsView(APIView):
         bridge = get_object_or_404(GoogleFormBridge, id=bridge_id, event=event)
         return Response(
             {"seen_labels": bridge.seen_labels or [], "suggestions": suggest_field_targets(bridge)}
+        )
+
+
+class GoogleFormBridgeTestSubmissionView(APIView):
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+
+    def get(self, request: Request, org_slug: str, event_slug: str, bridge_id: Any) -> Response:
+        event = get_object_or_404(Event, organization=request.organization, slug=event_slug)
+        bridge = get_object_or_404(GoogleFormBridge, id=bridge_id, event=event)
+        sub = (
+            GoogleFormSubmission.objects.filter(bridge=bridge, kind="test")
+            .order_by("-created_at")
+            .first()
+        )
+        if sub is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        fields = (sub.received_payload or {}).get("fields")
+        try:
+            mapped = map_google_fields(bridge, fields) if isinstance(fields, dict) else {}
+        except GoogleFormBridgeError:
+            mapped = {}
+        return Response(
+            {
+                "id": str(sub.id),
+                "status": sub.status,
+                "error": sub.error,
+                "created_at": sub.created_at,
+                "mapped": mapped,
+                "received_fields": fields if isinstance(fields, dict) else {},
+            }
         )
 
 
