@@ -17,9 +17,11 @@ export type GoogleFormBridge = {
   id: string;
   name: string;
   enabled: boolean;
+  test_mode: boolean;
   field_mapping: Record<string, string>;
   duplicate_policy: "upsert_by_email" | "reject_duplicates";
   webhook_url: string;
+  seen_labels: string[];
   last_seen_at: string | null;
   recent_submissions: GoogleFormBridgeSubmissionSummary[];
   created_at: string;
@@ -33,8 +35,19 @@ type Paginated<T> = { count: number; results: T[] };
 export type BridgeInput = {
   name?: string;
   enabled?: boolean;
+  test_mode?: boolean;
   field_mapping?: Record<string, string>;
   duplicate_policy?: "upsert_by_email" | "reject_duplicates";
+};
+
+export type DetectedFields = { seen_labels: string[]; suggestions: Record<string, string> };
+export type TestSubmission = {
+  id: string;
+  status: string;
+  error: string;
+  created_at: string;
+  mapped: Record<string, string>;
+  received_fields: Record<string, unknown>;
 };
 
 function bridgeBase(orgSlug: string, eventSlug: string) {
@@ -95,5 +108,34 @@ export function useRotateGoogleFormBridgeSecret(
       qc.invalidateQueries({
         queryKey: ["google-form-bridges", orgSlug, eventSlug],
       }),
+  });
+}
+
+export function useDetectedFields(orgSlug: string, eventSlug: string, bridgeId: string) {
+  return useQuery({
+    queryKey: ["bridge-detected-fields", orgSlug, eventSlug, bridgeId],
+    queryFn: () =>
+      apiFetch<DetectedFields>(`${bridgeBase(orgSlug, eventSlug)}${bridgeId}/detected-fields/`),
+    enabled: !!bridgeId,
+  });
+}
+
+export function useTestSubmission(
+  orgSlug: string,
+  eventSlug: string,
+  bridgeId: string,
+  { poll }: { poll: boolean },
+) {
+  return useQuery({
+    queryKey: ["bridge-test-submission", orgSlug, eventSlug, bridgeId],
+    queryFn: async () => {
+      const result = await apiFetch<TestSubmission | null>(
+        `${bridgeBase(orgSlug, eventSlug)}${bridgeId}/test-submission/`,
+      );
+      // apiFetch returns undefined (not null) for 204 — coerce to null for callers
+      return result ?? null;
+    },
+    enabled: !!bridgeId && poll,
+    refetchInterval: poll ? 2000 : false,
   });
 }
