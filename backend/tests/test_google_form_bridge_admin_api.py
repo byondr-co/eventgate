@@ -338,3 +338,32 @@ def test_test_submission_poll(make_org_event_bridge, post_submission, api_client
     assert resp.status_code == 200
     assert resp.json()["status"] == "accepted"
     assert resp.json()["mapped"] == {"email": "a@x.com", "name": "Ana"}
+
+
+@pytest.mark.django_db
+def test_patch_can_toggle_test_mode(api_client_owner, make_org_event_bridge):
+    org, event, bridge, user = make_org_event_bridge(enabled=False, test_mode=False)
+    client = api_client_owner(user)
+    url = (
+        f"/api/v1/orgs/{org.slug}/events/{event.slug}"
+        f"/integrations/google-form-bridge/{bridge.id}/"
+    )
+    resp = client.patch(url, {"test_mode": True}, format="json")
+    assert resp.status_code == 200
+    assert resp.json()["test_mode"] is True
+    assert "seen_labels" in resp.json()
+
+
+@pytest.mark.django_db
+def test_seen_labels_is_read_only(api_client_owner, make_org_event_bridge):
+    org, event, bridge, user = make_org_event_bridge(enabled=False, test_mode=False)
+    bridge.seen_labels = ["Existing Label"]
+    bridge.save(update_fields=["seen_labels"])
+    client = api_client_owner(user)
+    url = (
+        f"/api/v1/orgs/{org.slug}/events/{event.slug}"
+        f"/integrations/google-form-bridge/{bridge.id}/"
+    )
+    resp = client.patch(url, {"seen_labels": ["Injected Label"]}, format="json")
+    assert resp.status_code == 200
+    assert resp.json()["seen_labels"] == ["Existing Label"]
