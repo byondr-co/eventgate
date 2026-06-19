@@ -203,3 +203,21 @@ def test_submission_save_derives_org_and_event_from_bridge(setup):
 
     assert sub.organization == org
     assert sub.event == event
+
+
+@pytest.mark.django_db
+def test_bridge_has_setup_defaults(setup):
+    _, user, event = setup
+    bridge, _secret = GoogleFormBridge.create_with_secret(event=event, created_by=user)
+    assert bridge.seen_labels == []
+    assert bridge.test_mode is False
+
+
+@pytest.mark.django_db
+def test_submission_defaults_to_real_kind(setup):
+    _, user, event = setup
+    bridge, _ = GoogleFormBridge.create_with_secret(event=event, created_by=user)
+    sub = GoogleFormSubmission.objects.create(
+        bridge=bridge, submission_id="s1", status="accepted", payload_hash="x"
+    )
+    assert sub.kind == "real"
