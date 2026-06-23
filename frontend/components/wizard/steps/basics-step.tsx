@@ -19,7 +19,7 @@ export function BasicsStep({
   onCreated,
 }: {
   orgSlug: string;
-  onCreated: (slug: string) => void;
+  onCreated: (slug: string, name: string) => void;
 }) {
   const create = useCreateEvent(orgSlug);
   const [name, setName] = useState("");
@@ -47,7 +47,7 @@ export function BasicsStep({
         venue,
         walkin_capacity: cap,
       });
-      onCreated(event.slug);
+      onCreated(event.slug, event.name ?? name);
     } catch (err) {
       setError((err as Error).message);
     }
