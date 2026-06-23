@@ -5,6 +5,7 @@ from apps.accounts.models import User
 from apps.events.models import Event, RegistrationField
 from apps.events.services import seed_preset_fields
 from apps.integrations.models import GoogleFormBridge
+from apps.integrations.services import preview_google_form_submission
 from apps.orgs.models import Organization, OrganizationMembership
 
 
@@ -73,6 +74,20 @@ def test_create_bridge_returns_raw_secret_once(setup):
     assert body["secret"]
     assert "secret_hash" not in body
     assert GoogleFormBridge.objects.get(event=event).check_secret(body["secret"])
+
+
+@pytest.mark.django_db
+def test_create_bridge_persists_test_mode(setup):
+    client, org, user, event = setup
+    resp = client.post(
+        bridge_list_url(org, event),
+        {"name": "Wizard Form", "enabled": False, "test_mode": True},
+        format="json",
+    )
+
+    assert resp.status_code == 201, resp.json()
+    assert resp.json()["test_mode"] is True
+    assert GoogleFormBridge.objects.get(event=event).test_mode is True
 
 
 @pytest.mark.django_db
@@ -198,6 +213,60 @@ def test_admin_api_rejects_staff_members(setup, method):
     assert resp.status_code == 403
 
 
+def bridge_detected_fields_url(org: Organization, event: Event, bridge: GoogleFormBridge) -> str:
+    return f"{bridge_detail_url(org, event, bridge)}detected-fields/"
+
+
+@pytest.fixture
+def bridge_with_labels(db):
+    def _factory(labels: list[str]):
+        org = Organization.objects.create(name="LabelOrg", slug="labelorg")
+        user = User.objects.create_user(email="owner@labelorg.com", password="x")
+        OrganizationMembership.objects.create(organization=org, user=user, role="owner")
+        event = Event.objects.create(
+            organization=org,
+            name="LabelEvent",
+            slug="labelevent",
+            registration_open=True,
+        )
+        from apps.events.services import seed_preset_fields
+
+        seed_preset_fields(event)
+        bridge, _ = GoogleFormBridge.create_with_secret(event=event, created_by=user)
+        bridge.seen_labels = labels
+        bridge.save(update_fields=["seen_labels"])
+        return org, event, bridge, user
+
+    return _factory
+
+
+@pytest.fixture
+def api_client_owner():
+    from rest_framework.test import APIClient as _APIClient
+
+    client = _APIClient()
+
+    def _authenticate(user):
+        client.force_authenticate(user=user)
+        return client
+
+    return _authenticate
+
+
+@pytest.mark.django_db
+def test_detected_fields_returns_labels_and_suggestions(bridge_with_labels, api_client_owner):
+    org, event, bridge, user = bridge_with_labels(["Email Address", "Full Name", "Mobile"])
+    client = api_client_owner(user)
+    url = bridge_detected_fields_url(org, event, bridge)
+    resp = client.get(url)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body["seen_labels"]) == {"Email Address", "Full Name", "Mobile"}
+    assert body["suggestions"]["Email Address"] == "email"
+    assert body["suggestions"]["Full Name"] == "name"
+    assert body["suggestions"]["Mobile"] == "phone_or_chat"
+
+
 def request_bridge_endpoint(
     client: APIClient,
     method: str,
@@ -220,3 +289,95 @@ def request_bridge_endpoint(
             format="json",
         )
     return client.post(bridge_rotate_url(org, event, bridge))
+
+
+@pytest.fixture
+def make_org_event_bridge(db):
+    def _factory(enabled: bool = False, test_mode: bool = False, field_mapping: dict | None = None):
+        org = Organization.objects.create(name="PollOrg", slug="pollorg")
+        user = User.objects.create_user(email="owner@pollorg.com", password="x")
+        OrganizationMembership.objects.create(organization=org, user=user, role="owner")
+        event = Event.objects.create(
+            organization=org,
+            name="PollEvent",
+            slug="pollevent",
+            registration_open=True,
+        )
+        seed_preset_fields(event)
+        bridge, _ = GoogleFormBridge.create_with_secret(
+            event=event,
+            created_by=user,
+            field_mapping=field_mapping or {},
+        )
+        bridge.enabled = enabled
+        bridge.test_mode = test_mode
+        bridge.save(update_fields=["enabled", "test_mode"])
+        return org, event, bridge, user
+
+    return _factory
+
+
+@pytest.fixture
+def post_submission():
+    def _post(bridge: GoogleFormBridge, payload: dict):
+        return preview_google_form_submission(bridge=bridge, payload=payload)
+
+    return _post
+
+
+def bridge_test_submission_url(org: Organization, event: Event, bridge: GoogleFormBridge) -> str:
+    return f"{bridge_detail_url(org, event, bridge)}test-submission/"
+
+
+@pytest.mark.django_db
+def test_test_submission_poll(make_org_event_bridge, post_submission, api_client_owner):
+    org, event, bridge, user = make_org_event_bridge(
+        enabled=False,
+        test_mode=True,
+        field_mapping={"Email Address": "email", "Full Name": "name"},
+    )
+    client = api_client_owner(user)
+    url = bridge_test_submission_url(org, event, bridge)
+
+    assert client.get(url).status_code == 204  # none yet
+
+    post_submission(
+        bridge,
+        {
+            "submission_id": "t1",
+            "fields": {"Email Address": ["a@x.com"], "Full Name": ["Ana"]},
+        },
+    )
+    resp = client.get(url)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "accepted"
+    assert resp.json()["mapped"] == {"email": "a@x.com", "name": "Ana"}
+
+
+@pytest.mark.django_db
+def test_patch_can_toggle_test_mode(api_client_owner, make_org_event_bridge):
+    org, event, bridge, user = make_org_event_bridge(enabled=False, test_mode=False)
+    client = api_client_owner(user)
+    url = (
+        f"/api/v1/orgs/{org.slug}/events/{event.slug}"
+        f"/integrations/google-form-bridge/{bridge.id}/"
+    )
+    resp = client.patch(url, {"test_mode": True}, format="json")
+    assert resp.status_code == 200
+    assert resp.json()["test_mode"] is True
+    assert "seen_labels" in resp.json()
+
+
+@pytest.mark.django_db
+def test_seen_labels_is_read_only(api_client_owner, make_org_event_bridge):
+    org, event, bridge, user = make_org_event_bridge(enabled=False, test_mode=False)
+    bridge.seen_labels = ["Existing Label"]
+    bridge.save(update_fields=["seen_labels"])
+    client = api_client_owner(user)
+    url = (
+        f"/api/v1/orgs/{org.slug}/events/{event.slug}"
+        f"/integrations/google-form-bridge/{bridge.id}/"
+    )
+    resp = client.patch(url, {"seen_labels": ["Injected Label"]}, format="json")
+    assert resp.status_code == 200
+    assert resp.json()["seen_labels"] == ["Existing Label"]

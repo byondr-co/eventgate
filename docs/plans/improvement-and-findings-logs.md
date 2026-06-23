@@ -222,3 +222,34 @@ After S2 shipped, banner **upload** worked but the stored object URL returned **
 **Lesson for any future public-asset feature on Tigris:** ACLs don't make objects public; choose between (a) a **dedicated `--public` bucket** (permanent URLs, must NOT share a bucket with private data) or (b) **presigned URLs** (code-only, expiring). `flyctl ssh console` was its usual flaky self during verification — boto3-only one-liners worked; `django.setup()` shell calls hung (gotcha #7).
 
 **Plan L hotfixes + S8 status:** ✅ DONE. 8 PRs merged (#36–#43). Banner serving fixed at the storage layer + deployed to prod; user to confirm the register page renders the banner.
+
+## Pilot retro — Click Cam (window 2026-06-19 → 2026-07-17)
+
+**Outcome: pilot succeeded.** Door flow trusted; no notable failures. Recorded 2026-07 by Vinei.
+
+### Raw findings
+
+- **Scale:** 174 guests processed.
+- **Reliability:** nothing spectacular broke. No notable Sentry incidents during the window. Door / walk-in / bridge all held.
+- **Google Form bridge:** stayed **enabled** for the whole pilot (cutoff decision = enabled, validated in production).
+- **Organizer feedback (loudest theme): the system is too technical.** Setup — especially the Google Form bridge configuration and the admin flows — felt like developer tooling. Ask: a modern, simpler UI/UX — motion, minimal graphics, some color, and a flow that takes few clicks (ideally zero technical admin). The product should be usable by a non-technical organizer end-to-end.
+- **Attendee friction: none rough.** Observed: guests can walk out of the hall and re-enter; this pilot's event was not strict about re-scanning on re-entry, so the existing soft re-scan guard was adequate. No change demanded.
+- **Manual toil (Vinei):**
+  - Manually guided/informed guests to scan the walk-in QR or show their QR (no in-room signage/self-service prompt).
+  - Billing was a **one-time charge, invoiced manually** — manual invoicing was low-pain at this scale.
+
+### Re-rank inputs (slate open-questions answered)
+
+1. **Door flow trusted enough that "get paid" is the next constraint?** Door = trusted, BUT the loudest constraint that actually surfaced is **usability/onboarding**, not payment. Revenue-first premise holds directionally but is **no longer the single top priority** — UX simplification jumped ahead.
+2. **Per-event vs per-seat metering?** → **Per-event.** Resolves the Tier 1 #1 open pricing-unit decision.
+3. **ABA PayWay hard requirement, or Stripe-only to first revenue?** → **ABA PayWay is hard-required** for the first paying customers. Stripe-only is NOT sufficient. PayWay (merchant account + sandbox, KHR/USD settlement) is long-lead procurement → start the spike early in parallel, but billing automation itself is **not urgent** (manual one-time invoicing works at current scale).
+4. **Loudest Tier-3 ask?** → **Export** is wanted; **named-staff identity** and **live dashboard** are nice-to-have (stay parked). But export is outranked by the broader **UX-simplification** theme from organizer feedback.
+
+### Re-ranked direction (provisional → to formalize into the slate)
+
+- **NEW top priority: UX / onboarding simplification.** Make the product usable by a non-technical organizer — simplify event + bridge setup (few/zero technical admin), modern motion UI, light visual polish. This is the loudest direct customer voice and the real adoption/retention constraint beyond a hands-on pilot. (Note: the earlier UI/UX-deepening lane — a11y, dark mode, responsive, skeletons — was polish; this is *flow simplification*, a different problem.)
+- **Tier 1 #1 — entitlement/plan model (per-event metering)** stays a strong revenue candidate; metering unit now decided.
+- **Export (Tier 3 #9)** — small, high-ROI, independent of payment rails. Good quick win.
+- **ABA PayWay spike (Tier 1 #2)** — start procurement/sandbox early (long lead) but billing automation deferred; manual invoicing covers near-term.
+- **Parked:** named-staff identity, live dashboard, WhatsApp.
+- **Standing blocker (unchanged):** sender domain `noreply@mail.byondr.co` still on `onboarding@resend.dev` sandbox — blocks any real transactional/billing email.

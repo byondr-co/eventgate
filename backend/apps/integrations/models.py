@@ -27,6 +27,8 @@ class GoogleFormBridge(OrgScopedModel):
     enabled = models.BooleanField(default=False)
     secret_hash = models.CharField(max_length=64)
     field_mapping = models.JSONField(default=dict, blank=True)
+    seen_labels = models.JSONField(default=list, blank=True)
+    test_mode = models.BooleanField(default=False)
     duplicate_policy = models.CharField(
         max_length=32,
         choices=DUPLICATE_POLICIES,
@@ -62,6 +64,7 @@ class GoogleFormBridge(OrgScopedModel):
         name: str = "Google Form",
         field_mapping: dict[str, str] | None = None,
         duplicate_policy: str = "upsert_by_email",
+        test_mode: bool = False,
     ) -> tuple[GoogleFormBridge, str]:
         raw_secret = generate_token()
         bridge = cls.objects.create(
@@ -72,6 +75,7 @@ class GoogleFormBridge(OrgScopedModel):
             secret_hash=hash_token(raw_secret),
             field_mapping=field_mapping or {},
             duplicate_policy=duplicate_policy,
+            test_mode=test_mode,
         )
         return bridge, raw_secret
 
@@ -120,6 +124,8 @@ class GoogleFormSubmission(OrgScopedModel):
         blank=True,
         related_name="google_form_submissions",
     )
+    KINDS = (("real", "Real"), ("test", "Test"))
+    kind = models.CharField(max_length=8, choices=KINDS, default="real")
     status = models.CharField(max_length=16, choices=STATUSES)
     payload_hash = models.CharField(max_length=64)
     received_payload = models.JSONField(default=dict, blank=True)
