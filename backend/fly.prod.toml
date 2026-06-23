@@ -63,12 +63,15 @@ primary_region = "sin"
   min_machines_running = 1
   processes = ["app"]
 
+# Hits the no-DB liveness probe (NOT /api/health/, which runs SELECT 1). A per-30s
+# DB query kept Neon's compute permanently awake — autosuspend never fired. The
+# liveness path lets Neon suspend during idle periods. See apps/common/views.py.
 [[http_service.checks]]
   interval = "30s"
   timeout = "5s"
   grace_period = "10s"
   method = "GET"
-  path = "/api/health/"
+  path = "/api/health/live/"
 
 # A VM per process group. The worker doesn't expose any port so it does NOT
 # get an http_service block.
