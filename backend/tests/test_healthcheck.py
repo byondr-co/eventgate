@@ -13,6 +13,19 @@ def test_healthcheck_returns_ok(api_client) -> None:
     assert body["database"] == "ok"
 
 
+@pytest.mark.django_db
+def test_liveness_makes_no_db_query(api_client, django_assert_num_queries) -> None:
+    """The liveness probe (Fly's 30s check) must not touch Postgres, so Neon's
+    autosuspend can fire during idle periods. See apps/common/views.LivenessView."""
+    with django_assert_num_queries(0):
+        response = api_client.get("/api/health/live/")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert "version" in body
+    assert "database" not in body
+
+
 def test_prod_settings_import_without_sentry_dsn(monkeypatch) -> None:
     """Importing prod settings with no SENTRY_DSN must not crash."""
     monkeypatch.delenv("SENTRY_DSN", raising=False)
