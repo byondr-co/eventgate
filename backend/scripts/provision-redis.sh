@@ -3,7 +3,10 @@
 # Provision (or re-sync) the self-hosted Redis for one environment and cut the
 # backend over to it. Codifies the validated runbook (docs/runbook-redis-migration.md).
 #
-#   Usage: scripts/provision-redis.sh <staging|prod>
+#   Usage: scripts/provision-redis.sh prod
+#
+# NOTE: staging was decommissioned 2026-06-23 (prod-only infra). This script now
+# accepts `prod` only; fly.toml / fly.redis-staging.toml were removed.
 #
 # Idempotent — safe to re-run:
 #   - app + volume are created only if missing (so re-runs never duplicate them).
@@ -20,8 +23,8 @@ set -euo pipefail
 
 ENV="${1:-}"
 case "$ENV" in
-  staging|prod) ;;
-  *) echo "usage: $(basename "$0") <staging|prod>" >&2; exit 2 ;;
+  prod) ;;
+  *) echo "usage: $(basename "$0") prod  (staging decommissioned 2026-06-23)" >&2; exit 2 ;;
 esac
 
 REGION="sin"
