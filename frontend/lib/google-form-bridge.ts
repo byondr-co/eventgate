@@ -111,12 +111,20 @@ export function useRotateGoogleFormBridgeSecret(
   });
 }
 
-export function useDetectedFields(orgSlug: string, eventSlug: string, bridgeId: string) {
+export function useDetectedFields(
+  orgSlug: string,
+  eventSlug: string,
+  bridgeId: string,
+  { poll = false }: { poll?: boolean } = {},
+) {
   return useQuery({
     queryKey: ["bridge-detected-fields", orgSlug, eventSlug, bridgeId],
     queryFn: () =>
       apiFetch<DetectedFields>(`${bridgeBase(orgSlug, eventSlug)}${bridgeId}/detected-fields/`),
     enabled: !!bridgeId,
+    // While the map step waits for the organizer's first response, poll so newly
+    // detected labels appear without a manual refresh.
+    refetchInterval: poll ? 2000 : false,
   });
 }
 

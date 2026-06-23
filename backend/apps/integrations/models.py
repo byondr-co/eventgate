@@ -64,6 +64,7 @@ class GoogleFormBridge(OrgScopedModel):
         name: str = "Google Form",
         field_mapping: dict[str, str] | None = None,
         duplicate_policy: str = "upsert_by_email",
+        test_mode: bool = False,
     ) -> tuple[GoogleFormBridge, str]:
         raw_secret = generate_token()
         bridge = cls.objects.create(
@@ -74,6 +75,7 @@ class GoogleFormBridge(OrgScopedModel):
             secret_hash=hash_token(raw_secret),
             field_mapping=field_mapping or {},
             duplicate_policy=duplicate_policy,
+            test_mode=test_mode,
         )
         return bridge, raw_secret
 

@@ -77,6 +77,20 @@ def test_create_bridge_returns_raw_secret_once(setup):
 
 
 @pytest.mark.django_db
+def test_create_bridge_persists_test_mode(setup):
+    client, org, user, event = setup
+    resp = client.post(
+        bridge_list_url(org, event),
+        {"name": "Wizard Form", "enabled": False, "test_mode": True},
+        format="json",
+    )
+
+    assert resp.status_code == 201, resp.json()
+    assert resp.json()["test_mode"] is True
+    assert GoogleFormBridge.objects.get(event=event).test_mode is True
+
+
+@pytest.mark.django_db
 def test_list_bridge_never_returns_secret(setup):
     client, org, user, event = setup
     GoogleFormBridge.create_with_secret(event=event, created_by=user, name="Bridge")

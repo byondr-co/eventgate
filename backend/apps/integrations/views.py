@@ -70,6 +70,7 @@ class GoogleFormBridgeListCreateView(APIView):
                 "duplicate_policy",
                 "upsert_by_email",
             ),
+            test_mode=serializer.validated_data.get("test_mode", False),
         )
         bridge.enabled = serializer.validated_data.get("enabled", False)
         bridge.save(update_fields=["enabled"])

@@ -373,6 +373,15 @@ function resultFromResponse(response) {
     return { sync: "disabled", guestId: guestId, detail: detail, clearGuestId: !guestId };
   }
 
+  if (status === "test_accepted" || status === "test_rejected") {
+    return {
+      sync: "test",
+      guestId: "",
+      detail: detail || "Test submission received by Eventgate.",
+      clearGuestId: false
+    };
+  }
+
   if (status === "accepted" || status === "duplicate" || status === "updated") {
     return { sync: status, guestId: guestId, detail: detail, clearGuestId: false };
   }

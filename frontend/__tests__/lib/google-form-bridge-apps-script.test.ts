@@ -368,6 +368,17 @@ describe("googleFormBridgeAppsScript", () => {
     expect(headers[0]["X-Eventgate-Bridge-Secret"]).toBe("sek_embedded_999");
   });
 
+  it("marks test-mode submissions as a benign 'test' status, not failed", () => {
+    const { harness } = loadScript();
+    const accepted = harness.resultFromResponse(makeResponse(200, { status: "test_accepted" }));
+    expect(accepted.sync).toBe("test");
+    const rejected = harness.resultFromResponse(
+      makeResponse(200, { status: "test_rejected", detail: "needs email" }),
+    );
+    expect(rejected.sync).toBe("test");
+    expect(rejected.detail).toBe("needs email");
+  });
+
   it("preserves existing guest ID for generic rejected replay mismatch responses", () => {
     const sheet = new FakeSheet([
       [

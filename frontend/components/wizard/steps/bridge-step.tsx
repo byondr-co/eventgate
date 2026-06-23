@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
@@ -30,25 +30,33 @@ function MappingSubStep({
   onBack: () => void;
 }) {
   const labels = detected?.seen_labels ?? [];
-  const [mapping, setMapping] = useState<Record<string, string>>(detected?.suggestions ?? {});
+  const suggestions = detected?.suggestions;
+  const [mapping, setMapping] = useState<Record<string, string>>({});
+
+  // Seed the mapping from server suggestions the first time they arrive (the
+  // detected-fields query resolves asynchronously while this step polls), without
+  // clobbering any selection the organizer has already made.
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (!seeded.current && suggestions && Object.keys(suggestions).length > 0) {
+      setMapping(suggestions);
+      seeded.current = true;
+    }
+  }, [suggestions]);
 
   // Targets = presets plus any server-suggested or currently-selected field keys
   // (which may be custom event fields), so a pre-filled suggestion always has a
   // matching <option> and is never silently dropped on save.
   const targets = Array.from(
-    new Set([
-      ...PRESET_TARGETS,
-      ...Object.values(detected?.suggestions ?? {}),
-      ...Object.values(mapping),
-    ]),
+    new Set([...PRESET_TARGETS, ...Object.values(suggestions ?? {}), ...Object.values(mapping)]),
   ).filter(Boolean);
 
   if (labels.length === 0) {
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Submit one response from your Google Form so we can detect its questions, then return
-          here.
+          Submit one response from your Google Form so we can detect its questions. This screen
+          updates automatically when it arrives…
         </p>
         <StepNav onBack={onBack} />
       </div>
@@ -99,7 +107,9 @@ export function BridgeStep({
   const [secret, setSecret] = useState<string>("");
   const create = useCreateGoogleFormBridge(orgSlug, eventSlug);
   const update = useUpdateGoogleFormBridge(orgSlug, eventSlug, bridgeId);
-  const detected = useDetectedFields(orgSlug, eventSlug, bridgeId);
+  const detected = useDetectedFields(orgSlug, eventSlug, bridgeId, {
+    poll: sub === "map",
+  });
   const test = useTestSubmission(orgSlug, eventSlug, bridgeId, {
     poll: sub === "test",
   });
@@ -108,12 +118,14 @@ export function BridgeStep({
     () => (webhookUrl ? googleFormBridgeAppsScript(webhookUrl, secret) : ""),
     [webhookUrl, secret],
   );
-  const testState: "waiting" | "accepted" | "rejected" =
-    test.data?.status === "accepted"
+  // The poll endpoint recomputes `mapped` against the bridge's CURRENT field
+  // mapping, so once mapping is saved a green result means the latest response
+  // maps to a registrable guest (email present). No second submission needed.
+  const testState: "waiting" | "accepted" | "rejected" = !test.data
+    ? "waiting"
+    : test.data.mapped?.email
       ? "accepted"
-      : test.data?.status === "rejected"
-        ? "rejected"
-        : "waiting";
+      : "rejected";
 
   const start = async () => {
     const b = await create.mutateAsync({ test_mode: true, enabled: false });
