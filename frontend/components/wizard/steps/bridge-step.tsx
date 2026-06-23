@@ -18,7 +18,7 @@ import { BridgeInstall, BridgeIntro, BridgeTest } from "./bridge-substeps";
 
 type Sub = "intro" | "install" | "map" | "test";
 
-const TARGET_FIELDS = ["email", "name", "phone_or_chat"];
+const PRESET_TARGETS = ["email", "name", "phone_or_chat"];
 
 function MappingSubStep({
   detected,
@@ -31,6 +31,17 @@ function MappingSubStep({
 }) {
   const labels = detected?.seen_labels ?? [];
   const [mapping, setMapping] = useState<Record<string, string>>(detected?.suggestions ?? {});
+
+  // Targets = presets plus any server-suggested or currently-selected field keys
+  // (which may be custom event fields), so a pre-filled suggestion always has a
+  // matching <option> and is never silently dropped on save.
+  const targets = Array.from(
+    new Set([
+      ...PRESET_TARGETS,
+      ...Object.values(detected?.suggestions ?? {}),
+      ...Object.values(mapping),
+    ]),
+  ).filter(Boolean);
 
   if (labels.length === 0) {
     return (
@@ -54,7 +65,7 @@ function MappingSubStep({
             onChange={(e) => setMapping((m) => ({ ...m, [label]: e.target.value }))}
           >
             <option value="">— ignore —</option>
-            {TARGET_FIELDS.map((t) => (
+            {targets.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
@@ -85,6 +96,7 @@ export function BridgeStep({
   const [sub, setSub] = useState<Sub>("intro");
   const [bridgeId, setBridgeId] = useState<string>("");
   const [webhookUrl, setWebhookUrl] = useState<string>("");
+  const [secret, setSecret] = useState<string>("");
   const create = useCreateGoogleFormBridge(orgSlug, eventSlug);
   const update = useUpdateGoogleFormBridge(orgSlug, eventSlug, bridgeId);
   const detected = useDetectedFields(orgSlug, eventSlug, bridgeId);
@@ -93,8 +105,8 @@ export function BridgeStep({
   });
 
   const snippet = useMemo(
-    () => (webhookUrl ? googleFormBridgeAppsScript(webhookUrl) : ""),
-    [webhookUrl],
+    () => (webhookUrl ? googleFormBridgeAppsScript(webhookUrl, secret) : ""),
+    [webhookUrl, secret],
   );
   const testState: "waiting" | "accepted" | "rejected" =
     test.data?.status === "accepted"
@@ -107,6 +119,7 @@ export function BridgeStep({
     const b = await create.mutateAsync({ test_mode: true, enabled: false });
     setBridgeId(b.id);
     setWebhookUrl(b.webhook_url);
+    setSecret(b.secret);
     setSub("install");
   };
   const finish = async () => {

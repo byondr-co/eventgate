@@ -1,5 +1,6 @@
-export function googleFormBridgeAppsScript(webhookUrl: string): string {
+export function googleFormBridgeAppsScript(webhookUrl: string, secret = ""): string {
   return `const EVENTGATE_WEBHOOK_URL = ${JSON.stringify(webhookUrl)};
+const EVENTGATE_BRIDGE_SECRET_EMBEDDED = ${JSON.stringify(secret)};
 const BRIDGE_SECRET_PROPERTY = "EVENTGATE_BRIDGE_SECRET";
 const HEADER_ROW = 1;
 const STATUS_COLUMN_NAME = "Eventgate Sync";
@@ -141,6 +142,9 @@ function assertReadyForSync() {
 }
 
 function eventgateBridgeSecret() {
+  if (EVENTGATE_BRIDGE_SECRET_EMBEDDED) {
+    return EVENTGATE_BRIDGE_SECRET_EMBEDDED;
+  }
   return PropertiesService.getScriptProperties().getProperty(BRIDGE_SECRET_PROPERTY);
 }
 

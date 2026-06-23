@@ -306,6 +306,68 @@ describe("googleFormBridgeAppsScript", () => {
     expect(script).not.toContain('values["Email"]');
   });
 
+  it("embeds the bridge secret when provided and falls back to the script property otherwise", () => {
+    const withSecret = googleFormBridgeAppsScript(
+      "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
+      "sek_test_123",
+    );
+    expect(withSecret).toContain('const EVENTGATE_BRIDGE_SECRET_EMBEDDED = "sek_test_123";');
+    expect(withSecret).toContain("if (EVENTGATE_BRIDGE_SECRET_EMBEDDED)");
+    expect(withSecret).toContain(
+      "PropertiesService.getScriptProperties().getProperty(BRIDGE_SECRET_PROPERTY)",
+    );
+
+    const withoutSecret = googleFormBridgeAppsScript(
+      "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
+    );
+    expect(withoutSecret).toContain('const EVENTGATE_BRIDGE_SECRET_EMBEDDED = "";');
+  });
+
+  it("uses the embedded secret in the request header so no manual script property is needed", () => {
+    const sheet = new FakeSheet([
+      ["Timestamp", "Full Name"],
+      ["2026-06-10T01:00:00.000Z", "Ada Lovelace"],
+    ]);
+    const script = googleFormBridgeAppsScript(
+      "https://api.test/api/v1/integrations/google-forms/b1/submissions/",
+      "sek_embedded_999",
+    );
+    const headers: Array<Record<string, string>> = [];
+    const SpreadsheetApp = {
+      getUi: () => ({ alert: () => undefined }),
+      getActive: () => ({ getId: () => "s1" }),
+      getActiveSheet: () => sheet,
+    };
+    // Script property is empty -> only the embedded secret can satisfy the header.
+    const PropertiesService = {
+      getScriptProperties: () => ({ getProperty: () => null }),
+    };
+    const UrlFetchApp = {
+      fetch: (_url: string, options: { headers: Record<string, string> }) => {
+        headers.push(options.headers);
+        return makeResponse(201, { status: "accepted", guest_id: "g1" });
+      },
+    };
+    const evaluate = new Function(
+      "SpreadsheetApp",
+      "PropertiesService",
+      "UrlFetchApp",
+      "Utilities",
+      "Date",
+      `${script}; return { syncSelectedRowToEventgate };`,
+    );
+    const harness = evaluate(
+      SpreadsheetApp,
+      PropertiesService,
+      UrlFetchApp,
+      { sleep: () => undefined },
+      Date,
+    ) as { syncSelectedRowToEventgate: () => void };
+    harness.syncSelectedRowToEventgate();
+    expect(headers).toHaveLength(1);
+    expect(headers[0]["X-Eventgate-Bridge-Secret"]).toBe("sek_embedded_999");
+  });
+
   it("preserves existing guest ID for generic rejected replay mismatch responses", () => {
     const sheet = new FakeSheet([
       [
