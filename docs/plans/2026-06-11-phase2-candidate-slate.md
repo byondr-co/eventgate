@@ -1,5 +1,38 @@
 # Phase 2 candidate slate — shaping doc (revenue-first)
 
+> **RE-RANKED 2026-06-19 after the Click Cam pilot succeeded** (see
+> `docs/plans/improvement-and-findings-logs.md` → Pilot retro). The pilot's
+> loudest signal was **usability/onboarding, not payment** — so the post-pilot
+> top priority is the **"Eventgate v2 uplift" UX program**, NOT the revenue-first
+> ordering below. The revenue track still matters and runs in **parallel**, but
+> it is no longer #1.
+>
+> **Uplift program (UX-first), in order:**
+> 1. **Event Setup Wizard** — guided create → registration choice → bridge
+>    wizard → review → go live; non-technical-organizer usable; motion +
+>    illustration layer. *(slice 1 — spec `docs/superpowers/specs/2026-06-19-event-setup-wizard-design.md`, plan `docs/superpowers/plans/2026-06-19-event-setup-wizard.md`; built 2026-06-19.)*
+> 2. Core CRUD/UX gaps (edit/delete/search/filter/sort/pagination/nav).
+> 3. Export + guest bulk actions (Tier 3 #9 below — pilot-requested).
+> 4. Dashboard polish + SSE live data (Tier 3 #10 below).
+> 5. **Remotion event share-video** — generated per-event promo/QR-reveal MP4
+>    (own spec later).
+>
+> **Revenue track (parallel, decided inputs from pilot):** entitlement/plan model
+> with **per-event metering** (Tier 1 #1); **ABA PayWay is hard-required** for
+> first payers (Stripe-only insufficient) → start merchant-account + sandbox
+> procurement early (long lead), but billing automation is NOT urgent (manual
+> one-time invoicing works at current scale).
+>
+> **Parked deeper:** OAuth bridge auto-install
+> (`docs/plans/future-google-oauth-bridge-autoinstall.md`), named-staff identity,
+> WhatsApp delivery.
+>
+> Everything below is the ORIGINAL pre-pilot revenue-first shaping. Kept for
+> reference; superseded by the ordering above.
+
+---
+
+
 > **Status:** Shaping doc, NOT an implementation plan. No spec, no tasks, no
 > code. Output of a prioritization brainstorm on 2026-06-11. Inputs:
 > `docs/brief.md` §12 (Phase 2/3 roadmap) + the deferred backlog in
