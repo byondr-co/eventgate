@@ -1,10 +1,10 @@
 # Prod Fly app config — eventgate-backend-prod (Singapore).
 #
-# Companion to fly.toml (which targets eventgate-backend-staging). Staging mirrors
-# prod exactly — process groups, VM sizing, health checks, release_command — so the
-# ONLY difference between this file and fly.toml is the `app` name (line below).
-# Both point at their env's self-hosted Redis (eventgate-redis-{prod,staging}) via
-# Fly secrets, not Upstash.
+# Prod is the only environment. Staging (eventgate-backend-staging /
+# eventgate-redis-staging / Neon eventgate-staging) was decommissioned 2026-06-23;
+# its fly.toml and fly.redis-staging.toml were removed in the same change.
+# Points at the self-hosted prod Redis (eventgate-redis-prod) via Fly secrets,
+# not Upstash.
 #
 # Used by:
 #   - `flyctl deploy --config fly.prod.toml --app eventgate-backend-prod`
