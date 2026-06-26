@@ -54,6 +54,16 @@ export function MembersTable({ slug }: { slug: string }) {
     setOrdering((o) => (o === field ? `-${field}` : field));
     setPage(1);
   };
+  // Active sort column + direction, derived from `ordering` ("-" prefix = descending).
+  const sortField = ordering.replace(/^-/, "");
+  const sortDir: "ascending" | "descending" = ordering.startsWith("-") ? "descending" : "ascending";
+  const ariaSort = (field: string) => (sortField === field ? sortDir : "none");
+  const sortCaret = (field: string) =>
+    sortField === field ? (
+      <span aria-hidden="true" className="ml-1">
+        {sortDir === "ascending" ? "↑" : "↓"}
+      </span>
+    ) : null;
 
   const onPageSize = (v: number) => {
     setPageSize(v);
@@ -111,31 +121,34 @@ export function MembersTable({ slug }: { slug: string }) {
             <table className="w-full text-sm">
               <thead className="text-muted-foreground">
                 <tr className="border-b">
-                  <th className="text-left font-normal py-2">
+                  <th className="text-left font-normal py-2" aria-sort={ariaSort("user__email")}>
                     <button
                       type="button"
                       className="hover:underline"
                       onClick={() => toggleSort("user__email")}
                     >
                       Email
+                      {sortCaret("user__email")}
                     </button>
                   </th>
-                  <th className="text-left font-normal py-2">
+                  <th className="text-left font-normal py-2" aria-sort={ariaSort("role")}>
                     <button
                       type="button"
                       className="hover:underline"
                       onClick={() => toggleSort("role")}
                     >
                       Role
+                      {sortCaret("role")}
                     </button>
                   </th>
-                  <th className="text-left font-normal py-2">
+                  <th className="text-left font-normal py-2" aria-sort={ariaSort("accepted_at")}>
                     <button
                       type="button"
                       className="hover:underline"
                       onClick={() => toggleSort("accepted_at")}
                     >
                       Joined
+                      {sortCaret("accepted_at")}
                     </button>
                   </th>
                   <th className="text-right font-normal py-2">Actions</th>
