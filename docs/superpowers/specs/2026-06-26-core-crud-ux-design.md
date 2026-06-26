@@ -17,9 +17,19 @@ pagination) that the event and member lists still lack.
    (event-list search/filter/sort/pagination UI, member-list pagination, guest
    sort). Bulk actions, export, event clone, guest detail/history page, and org
    delete are **out** (later slices).
-2. **Delete model = restricted hard-delete.** An event is deletable only when it
-   has **zero guests** (otherwise the organizer must Archive — the `archived`
-   status already exists). Guests are individually, permanently deletable.
+2. **Removal model = void / archive, with hard-delete only when safe.**
+   *Refined during planning:* the audit log is append-only (a `BEFORE UPDATE OR
+   DELETE` trigger, `apps/audit/migrations/0002`) and `audit.event` is `PROTECT`
+   while `audit.guest` is `SET_NULL` — so any event or guest that has audit
+   history **cannot** be hard-deleted (the delete/SET_NULL trips the trigger or
+   PROTECT). Therefore:
+   - **Guests:** the primary "remove" action is **Void** (`entry_status =
+     voided`) — soft, audit-preserving, already modeled, and already treated as
+     "non-voided" by capacity logic. A true **hard-delete** is offered only when
+     the guest has **no audit history**.
+   - **Events:** the primary action is **Archive** (existing `archived` status).
+     A true **hard-delete** is allowed only when the event has **no guests AND no
+     audit history** (covers "I made a test event by mistake").
 3. **Slug is editable**, with an **auto-redirect** so old links keep working.
 4. **Guest edit UX = a slide-over drawer** opened from a guest row (no standalone
    guest detail page this slice).
@@ -107,10 +117,13 @@ compares requested vs returned slug and `router.replace`s to the canonical path
 (SPA-side redirect; no HTTP 3xx needed). Alias uniqueness within the org
 guarantees a single resolution.
 
-**Delete.** `EventViewSet.destroy`: permitted only when `event.guests.count() == 0`.
-Otherwise return **409 Conflict** with
-`{"detail": "This event has guests. Archive it instead of deleting."}`. On
-success write an `event.deleted` audit row. Restricted to `owner/admin/manager`.
+**Delete.** `EventViewSet.destroy`: permitted only when the event has **no guests
+AND no audit rows** (`audit.event` is `PROTECT`, so a delete with history would
+500). Otherwise return **409 Conflict** directing the organizer to Archive. On a
+permitted delete, first write an `event.deleted` audit row **with `event=None`**
+(passing the event would self-block via PROTECT) carrying the slug/name/id in
+`details`, then delete. Restricted to `owner/admin/manager`. Archive remains the
+path for events with history.
 
 ### Backend — Guests
 
@@ -123,14 +136,18 @@ success write an `event.deleted` audit row. Restricted to `owner/admin/manager`.
   dedicated write serializer). Validate email format and event-required fields.
   **Does not** modify `entry_token` or `entry_status`. Write a `guest.updated`
   audit row with a field diff.
-- `DELETE` — permanent. Write a `guest.deleted` audit row capturing the guest's
-  identity (name/email/token) **before** deletion. Restricted to
-  `owner/admin/manager`.
+- **Void** (primary remove) — `POST .../guests/<id>/void/` sets
+  `entry_status = "voided"` and writes a `guest.voided` audit row. Soft,
+  audit-preserving, and already excluded from capacity counts. Idempotent.
+- `DELETE` — true hard-delete, permitted **only when the guest has no audit
+  rows** (a `SET_NULL` cascade onto append-only audit rows would trip the
+  trigger). If audit rows exist → **409** directing to Void. On a permitted
+  delete, write a `guest.deleted` audit row **with `guest=None`** (identity in
+  `details`) then delete. Restricted to `owner/admin/manager`.
 
-**Audit FK survival.** Confirm `audit`'s reference to a guest is `SET_NULL`
-(or stores a token/snapshot rather than a hard FK) so historical audit rows
-survive a guest delete; if it is currently `CASCADE`, change it + migrate. (To
-verify at plan time.)
+**Audit FK (verified 2026-06-26):** `audit.guest` is already `SET_NULL` and
+`audit.event` is `PROTECT`; the audit table is append-only via a DB trigger.
+This is what forces the void-first model above — no audit migration is needed.
 
 **Permissions.** All guest writes: `IsAuthenticated + IsOrgMember +
 HasOrgRole(owner, admin, manager)` (the existing pattern).
@@ -204,11 +221,13 @@ HasOrgRole(owner, admin, manager)` (the existing pattern).
 - Slug change creates an `EventSlugAlias` and rewrites the event's `ShortUrl`
   target(s) to the new slug.
 - `PublicEventDetailView` resolves an aliased (old) slug to the current event.
-- Event delete: 204 when no guests, **409** when guests exist.
+- Event delete: 204 when no guests + no audit history; **409** when guests exist
+  or audit rows exist.
 - Guest PATCH updates contact + custom fields, writes `guest.updated`, and leaves
   `entry_token`/`entry_status` unchanged.
-- Guest DELETE removes the guest, writes `guest.deleted`, and leaves prior audit
-  rows intact (FK survives).
+- Guest void sets `entry_status="voided"`, writes `guest.voided`, is idempotent.
+- Guest DELETE: 204 + `guest.deleted` (guest=None) when the guest has no audit
+  history; **409** when audit rows exist.
 - List `?search=` / `?ordering=` behave for events and guests.
 
 **Frontend (Vitest + RTL):**
@@ -219,8 +238,8 @@ HasOrgRole(owner, admin, manager)` (the existing pattern).
 
 **Playwright (e2e):**
 - Rename an event slug → an old public link resolves to the new slug.
-- Delete an empty event succeeds; an event with guests offers Archive instead.
-- Edit a guest's name; delete a guest.
+- Delete a no-history event succeeds; an event with guests/history offers Archive.
+- Edit a guest's name; void a guest; delete a no-history guest.
 
 ## Out of scope (explicit)
 
