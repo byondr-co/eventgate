@@ -114,3 +114,19 @@ def check_event_pin(event: Event, raw_pin: str) -> bool:
         return bcrypt.checkpw(raw_pin.encode("utf-8"), event.event_pin_hash.encode("utf-8"))
     except ValueError:
         return False
+
+
+def rename_event_slug(event: Event, old_slug: str) -> None:
+    """Record an alias for the retired slug and repoint the event's short URLs."""
+    from apps.events.models import EventSlugAlias
+    from apps.shorturls.models import ShortUrl
+
+    EventSlugAlias.objects.get_or_create(
+        organization=event.organization, slug=old_slug, defaults={"event": event}
+    )
+    old_path = f"/e/{event.organization.slug}/{old_slug}/"
+    new_path = f"/e/{event.organization.slug}/{event.slug}/"
+    for su in ShortUrl.objects.filter(event=event):
+        if old_path in su.target_url:
+            su.target_url = su.target_url.replace(old_path, new_path)
+            su.save(update_fields=["target_url"])

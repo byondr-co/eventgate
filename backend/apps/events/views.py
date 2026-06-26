@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -11,14 +12,21 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.services import write_audit
 from apps.common.permissions import HasOrgRole, IsOrgMember
-from apps.events.models import Event, RegistrationField
+from apps.events.models import Event, EventSlugAlias, RegistrationField
 from apps.events.serializers import (
     EventSerializer,
     EventTransitionSerializer,
     RegistrationFieldSerializer,
 )
-from apps.events.services import PinTooShort, seed_preset_fields, set_event_pin, transition_event
+from apps.events.services import (
+    PinTooShort,
+    rename_event_slug,
+    seed_preset_fields,
+    set_event_pin,
+    transition_event,
+)
 from apps.orgs.views import StandardPagination
 
 
@@ -43,6 +51,48 @@ class EventViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         event = serializer.save(organization=self.request.organization)
         seed_preset_fields(event)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        old_slug = serializer.instance.slug
+        event = serializer.save()
+        if event.slug != old_slug:
+            rename_event_slug(event, old_slug)
+            write_audit(
+                organization=event.organization,
+                event=event,
+                actor_type="user",
+                actor_id=str(self.request.user.id),
+                action="event.updated",
+                result="success",
+                details={"slug_changed": {"from": old_slug, "to": event.slug}},
+            )
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        from apps.audit.models import AuditEvent
+
+        event = self.get_object()
+        if event.guests.exists():
+            return Response(
+                {"detail": "This event has guests. Archive it instead of deleting."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        if AuditEvent.objects.filter(event=event).exists():
+            return Response(
+                {"detail": "This event has activity history. Archive it instead of deleting."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        write_audit(
+            organization=event.organization,
+            actor_type="user",
+            actor_id=str(request.user.id),
+            action="event.deleted",
+            result="success",
+            details={"slug": event.slug, "name": event.name, "event_id": str(event.id)},
+        )
+        event.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="transition")
     def transition(self, request, org_slug=None, slug=None):
@@ -145,7 +195,16 @@ class PublicEventDetailView(APIView):
     authentication_classes: ClassVar[list] = []
 
     def get(self, request, org_slug, event_slug):
-        event = get_object_or_404(Event, organization__slug=org_slug, slug=event_slug)
+        event = Event.objects.filter(organization__slug=org_slug, slug=event_slug).first()
+        if event is None:
+            alias = (
+                EventSlugAlias.objects.filter(organization__slug=org_slug, slug=event_slug)
+                .select_related("event")
+                .first()
+            )
+            if alias is None:
+                raise Http404
+            event = alias.event
         fields = [
             {
                 "field_key": f.field_key,

@@ -4,6 +4,7 @@ import hashlib
 from typing import ClassVar
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -15,7 +16,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsOrgMember
+from apps.audit.services import write_audit
+from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.common.qr import render_png
 from apps.common.tokens import hash_token, tokens_match
 from apps.devices.auth import SessionTokenAuthentication
@@ -25,6 +27,7 @@ from apps.guests.serializers import (
     CsvImportSerializer,
     GuestSerializer,
     GuestSyncSerializer,
+    GuestWriteSerializer,
     RegistrationSubmitResponseSerializer,
 )
 from apps.guests.services import (
@@ -346,3 +349,93 @@ class GuestTelegramLinkView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         return Response({"url": f"https://t.me/{bot}?start={guest.entry_token}"})
+
+
+class GuestVoidView(APIView):
+    """POST /api/v1/orgs/<org>/events/<event>/guests/<id>/void/ — soft-remove."""
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+
+    def post(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        guest = get_object_or_404(
+            Guest, id=guest_id, organization=request.organization, event__slug=event_slug
+        )
+        previous = guest.entry_status
+        if guest.entry_status != "voided":
+            guest.entry_status = "voided"
+            guest.save(update_fields=["entry_status", "updated_at"])
+        write_audit(
+            organization=guest.organization,
+            event=guest.event,
+            guest=guest,
+            actor_type="user",
+            actor_id=str(request.user.id),
+            action="guest.voided",
+            result="success",
+            previous_status=previous,
+            new_status="voided",
+        )
+        return Response(GuestWriteSerializer(guest).data)
+
+
+class GuestDetailView(APIView):
+    """GET/PATCH/DELETE a single guest.
+
+    URL: /api/v1/orgs/<org>/events/<event>/guests/<guest_id>/
+    """
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+
+    def _guest(self, request, event_slug, guest_id):
+        return get_object_or_404(
+            Guest, id=guest_id, organization=request.organization, event__slug=event_slug
+        )
+
+    def get(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        guest = self._guest(request, event_slug, guest_id)
+        return Response(GuestWriteSerializer(guest).data)
+
+    def patch(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        guest = self._guest(request, event_slug, guest_id)
+        ser = GuestWriteSerializer(guest, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        write_audit(
+            organization=guest.organization,
+            event=guest.event,
+            guest=guest,
+            actor_type="user",
+            actor_id=str(request.user.id),
+            action="guest.updated",
+            result="success",
+            details={"fields": sorted(request.data.keys())},
+        )
+        return Response(ser.data)
+
+    @transaction.atomic
+    def delete(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        from apps.audit.models import AuditEvent
+
+        guest = self._guest(request, event_slug, guest_id)
+        if AuditEvent.objects.filter(guest=guest).exists():
+            return Response(
+                {"detail": "This guest has activity history. Void them instead of deleting."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        write_audit(
+            organization=guest.organization,
+            event=guest.event,
+            actor_type="user",
+            actor_id=str(request.user.id),
+            action="guest.deleted",
+            result="success",
+            details={
+                "guest_id": str(guest.id),
+                "full_name": guest.full_name,
+                "email": guest.email,
+            },
+        )
+        guest.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

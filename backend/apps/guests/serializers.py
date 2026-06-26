@@ -68,6 +68,38 @@ class GuestSyncSerializer(serializers.ModelSerializer):
         )
 
 
+class GuestWriteSerializer(serializers.ModelSerializer):
+    """Staff-editable guest view. Only contact + custom fields are writable;
+    identity/status/token columns stay read-only."""
+
+    class Meta:
+        model = Guest
+        fields = (
+            "id",
+            "guest_type",
+            "entry_status",
+            "info_status",
+            "full_name",
+            "email",
+            "phone_or_chat",
+            "custom_fields",
+            "source",
+            "checked_in_at",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "id",
+            "guest_type",
+            "entry_status",
+            "info_status",
+            "source",
+            "checked_in_at",
+            "created_at",
+            "updated_at",
+        )
+
+
 class CsvImportSerializer(serializers.ModelSerializer):
     error_report_url = serializers.SerializerMethodField()
 
