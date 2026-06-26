@@ -10,6 +10,7 @@ from apps.guests.views import (
     GuestSendQrEmailView,
     GuestSyncView,
     GuestTelegramLinkView,
+    GuestVoidView,
     PublicRegistrationView,
 )
 
@@ -48,6 +49,11 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/<uuid:guest_id>/",
         GuestDetailView.as_view(),
         name="guest-detail",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/<uuid:guest_id>/void/",
+        GuestVoidView.as_view(),
+        name="guest-void",
     ),
     path(
         "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/<uuid:guest_id>/send-qr-email/",

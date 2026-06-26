@@ -62,3 +62,17 @@ def test_guest_patch_cannot_change_entry_status(setup):
     client.patch(guest_url(org, event, guest), {"entry_status": "checked_in"}, format="json")
     guest.refresh_from_db()
     assert guest.entry_status == "registered_not_arrived"
+
+
+@pytest.mark.django_db
+def test_guest_void_sets_status_and_audits(setup):
+    from apps.audit.models import AuditEvent
+
+    client, org, event, guest = setup
+    resp = client.post(guest_url(org, event, guest) + "void/")
+    assert resp.status_code == 200
+    guest.refresh_from_db()
+    assert guest.entry_status == "voided"
+    assert AuditEvent.objects.filter(action="guest.voided", guest=guest).exists()
+    # idempotent
+    assert client.post(guest_url(org, event, guest) + "void/").status_code == 200

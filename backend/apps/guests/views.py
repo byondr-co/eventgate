@@ -350,6 +350,34 @@ class GuestTelegramLinkView(APIView):
         return Response({"url": f"https://t.me/{bot}?start={guest.entry_token}"})
 
 
+class GuestVoidView(APIView):
+    """POST /api/v1/orgs/<org>/events/<event>/guests/<id>/void/ — soft-remove."""
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+
+    def post(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        guest = get_object_or_404(
+            Guest, id=guest_id, organization=request.organization, event__slug=event_slug
+        )
+        previous = guest.entry_status
+        if guest.entry_status != "voided":
+            guest.entry_status = "voided"
+            guest.save(update_fields=["entry_status", "updated_at"])
+        write_audit(
+            organization=guest.organization,
+            event=guest.event,
+            guest=guest,
+            actor_type="user",
+            actor_id=str(request.user.id),
+            action="guest.voided",
+            result="success",
+            previous_status=previous,
+            new_status="voided",
+        )
+        return Response(GuestWriteSerializer(guest).data)
+
+
 class GuestDetailView(APIView):
     """GET/PATCH/DELETE a single guest.
 
