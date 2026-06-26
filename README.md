@@ -46,7 +46,7 @@ cd frontend && pnpm install && pnpm dev
 - Backend: Fly.io (Singapore region)
 - Frontend: Vercel
 - Postgres: Neon (Singapore)
-- Redis: Upstash (Singapore)
+- Redis: self-hosted on Fly Machines (Singapore) — app `eventgate-redis-prod`, private 6PN only; prod-only (staging decommissioned)
 - Errors: Sentry
 
 ## Docs
