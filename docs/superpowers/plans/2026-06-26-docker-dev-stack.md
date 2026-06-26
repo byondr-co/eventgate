@@ -108,11 +108,18 @@ git commit -m "build(backend): add dev image target with dev dependencies"
 # command (`pnpm dev`) is set in compose.
 FROM node:20-slim AS dev
 WORKDIR /app
-RUN corepack enable
+# Pin pnpm 9 to match CI (.github/workflows/frontend.yml uses
+# pnpm/action-setup version: 9) and the lockfile (lockfileVersion 9.0). Do NOT
+# use `corepack enable` alone — on node:20 it resolves pnpm@latest (11.x), which
+# requires Node >= 22.13 and fails the install.
+RUN npm install -g pnpm@9
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 EXPOSE 3000
 ```
+
+> If `frontend/Dockerfile` already exists on disk from a prior attempt,
+> overwrite it with exactly this content.
 
 - [ ] **Step 2: Build the dev target**
 
