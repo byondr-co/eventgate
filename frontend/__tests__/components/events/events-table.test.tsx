@@ -15,7 +15,7 @@ describe("EventsTable", () => {
   it("shows the EmptyState when there are no events", () => {
     mockEvents.mockReturnValue({ data: { results: [] }, isLoading: false } as never);
     render(<EventsTable orgSlug="o" />);
-    expect(screen.getByText("No events yet")).toBeInTheDocument();
+    expect(screen.getByText("No events")).toBeInTheDocument();
   });
 
   it("lists events with status badges when present", () => {
