@@ -54,3 +54,7 @@ playwright-report/
 test-results/
 .vercel
 .env*
+# Keep committed example env files (this negation must come AFTER .env* above,
+# which would otherwise re-ignore them).
+!.env.example
+!**/.env.example
