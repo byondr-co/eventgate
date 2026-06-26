@@ -76,3 +76,33 @@ def test_guest_void_sets_status_and_audits(setup):
     assert AuditEvent.objects.filter(action="guest.voided", guest=guest).exists()
     # idempotent
     assert client.post(guest_url(org, event, guest) + "void/").status_code == 200
+
+
+@pytest.mark.django_db
+def test_guest_delete_succeeds_with_no_history(setup):
+    from apps.audit.models import AuditEvent
+
+    client, org, event, guest = setup
+    resp = client.delete(guest_url(org, event, guest))
+    assert resp.status_code == 204
+    assert not Guest.objects.filter(pk=guest.pk).exists()
+    assert AuditEvent.objects.filter(action="guest.deleted", guest__isnull=True).exists()
+
+
+@pytest.mark.django_db
+def test_guest_delete_blocked_with_history(setup):
+    from apps.audit.services import write_audit
+
+    client, org, event, guest = setup
+    write_audit(
+        organization=org,
+        event=event,
+        guest=guest,
+        actor_type="user",
+        actor_id="x",
+        action="checkin.success",
+        result="success",
+    )
+    resp = client.delete(guest_url(org, event, guest))
+    assert resp.status_code == 409
+    assert Guest.objects.filter(pk=guest.pk).exists()

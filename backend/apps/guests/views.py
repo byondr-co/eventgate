@@ -412,3 +412,28 @@ class GuestDetailView(APIView):
             details={"fields": sorted(request.data.keys())},
         )
         return Response(ser.data)
+
+    def delete(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        from apps.audit.models import AuditEvent
+
+        guest = self._guest(request, event_slug, guest_id)
+        if AuditEvent.objects.filter(guest=guest).exists():
+            return Response(
+                {"detail": "This guest has activity history. Void them instead of deleting."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        write_audit(
+            organization=guest.organization,
+            event=guest.event,
+            actor_type="user",
+            actor_id=str(request.user.id),
+            action="guest.deleted",
+            result="success",
+            details={
+                "guest_id": str(guest.id),
+                "full_name": guest.full_name,
+                "email": guest.email,
+            },
+        )
+        guest.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
