@@ -93,3 +93,30 @@ class RegistrationField(models.Model):
 
     def __str__(self) -> str:
         return f"{self.event.slug}.{self.field_key}"
+
+
+class EventSlugAlias(models.Model):
+    """A retired event slug that still resolves (redirects) to its event.
+
+    Created whenever an event's slug changes, so old public/registration links
+    keep working. Resolution prefers a live Event with the requested slug;
+    aliases are the fallback.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "orgs.Organization", on_delete=models.CASCADE, related_name="+"
+    )
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="slug_aliases")
+    slug = models.SlugField(max_length=80)
+    created_at = models.DateTimeField(default=tz.now)
+
+    class Meta:
+        constraints: ClassVar = [
+            models.UniqueConstraint(
+                fields=("organization", "slug"), name="unique_event_slug_alias_per_org"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.slug} → {self.event.slug}"
