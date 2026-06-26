@@ -36,3 +36,29 @@ def test_guest_detail_get(setup):
     resp = client.get(guest_url(org, event, guest))
     assert resp.status_code == 200
     assert resp.json()["full_name"] == "Ana"
+
+
+@pytest.mark.django_db
+def test_guest_patch_updates_contact_and_audits(setup):
+    from apps.audit.models import AuditEvent
+
+    client, org, event, guest = setup
+    resp = client.patch(
+        guest_url(org, event, guest),
+        {"full_name": "Ana Lim", "email": "ana.lim@x.com"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    guest.refresh_from_db()
+    assert guest.full_name == "Ana Lim"
+    assert guest.email == "ana.lim@x.com"
+    assert guest.entry_token == "tok-1"  # unchanged
+    assert AuditEvent.objects.filter(action="guest.updated", guest=guest).exists()
+
+
+@pytest.mark.django_db
+def test_guest_patch_cannot_change_entry_status(setup):
+    client, org, event, guest = setup
+    client.patch(guest_url(org, event, guest), {"entry_status": "checked_in"}, format="json")
+    guest.refresh_from_db()
+    assert guest.entry_status == "registered_not_arrived"

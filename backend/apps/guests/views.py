@@ -15,6 +15,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.services import write_audit
 from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.common.qr import render_png
 from apps.common.tokens import hash_token, tokens_match
@@ -366,3 +367,20 @@ class GuestDetailView(APIView):
     def get(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
         guest = self._guest(request, event_slug, guest_id)
         return Response(GuestWriteSerializer(guest).data)
+
+    def patch(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        guest = self._guest(request, event_slug, guest_id)
+        ser = GuestWriteSerializer(guest, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        write_audit(
+            organization=guest.organization,
+            event=guest.event,
+            guest=guest,
+            actor_type="user",
+            actor_id=str(request.user.id),
+            action="guest.updated",
+            result="success",
+            details={"fields": sorted(request.data.keys())},
+        )
+        return Response(ser.data)
