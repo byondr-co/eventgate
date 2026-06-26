@@ -9,6 +9,9 @@ vi.mock("next-intl", () => ({
 vi.mock("@/lib/guests", () => ({
   useGuests: vi.fn(),
   useSendQrEmail: vi.fn(),
+  useUpdateGuest: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+  useVoidGuest: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+  useDeleteGuest: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
   fetchTelegramLink: vi.fn(),
 }));
 

@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { NoGuests } from "@/lib/illustrations";
 import { useFields, type RegistrationField } from "@/lib/events";
+import { GuestEditDrawer } from "@/components/guests/guest-edit-drawer";
 import { fetchTelegramLink, useGuests, useSendQrEmail, type Guest } from "@/lib/guests";
 import { notify } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,7 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
   const [pageSize, setPageSize] = useState(loadPageSize);
   const [guestType, setGuestType] = useState("");
   const [entryStatus, setEntryStatus] = useState("");
+  const [editing, setEditing] = useState<Guest | null>(null);
   const guests = useGuests(orgSlug, eventSlug, { search, page, pageSize, guestType, entryStatus });
   const fields = useFields(orgSlug, eventSlug);
   const sendQr = useSendQrEmail(orgSlug, eventSlug);
@@ -227,6 +229,9 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                       <td
                         className={cn(stickyRight, "py-2 text-right space-x-2 whitespace-nowrap")}
                       >
+                        <Button variant="outline" size="sm" onClick={() => setEditing(g)}>
+                          Edit
+                        </Button>
                         {g.guest_type === "walk_in" ? (
                           // Walk-ins are registered at the door; they have no pre-issued QR
                           // to email or Telegram link to share.
@@ -303,6 +308,14 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
           </>
         )}
       </CardContent>
+      <GuestEditDrawer
+        key={editing?.id ?? "none"}
+        orgSlug={orgSlug}
+        eventSlug={eventSlug}
+        guest={editing}
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+      />
     </Card>
   );
 }
