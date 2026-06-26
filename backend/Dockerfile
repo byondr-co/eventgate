@@ -22,3 +22,15 @@ CMD ["gunicorn", "config.wsgi:application", \
      "--workers", "3", \
      "--access-logfile", "-", \
      "--error-logfile", "-"]
+
+# --- Local development image -------------------------------------------------
+# All dependencies INCLUDING dev (pytest/ruff/mypy) so the stack can run tests
+# in-container. Source is bind-mounted at runtime (see docker-compose.override.yml),
+# and the run command (wait-for-db -> migrate -> runserver) is set in compose.
+FROM base AS dev
+COPY --from=ghcr.io/astral-sh/uv:0.4 /uv /usr/local/bin/uv
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen
+ENV PATH="/app/.venv/bin:${PATH}"
+ENV DJANGO_SETTINGS_MODULE=config.settings.dev
+EXPOSE 8000

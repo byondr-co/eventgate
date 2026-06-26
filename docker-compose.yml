@@ -29,6 +29,49 @@ services:
       interval: 3s
       retries: 10
 
+  backend:
+    build:
+      context: ./backend
+      target: dev
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      # Override backend/.env's localhost URLs with compose service names.
+      DATABASE_URL: postgres://eventgate:eventgate@postgres:5432/eventgate
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health/live/"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      # Service name, NOT localhost: the Next rewrite + SSR run inside this
+      # container. The browser reaches the backend through this frontend's
+      # /api rewrite, so backend need not be published for the app to work.
+      NEXT_PUBLIC_API_BASE_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
   redis_data:
