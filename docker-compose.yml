@@ -5,8 +5,11 @@ services:
       POSTGRES_USER: eventgate
       POSTGRES_PASSWORD: eventgate
       POSTGRES_DB: eventgate
+    # Host port is env-driven so several projects' DBs can run at once without
+    # fighting over 5432. Set POSTGRES_PORT in the repo-root .env (see
+    # .env.example). The container-internal port stays 5432.
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,8 +19,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Env-driven host port (see POSTGRES_PORT note above). Container stays 6379.
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:

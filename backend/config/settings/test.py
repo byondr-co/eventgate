@@ -1,5 +1,6 @@
 """Test settings — fast, isolated."""
 
+import os
 import tempfile
 from pathlib import Path
 
@@ -17,14 +18,20 @@ MEDIA_ROOT = Path(tempfile.mkdtemp(prefix="eventgate-test-media-"))
 # Intentional Plan H holdout: NAME/USER/PASSWORD must match the postgres
 # service credentials in .github/workflows/backend.yml. Rename in lockstep
 # with the CI workflow when the prod env split (Plan H deferred half) lands.
+#
+# HOST/PORT are env-overridable (default localhost:5432). When you run this
+# project's local Postgres on a non-default host port — to avoid colliding with
+# another project also using 5432 — set POSTGRES_PORT (and POSTGRES_HOST if
+# needed) in backend/.env and tests follow it. CI leaves them unset, so it keeps
+# using localhost:5432.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "eventgate_test",
         "USER": "eventgate",
         "PASSWORD": "eventgate",
-        "HOST": "localhost",
-        "PORT": "5432",
+        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
     }
 }
 
