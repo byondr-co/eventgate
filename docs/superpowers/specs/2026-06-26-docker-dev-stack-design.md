@@ -62,9 +62,13 @@ postgres/redis host ports still published (env-driven) — host-run fallback onl
   - `depends_on: { postgres: { condition: service_healthy }, redis: {
     condition: service_healthy } }`
 - **frontend:** `build: { context: ./frontend, target: dev }`,
-  - `environment: NEXT_PUBLIC_API_BASE=http://localhost:${BACKEND_PORT:-8000}`
-    (browser-side calls hit the published backend port; confirm the exact env
-    var name against `frontend/lib/api.ts` at plan time)
+  - `environment: NEXT_PUBLIC_API_BASE_URL=http://backend:8000` — **service
+    name, not localhost.** The Next.js `/api` rewrite (`next.config.ts`) and SSR
+    fetches both read this var and run **server-side inside the frontend
+    container**, where `localhost` is the frontend itself. The browser only ever
+    talks to the frontend (`localhost:${FRONTEND_PORT}`) and reaches the backend
+    through that rewrite, so the backend host port need not be published for the
+    app to work (it stays published only for direct curl/admin/docs).
   - `ports: ["${FRONTEND_PORT:-3000}:3000"]`
   - `depends_on: [backend]`
 
