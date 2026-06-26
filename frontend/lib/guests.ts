@@ -22,6 +22,7 @@ type Paginated<T> = { count: number; results: T[] };
 
 export type GuestFilters = {
   search?: string;
+  ordering?: string;
   page?: number;
   pageSize?: number;
   entryStatus?: string;
@@ -29,12 +30,30 @@ export type GuestFilters = {
 };
 
 export function useGuests(orgSlug: string, eventSlug: string, filters: GuestFilters = {}) {
-  const { search = "", page = 1, pageSize = 25, entryStatus = "", guestType = "" } = filters;
+  const {
+    search = "",
+    ordering = "",
+    page = 1,
+    pageSize = 25,
+    entryStatus = "",
+    guestType = "",
+  } = filters;
   return useQuery({
-    queryKey: ["guests", orgSlug, eventSlug, search, page, pageSize, entryStatus, guestType],
+    queryKey: [
+      "guests",
+      orgSlug,
+      eventSlug,
+      search,
+      ordering,
+      page,
+      pageSize,
+      entryStatus,
+      guestType,
+    ],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
       if (search) params.set("search", search);
+      if (ordering) params.set("ordering", ordering);
       if (entryStatus) params.set("entry_status", entryStatus);
       if (guestType) params.set("guest_type", guestType);
       return apiFetch<Paginated<Guest>>(

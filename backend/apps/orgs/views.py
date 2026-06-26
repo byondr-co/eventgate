@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.db import transaction
 from django.utils import timezone
-from rest_framework import mixins, status, viewsets
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -131,6 +131,8 @@ class OrgMembersListView(viewsets.GenericViewSet, mixins.ListModelMixin):
     permission_classes = (IsAuthenticated, IsOrgMember)
     pagination_class = StandardPagination
     serializer_class = MembershipSerializer
+    filter_backends = (filters.OrderingFilter,)
+    ordering_fields = ("user__email", "role", "created_at", "accepted_at")
 
     def get_queryset(self):
         return OrganizationMembership.objects.filter(

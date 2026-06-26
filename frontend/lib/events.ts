@@ -81,10 +81,23 @@ export function usePublicEventDetail(orgSlug: string, eventSlug: string) {
 
 type Paginated<T> = { count: number; results: T[] };
 
-export function useEvents(orgSlug: string) {
+export type EventListFilters = {
+  search?: string;
+  ordering?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export function useEvents(orgSlug: string, filters: EventListFilters = {}) {
+  const { search = "", ordering = "", page = 1, pageSize = 25 } = filters;
   return useQuery({
-    queryKey: ["events", orgSlug],
-    queryFn: () => apiFetch<Paginated<Event>>(`/api/v1/orgs/${orgSlug}/events/`),
+    queryKey: ["events", orgSlug, search, ordering, page, pageSize],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+      if (search) params.set("search", search);
+      if (ordering) params.set("ordering", ordering);
+      return apiFetch<Paginated<Event>>(`/api/v1/orgs/${orgSlug}/events/?${params.toString()}`);
+    },
     enabled: !!orgSlug,
   });
 }
