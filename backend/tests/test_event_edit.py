@@ -74,3 +74,12 @@ def test_slug_change_writes_audit(setup):
     client, org, _user, event, _other = setup
     client.patch(url(org, event), {"slug": "renamed"}, format="json")
     assert AuditEvent.objects.filter(action="event.updated", new_status="").exists()
+
+
+@pytest.mark.django_db
+def test_public_detail_follows_alias(setup):
+    client, org, _user, event, _other = setup
+    EventSlugAlias.objects.create(organization=org, event=event, slug="old-slug")
+    resp = APIClient().get(f"/api/v1/e/{org.slug}/old-slug/")
+    assert resp.status_code == 200
+    assert resp.json()["slug"] == event.slug  # canonical, not the alias

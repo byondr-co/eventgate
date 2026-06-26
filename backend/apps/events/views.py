@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -13,7 +14,7 @@ from rest_framework.views import APIView
 
 from apps.audit.services import write_audit
 from apps.common.permissions import HasOrgRole, IsOrgMember
-from apps.events.models import Event, RegistrationField
+from apps.events.models import Event, EventSlugAlias, RegistrationField
 from apps.events.serializers import (
     EventSerializer,
     EventTransitionSerializer,
@@ -168,7 +169,16 @@ class PublicEventDetailView(APIView):
     authentication_classes: ClassVar[list] = []
 
     def get(self, request, org_slug, event_slug):
-        event = get_object_or_404(Event, organization__slug=org_slug, slug=event_slug)
+        event = Event.objects.filter(organization__slug=org_slug, slug=event_slug).first()
+        if event is None:
+            alias = (
+                EventSlugAlias.objects.filter(organization__slug=org_slug, slug=event_slug)
+                .select_related("event")
+                .first()
+            )
+            if alias is None:
+                raise Http404
+            event = alias.event
         fields = [
             {
                 "field_key": f.field_key,
