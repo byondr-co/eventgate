@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "./api";
 
@@ -83,5 +83,52 @@ export function useRegisterPublic(orgSlug: string, eventSlug: string) {
           body: JSON.stringify(payload),
         },
       ),
+  });
+}
+
+export type GuestEditInput = Partial<
+  Pick<Guest, "full_name" | "email" | "phone_or_chat" | "custom_fields">
+>;
+
+function invalidateGuests(
+  qc: ReturnType<typeof useQueryClient>,
+  orgSlug: string,
+  eventSlug: string,
+) {
+  qc.invalidateQueries({ queryKey: ["guests", orgSlug, eventSlug] });
+  qc.invalidateQueries({ queryKey: ["guests-count", orgSlug, eventSlug] });
+}
+
+export function useUpdateGuest(orgSlug: string, eventSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ guestId, data }: { guestId: string; data: GuestEditInput }) =>
+      apiFetch<Guest>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/${guestId}/`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => invalidateGuests(qc, orgSlug, eventSlug),
+  });
+}
+
+export function useVoidGuest(orgSlug: string, eventSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (guestId: string) =>
+      apiFetch<Guest>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/${guestId}/void/`, {
+        method: "POST",
+      }),
+    onSuccess: () => invalidateGuests(qc, orgSlug, eventSlug),
+  });
+}
+
+export function useDeleteGuest(orgSlug: string, eventSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (guestId: string) =>
+      apiFetch<void>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/${guestId}/`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => invalidateGuests(qc, orgSlug, eventSlug),
   });
 }

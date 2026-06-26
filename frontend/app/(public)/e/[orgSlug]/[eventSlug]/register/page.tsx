@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { RegistrationForm } from "@/components/guests/registration-form";
@@ -33,6 +34,10 @@ export default async function RegisterPage({ params }: Props) {
         </div>
       </main>
     );
+  }
+
+  if (event.slug !== eventSlug) {
+    redirect(`/e/${orgSlug}/${event.slug}/register/`);
   }
 
   if (!event.registration_open) {
