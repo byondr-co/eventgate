@@ -4,6 +4,7 @@ from rest_framework.test import APIClient
 from apps.accounts.models import User
 from apps.events.models import Event, EventSlugAlias
 from apps.orgs.models import Organization, OrganizationMembership
+from apps.shorturls.models import ShortUrl
 
 
 @pytest.fixture
@@ -48,3 +49,28 @@ def test_patch_rejects_end_before_start(setup):
     )
     assert resp.status_code == 400
     assert "ends_at" in resp.json()
+
+
+@pytest.mark.django_db
+def test_slug_change_creates_alias_and_repoints_short_url(setup, settings):
+    client, org, _user, event, _other = setup
+    su = ShortUrl.objects.create(
+        short_code="abc123",
+        target_url=f"/e/{org.slug}/{event.slug}/register",
+        event=event,
+    )
+    resp = client.patch(url(org, event), {"slug": "launch-2026"}, format="json")
+    assert resp.status_code == 200
+    assert resp.json()["slug"] == "launch-2026"
+    assert EventSlugAlias.objects.filter(organization=org, slug="launch", event=event).exists()
+    su.refresh_from_db()
+    assert su.target_url == f"/e/{org.slug}/launch-2026/register"
+
+
+@pytest.mark.django_db
+def test_slug_change_writes_audit(setup):
+    from apps.audit.models import AuditEvent
+
+    client, org, _user, event, _other = setup
+    client.patch(url(org, event), {"slug": "renamed"}, format="json")
+    assert AuditEvent.objects.filter(action="event.updated", new_status="").exists()

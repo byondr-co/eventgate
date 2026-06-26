@@ -11,6 +11,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.services import write_audit
 from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.events.models import Event, RegistrationField
 from apps.events.serializers import (
@@ -18,7 +19,13 @@ from apps.events.serializers import (
     EventTransitionSerializer,
     RegistrationFieldSerializer,
 )
-from apps.events.services import PinTooShort, seed_preset_fields, set_event_pin, transition_event
+from apps.events.services import (
+    PinTooShort,
+    rename_event_slug,
+    seed_preset_fields,
+    set_event_pin,
+    transition_event,
+)
 from apps.orgs.views import StandardPagination
 
 
@@ -43,6 +50,22 @@ class EventViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         event = serializer.save(organization=self.request.organization)
         seed_preset_fields(event)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        old_slug = serializer.instance.slug
+        event = serializer.save()
+        if event.slug != old_slug:
+            rename_event_slug(event, old_slug)
+            write_audit(
+                organization=event.organization,
+                event=event,
+                actor_type="user",
+                actor_id=str(self.request.user.id),
+                action="event.updated",
+                result="success",
+                details={"slug_changed": {"from": old_slug, "to": event.slug}},
+            )
 
     @action(detail=True, methods=["post"], url_path="transition")
     def transition(self, request, org_slug=None, slug=None):
