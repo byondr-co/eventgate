@@ -58,8 +58,20 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
   const [pageSize, setPageSize] = useState(loadPageSize);
   const [guestType, setGuestType] = useState("");
   const [entryStatus, setEntryStatus] = useState("");
+  const [ordering, setOrdering] = useState("-created_at");
+  const toggleSort = (field: string) => {
+    setOrdering((o) => (o === field ? `-${field}` : field));
+    setPage(1);
+  };
   const [editing, setEditing] = useState<Guest | null>(null);
-  const guests = useGuests(orgSlug, eventSlug, { search, page, pageSize, guestType, entryStatus });
+  const guests = useGuests(orgSlug, eventSlug, {
+    search,
+    page,
+    pageSize,
+    guestType,
+    entryStatus,
+    ordering,
+  });
   const fields = useFields(orgSlug, eventSlug);
   const sendQr = useSendQrEmail(orgSlug, eventSlug);
 
@@ -191,8 +203,24 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                       </th>
                     ))}
                     <th className="text-left font-normal py-2">Type</th>
-                    <th className="text-left font-normal py-2">Entry</th>
-                    <th className="text-left font-normal py-2">Registered</th>
+                    <th className="py-2 text-left font-normal">
+                      <button
+                        type="button"
+                        className="hover:underline"
+                        onClick={() => toggleSort("entry_status")}
+                      >
+                        Entry
+                      </button>
+                    </th>
+                    <th className="py-2 text-left font-normal">
+                      <button
+                        type="button"
+                        className="hover:underline"
+                        onClick={() => toggleSort("created_at")}
+                      >
+                        Registered
+                      </button>
+                    </th>
                     <th className={cn(stickyRight, "text-right font-normal py-2")}>Actions</th>
                   </tr>
                 </thead>
