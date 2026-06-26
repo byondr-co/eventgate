@@ -26,3 +26,9 @@ def test_member_ordering_by_email(setup):
     assert resp.status_code == 200
     emails = [m["user_email"] for m in resp.json()["results"]]
     assert emails == sorted(emails)
+
+    resp_rev = client.get(f"/api/v1/orgs/{org.slug}/members/", {"ordering": "-user__email"})
+    assert resp_rev.status_code == 200
+    emails_rev = [m["user_email"] for m in resp_rev.json()["results"]]
+    assert emails_rev == sorted(emails_rev, reverse=True)
+    assert emails_rev != sorted(emails_rev)  # proves a non-default order is applied
