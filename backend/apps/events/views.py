@@ -5,7 +5,7 @@ from typing import ClassVar
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -37,6 +37,10 @@ class EventViewSet(viewsets.ModelViewSet):
     pagination_class = StandardPagination
     lookup_field = "slug"
     lookup_value_regex = "[a-z0-9-]+"
+    filter_backends = (filters.SearchFilter, filters.OrderingFilter)
+    search_fields = ("name",)
+    ordering_fields = ("starts_at", "name", "status", "created_at")
+    ordering = ("-created_at",)
 
     def get_permissions(self):
         if self.action in ("create", "update", "partial_update", "destroy", "transition"):
