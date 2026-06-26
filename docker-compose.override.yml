@@ -1,0 +1,27 @@
+# Auto-loaded by `docker compose` on top of docker-compose.yml. Holds the dev-only
+# wiring: bind-mount source for live reload, mask installed deps with anonymous
+# volumes, and set the reload run commands.
+services:
+  backend:
+    volumes:
+      - ./backend:/app
+      - /app/.venv          # keep the image's venv; don't let the bind mount hide it
+    command:
+      - sh
+      - -c
+      - |
+        until python -c "import socket; socket.create_connection(('postgres', 5432), 2)" 2>/dev/null; do
+          echo "waiting for postgres..."; sleep 1;
+        done
+        python manage.py migrate --noinput
+        python manage.py runserver 0.0.0.0:8000
+
+  frontend:
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules   # keep the image's node_modules; don't let the bind mount hide it
+    environment:
+      # Reliable file-watching over macOS bind mounts.
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    command: ["pnpm", "dev"]
