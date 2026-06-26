@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import csv as _csv
 import hashlib
+import io as _io
 from typing import ClassVar
 
 from django.conf import settings
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
 from rest_framework import filters, status, viewsets
@@ -20,7 +22,7 @@ from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.common.qr import render_png
 from apps.common.tokens import hash_token, tokens_match
 from apps.devices.auth import SessionTokenAuthentication
-from apps.events.models import Event
+from apps.events.models import Event, RegistrationField
 from apps.guests.models import CsvImport, Guest
 from apps.guests.serializers import (
     CsvImportSerializer,
@@ -31,6 +33,7 @@ from apps.guests.serializers import (
 )
 from apps.guests.services import (
     MAX_CSV_BYTES,
+    PRESET_FIELDS,
     CsvParseError,
     EventNotOpen,
     RegistrationError,
@@ -42,6 +45,8 @@ from apps.guests.services import (
 from apps.guests.tasks import process_csv_import_task, send_qr_email_task
 from apps.orgs.models import Organization
 from apps.orgs.views import StandardPagination
+
+_EXPORT_ORDERING = {"full_name", "email", "created_at", "entry_status", "checked_in_at"}
 
 
 class PublicRegistrationView(APIView):
@@ -76,6 +81,72 @@ class PublicRegistrationView(APIView):
             {"guest_id": guest.id, "entry_token": guest.entry_token}
         ).data
         return Response(body, status=status.HTTP_201_CREATED)
+
+
+class GuestExportView(APIView):
+    """POST /api/v1/orgs/<org>/events/<event>/guests/export/ — streamed CSV."""
+
+    permission_classes = (IsAuthenticated, IsOrgMember)
+
+    def post(self, request: Request, org_slug: str, event_slug: str) -> StreamingHttpResponse:
+        event = get_object_or_404(Event, organization=request.organization, slug=event_slug)
+        body = request.data if isinstance(request.data, dict) else {}
+        ids = body.get("ids")
+        filters_body = body.get("filters") or {}
+
+        if ids:
+            qs = Guest.objects.filter(organization=request.organization, event=event, id__in=ids)
+        else:
+            qs = filtered_event_guests(
+                organization=request.organization,
+                event_slug=event_slug,
+                search=filters_body.get("search", ""),
+                entry_status=filters_body.get("entry_status", ""),
+                guest_type=filters_body.get("guest_type", ""),
+            )
+        ordering = filters_body.get("ordering") or "-created_at"
+        qs = qs.order_by(ordering if ordering.lstrip("-") in _EXPORT_ORDERING else "-created_at")
+
+        reg_fields = list(
+            RegistrationField.objects.filter(event=event)
+            .exclude(field_key__in=PRESET_FIELDS)
+            .order_by("order_index", "field_key")
+        )
+        header = (
+            ["Name", "Email", "Phone/Chat"]
+            + [f.label_en for f in reg_fields]
+            + ["Type", "Entry status", "Checked in at", "Registered at"]
+        )
+
+        def stream():
+            buf = _io.StringIO()
+            writer = _csv.writer(buf)
+
+            def flush():
+                data = buf.getvalue()
+                buf.seek(0)
+                buf.truncate(0)
+                return data
+
+            writer.writerow(header)
+            yield flush()
+            for g in qs.iterator():
+                cf = g.custom_fields or {}
+                writer.writerow(
+                    [g.full_name, g.email, g.phone_or_chat]
+                    + [cf.get(f.field_key, "") for f in reg_fields]
+                    + [
+                        g.guest_type,
+                        g.entry_status,
+                        g.checked_in_at.isoformat() if g.checked_in_at else "",
+                        g.created_at.isoformat() if g.created_at else "",
+                    ]
+                )
+                yield flush()
+
+        resp = StreamingHttpResponse(stream(), content_type="text/csv")
+        resp["Content-Disposition"] = f'attachment; filename="{event_slug}-guests.csv"'
+        return resp
 
 
 class GuestListView(viewsets.GenericViewSet):

@@ -5,6 +5,7 @@ from apps.guests.views import (
     CsvImportPreviewView,
     CsvImportStatusView,
     GuestDetailView,
+    GuestExportView,
     GuestListView,
     GuestQrView,
     GuestSendQrEmailView,
@@ -29,6 +30,11 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/sync/",
         GuestSyncView.as_view(),
         name="guest-sync",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/export/",
+        GuestExportView.as_view(),
+        name="guest-export",
     ),
     path(
         "orgs/<slug:org_slug>/events/<slug:event_slug>/imports/preview/",
