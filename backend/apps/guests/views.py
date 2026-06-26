@@ -414,6 +414,89 @@ class GuestTelegramLinkView(APIView):
         return Response({"url": f"https://t.me/{bot}?start={guest.entry_token}"})
 
 
+class GuestBulkView(APIView):
+    """POST /api/v1/orgs/<org>/events/<event>/guests/bulk/ — apply one action to many guests."""
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+
+    def post(self, request: Request, org_slug: str, event_slug: str) -> Response:
+        from apps.audit.models import AuditEvent
+
+        action = request.data.get("action")
+        ids = request.data.get("guest_ids") or []
+        if action not in ("void", "resend_qr", "delete"):
+            return Response({"detail": "Invalid action."}, status=status.HTTP_400_BAD_REQUEST)
+
+        found = {
+            str(g.id): g
+            for g in Guest.objects.filter(
+                organization=request.organization, event__slug=event_slug, id__in=ids
+            )
+        }
+        done = 0
+        skipped: list[dict] = []
+        errors: list[dict] = []
+        actor_id = str(request.user.id)
+
+        for raw_id in ids:
+            g = found.get(str(raw_id))
+            if g is None:
+                skipped.append({"id": str(raw_id), "reason": "not_found"})
+                continue
+            try:
+                if action == "void":
+                    previous = g.entry_status
+                    if g.entry_status != "voided":
+                        g.entry_status = "voided"
+                        g.save(update_fields=["entry_status", "updated_at"])
+                    write_audit(
+                        organization=g.organization,
+                        event=g.event,
+                        guest=g,
+                        actor_type="user",
+                        actor_id=actor_id,
+                        action="guest.voided",
+                        result="success",
+                        previous_status=previous,
+                        new_status="voided",
+                    )
+                    done += 1
+                elif action == "resend_qr":
+                    if g.guest_type != "pre_registered":
+                        skipped.append({"id": str(g.id), "reason": "walk_in"})
+                        continue
+                    if not g.email:
+                        skipped.append({"id": str(g.id), "reason": "no_email"})
+                        continue
+                    send_qr_email_task.delay(guest_id=str(g.id))
+                    done += 1
+                else:  # delete
+                    if AuditEvent.objects.filter(guest=g).exists():
+                        skipped.append({"id": str(g.id), "reason": "has_history"})
+                        continue
+                    with transaction.atomic():
+                        write_audit(
+                            organization=g.organization,
+                            event=g.event,
+                            actor_type="user",
+                            actor_id=actor_id,
+                            action="guest.deleted",
+                            result="success",
+                            details={
+                                "guest_id": str(g.id),
+                                "full_name": g.full_name,
+                                "email": g.email,
+                            },
+                        )
+                        g.delete()
+                    done += 1
+            except Exception as exc:
+                errors.append({"id": str(g.id), "error": str(exc)})
+
+        return Response({"action": action, "done": done, "skipped": skipped, "errors": errors})
+
+
 class GuestVoidView(APIView):
     """POST /api/v1/orgs/<org>/events/<event>/guests/<id>/void/ — soft-remove."""
 

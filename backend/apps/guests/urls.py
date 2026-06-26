@@ -4,6 +4,7 @@ from apps.guests.views import (
     CsvImportCommitView,
     CsvImportPreviewView,
     CsvImportStatusView,
+    GuestBulkView,
     GuestDetailView,
     GuestExportView,
     GuestListView,
@@ -25,6 +26,11 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/",
         GuestListView.as_view({"get": "list"}),
         name="guest-list",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/bulk/",
+        GuestBulkView.as_view(),
+        name="guest-bulk",
     ),
     path(
         "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/sync/",
