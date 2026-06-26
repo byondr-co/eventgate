@@ -116,15 +116,29 @@ export function useCreateEvent(orgSlug: string) {
   });
 }
 
+export type UpdateEventInput = Partial<
+  Pick<
+    Event,
+    | "name"
+    | "slug"
+    | "venue"
+    | "description"
+    | "walkin_capacity"
+    | "walkins_enabled"
+    | "registration_open"
+    | "starts_at"
+    | "ends_at"
+    | "timezone"
+  >
+>;
+
 /** PATCH a subset of event fields. Backend accepts walkin_capacity, venue,
  *  walkins_enabled, registration_open, etc. (anything not in EventSerializer's
  *  read_only_fields). */
 export function useUpdateEvent(orgSlug: string, eventSlug: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (
-      input: Partial<Pick<Event, "walkin_capacity" | "walkins_enabled" | "venue" | "description">>,
-    ) =>
+    mutationFn: (input: UpdateEventInput) =>
       apiFetch<Event>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/`, {
         method: "PATCH",
         body: JSON.stringify(input),
@@ -227,5 +241,14 @@ export function useTransitionEvent(orgSlug: string, eventSlug: string) {
       qc.invalidateQueries({ queryKey: ["events", orgSlug] });
       qc.invalidateQueries({ queryKey: ["events", orgSlug, eventSlug] });
     },
+  });
+}
+
+export function useDeleteEvent(orgSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (eventSlug: string) =>
+      apiFetch<void>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["events", orgSlug] }),
   });
 }
