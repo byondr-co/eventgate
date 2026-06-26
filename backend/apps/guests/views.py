@@ -5,7 +5,6 @@ from typing import ClassVar
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
@@ -36,6 +35,7 @@ from apps.guests.services import (
     EventNotOpen,
     RegistrationError,
     auto_detect,
+    filtered_event_guests,
     parse_csv_preview,
     register_guest,
 )
@@ -88,24 +88,14 @@ class GuestListView(viewsets.GenericViewSet):
     ordering_fields = ("full_name", "email", "created_at", "entry_status", "checked_in_at")
 
     def get_queryset(self):
-        qs = Guest.objects.filter(
+        p = self.request.query_params
+        return filtered_event_guests(
             organization=self.request.organization,
-            event__slug=self.kwargs["event_slug"],
+            event_slug=self.kwargs["event_slug"],
+            search=p.get("search", ""),
+            entry_status=p.get("entry_status", ""),
+            guest_type=p.get("guest_type", ""),
         )
-        entry_status = self.request.query_params.get("entry_status")
-        if entry_status:
-            qs = qs.filter(entry_status=entry_status)
-        guest_type = self.request.query_params.get("guest_type")
-        if guest_type:
-            qs = qs.filter(guest_type=guest_type)
-        search = self.request.query_params.get("search")
-        if search:
-            qs = qs.filter(
-                Q(full_name__icontains=search)
-                | Q(email__icontains=search)
-                | Q(phone_or_chat__icontains=search)
-            )
-        return qs
 
     def list(self, request, *args, **kwargs):
         qs = self.filter_queryset(self.get_queryset())

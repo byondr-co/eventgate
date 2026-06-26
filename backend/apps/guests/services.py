@@ -7,6 +7,7 @@ import io as _io
 from typing import TYPE_CHECKING, Any
 
 from django.db import transaction
+from django.db.models import Q
 
 from apps.common.tokens import generate_token
 from apps.events.models import Event
@@ -133,3 +134,20 @@ def parse_csv_preview(file_bytes: bytes) -> tuple[list[str], list[list[str]]]:
         raise CsvParseError("File must contain at least one data row.")
 
     return headers, rows
+
+
+def filtered_event_guests(*, organization, event_slug, search="", entry_status="", guest_type=""):
+    """Org/event-scoped guests with the staff-list filters applied. Shared by the
+    list, export, and bulk views so they scope identically. No ordering/pagination."""
+    qs = Guest.objects.filter(organization=organization, event__slug=event_slug)
+    if entry_status:
+        qs = qs.filter(entry_status=entry_status)
+    if guest_type:
+        qs = qs.filter(guest_type=guest_type)
+    if search:
+        qs = qs.filter(
+            Q(full_name__icontains=search)
+            | Q(email__icontains=search)
+            | Q(phone_or_chat__icontains=search)
+        )
+    return qs
