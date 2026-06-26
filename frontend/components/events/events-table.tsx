@@ -83,6 +83,16 @@ export function EventsTable({ orgSlug }: { orgSlug: string }) {
     setOrdering((o) => (o === field ? `-${field}` : field));
     setPage(1);
   };
+  // Active sort column + direction, derived from `ordering` ("-" prefix = descending).
+  const sortField = ordering.replace(/^-/, "");
+  const sortDir: "ascending" | "descending" = ordering.startsWith("-") ? "descending" : "ascending";
+  const ariaSort = (field: string) => (sortField === field ? sortDir : "none");
+  const sortCaret = (field: string) =>
+    sortField === field ? (
+      <span aria-hidden="true" className="ml-1">
+        {sortDir === "ascending" ? "↑" : "↓"}
+      </span>
+    ) : null;
 
   return (
     <Card>
@@ -127,22 +137,24 @@ export function EventsTable({ orgSlug }: { orgSlug: string }) {
           <table className="w-full text-sm">
             <thead className="text-muted-foreground">
               <tr className="border-b">
-                <th className="py-2 text-left font-normal">
+                <th className="py-2 text-left font-normal" aria-sort={ariaSort("name")}>
                   <button
                     type="button"
                     className="hover:underline"
                     onClick={() => toggleSort("name")}
                   >
                     Name
+                    {sortCaret("name")}
                   </button>
                 </th>
-                <th className="py-2 text-left font-normal">
+                <th className="py-2 text-left font-normal" aria-sort={ariaSort("starts_at")}>
                   <button
                     type="button"
                     className="hover:underline"
                     onClick={() => toggleSort("starts_at")}
                   >
                     Date
+                    {sortCaret("starts_at")}
                   </button>
                 </th>
                 <th className="py-2 text-left font-normal">Status</th>

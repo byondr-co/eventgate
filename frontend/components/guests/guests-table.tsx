@@ -70,6 +70,16 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
     setOrdering((o) => (o === field ? `-${field}` : field));
     setPage(1);
   };
+  // Active sort column + direction, derived from `ordering` ("-" prefix = descending).
+  const sortField = ordering.replace(/^-/, "");
+  const sortDir: "ascending" | "descending" = ordering.startsWith("-") ? "descending" : "ascending";
+  const ariaSort = (field: string) => (sortField === field ? sortDir : "none");
+  const sortCaret = (field: string) =>
+    sortField === field ? (
+      <span aria-hidden="true" className="ml-1">
+        {sortDir === "ascending" ? "↑" : "↓"}
+      </span>
+    ) : null;
   const [editing, setEditing] = useState<Guest | null>(null);
   const guests = useGuests(orgSlug, eventSlug, {
     search,
@@ -258,22 +268,24 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                       </th>
                     ))}
                     <th className="text-left font-normal py-2">Type</th>
-                    <th className="py-2 text-left font-normal">
+                    <th className="py-2 text-left font-normal" aria-sort={ariaSort("entry_status")}>
                       <button
                         type="button"
                         className="hover:underline"
                         onClick={() => toggleSort("entry_status")}
                       >
                         Entry
+                        {sortCaret("entry_status")}
                       </button>
                     </th>
-                    <th className="py-2 text-left font-normal">
+                    <th className="py-2 text-left font-normal" aria-sort={ariaSort("created_at")}>
                       <button
                         type="button"
                         className="hover:underline"
                         onClick={() => toggleSort("created_at")}
                       >
                         Registered
+                        {sortCaret("created_at")}
                       </button>
                     </th>
                     <th className={cn(stickyRight, "text-right font-normal py-2")}>Actions</th>
