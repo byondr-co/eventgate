@@ -4,6 +4,7 @@ from apps.guests.views import (
     CsvImportCommitView,
     CsvImportPreviewView,
     CsvImportStatusView,
+    GuestDetailView,
     GuestListView,
     GuestQrView,
     GuestSendQrEmailView,
@@ -42,6 +43,11 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/imports/<uuid:import_id>/",
         CsvImportStatusView.as_view(),
         name="csv-import-status",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/<uuid:guest_id>/",
+        GuestDetailView.as_view(),
+        name="guest-detail",
     ),
     path(
         "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/<uuid:guest_id>/send-qr-email/",

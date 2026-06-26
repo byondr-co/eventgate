@@ -15,7 +15,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsOrgMember
+from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.common.qr import render_png
 from apps.common.tokens import hash_token, tokens_match
 from apps.devices.auth import SessionTokenAuthentication
@@ -25,6 +25,7 @@ from apps.guests.serializers import (
     CsvImportSerializer,
     GuestSerializer,
     GuestSyncSerializer,
+    GuestWriteSerializer,
     RegistrationSubmitResponseSerializer,
 )
 from apps.guests.services import (
@@ -346,3 +347,22 @@ class GuestTelegramLinkView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         return Response({"url": f"https://t.me/{bot}?start={guest.entry_token}"})
+
+
+class GuestDetailView(APIView):
+    """GET/PATCH/DELETE a single guest.
+
+    URL: /api/v1/orgs/<org>/events/<event>/guests/<guest_id>/
+    """
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+
+    def _guest(self, request, event_slug, guest_id):
+        return get_object_or_404(
+            Guest, id=guest_id, organization=request.organization, event__slug=event_slug
+        )
+
+    def get(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
+        guest = self._guest(request, event_slug, guest_id)
+        return Response(GuestWriteSerializer(guest).data)
