@@ -68,6 +68,31 @@ class EventViewSet(viewsets.ModelViewSet):
                 details={"slug_changed": {"from": old_slug, "to": event.slug}},
             )
 
+    def destroy(self, request, *args, **kwargs):
+        from apps.audit.models import AuditEvent
+
+        event = self.get_object()
+        if event.guests.exists():
+            return Response(
+                {"detail": "This event has guests. Archive it instead of deleting."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        if AuditEvent.objects.filter(event=event).exists():
+            return Response(
+                {"detail": "This event has activity history. Archive it instead of deleting."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        write_audit(
+            organization=event.organization,
+            actor_type="user",
+            actor_id=str(request.user.id),
+            action="event.deleted",
+            result="success",
+            details={"slug": event.slug, "name": event.name, "event_id": str(event.id)},
+        )
+        event.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=["post"], url_path="transition")
     def transition(self, request, org_slug=None, slug=None):
         """POST /api/v1/orgs/<org_slug>/events/<event_slug>/transition/

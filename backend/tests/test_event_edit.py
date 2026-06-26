@@ -2,7 +2,9 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.audit.services import write_audit
 from apps.events.models import Event, EventSlugAlias
+from apps.guests.models import Guest
 from apps.orgs.models import Organization, OrganizationMembership
 from apps.shorturls.models import ShortUrl
 
@@ -83,3 +85,37 @@ def test_public_detail_follows_alias(setup):
     resp = APIClient().get(f"/api/v1/e/{org.slug}/old-slug/")
     assert resp.status_code == 200
     assert resp.json()["slug"] == event.slug  # canonical, not the alias
+
+
+@pytest.mark.django_db
+def test_delete_empty_event_succeeds(setup):
+    client, org, _user, event, _other = setup
+    resp = client.delete(url(org, event))
+    assert resp.status_code == 204
+    assert not Event.objects.filter(pk=event.pk).exists()
+
+
+@pytest.mark.django_db
+def test_delete_blocked_when_event_has_guests(setup):
+    client, org, _user, event, _other = setup
+    Guest.objects.create(
+        organization=org, event=event, guest_type="pre_registered", entry_token="t1"
+    )
+    resp = client.delete(url(org, event))
+    assert resp.status_code == 409
+    assert Event.objects.filter(pk=event.pk).exists()
+
+
+@pytest.mark.django_db
+def test_delete_blocked_when_event_has_audit_history(setup):
+    client, org, _user, event, _other = setup
+    write_audit(
+        organization=org,
+        event=event,
+        actor_type="user",
+        actor_id="x",
+        action="event.transition",
+        result="success",
+    )
+    resp = client.delete(url(org, event))
+    assert resp.status_code == 409
