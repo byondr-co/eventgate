@@ -119,3 +119,10 @@ def test_delete_blocked_when_event_has_audit_history(setup):
     )
     resp = client.delete(url(org, event))
     assert resp.status_code == 409
+
+
+@pytest.mark.django_db
+def test_public_detail_unknown_slug_returns_404(setup):
+    client, org, _user, event, _other = setup
+    resp = APIClient().get(f"/api/v1/e/{org.slug}/no-such-event/")
+    assert resp.status_code == 404

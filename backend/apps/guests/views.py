@@ -4,6 +4,7 @@ import hashlib
 from typing import ClassVar
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -413,6 +414,7 @@ class GuestDetailView(APIView):
         )
         return Response(ser.data)
 
+    @transaction.atomic
     def delete(self, request: Request, org_slug: str, event_slug: str, guest_id) -> Response:
         from apps.audit.models import AuditEvent
 

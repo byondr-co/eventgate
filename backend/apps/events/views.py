@@ -68,6 +68,7 @@ class EventViewSet(viewsets.ModelViewSet):
                 details={"slug_changed": {"from": old_slug, "to": event.slug}},
             )
 
+    @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         from apps.audit.models import AuditEvent
 
