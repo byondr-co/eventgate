@@ -390,13 +390,23 @@ Expected: backend prints `{"status": "ok", "version": "0.1.0"}`; frontend prints
 
 - [ ] **Step 3: Acceptance — live reload + in-container tests**
 
+**Settings gotcha (pin pytest to test settings):** the backend container sets
+`DJANGO_SETTINGS_MODULE=config.settings.dev`, and pytest-django lets that env var
+override the pytest-ini test settings — so in-container `pytest` would run under
+DEV (non-eager Celery, real Redis) and `test_celery_ping_task` would fail. Fix by
+pinning test settings in `backend/pyproject.toml` `[tool.pytest.ini_options]`
+(the `--ds` flag outranks the env var; host + CI unaffected — same settings as before):
+```toml
+addopts = "-ra --strict-markers --strict-config --ds=config.settings.test"
+```
+
 Run:
 ```bash
 docker compose logs --since=1m backend | grep -i "watching for file changes" && echo reload-on
 docker compose run --rm backend uv run pytest tests/test_healthcheck.py -q
 ```
 Expected: `reload-on` printed (Django autoreload active); pytest shows `4 passed`
-(connects to the `postgres` service via `POSTGRES_HOST=postgres`).
+(eager Celery via the pinned test settings; connects to the `postgres` service).
 
 - [ ] **Step 4: Tear down**
 
