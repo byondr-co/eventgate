@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import csv as _csv
 import hashlib
+import io as _io
 from typing import ClassVar
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
 from rest_framework import filters, status, viewsets
@@ -21,7 +22,7 @@ from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.common.qr import render_png
 from apps.common.tokens import hash_token, tokens_match
 from apps.devices.auth import SessionTokenAuthentication
-from apps.events.models import Event
+from apps.events.models import Event, RegistrationField
 from apps.guests.models import CsvImport, Guest
 from apps.guests.serializers import (
     CsvImportSerializer,
@@ -32,16 +33,20 @@ from apps.guests.serializers import (
 )
 from apps.guests.services import (
     MAX_CSV_BYTES,
+    PRESET_FIELDS,
     CsvParseError,
     EventNotOpen,
     RegistrationError,
     auto_detect,
+    filtered_event_guests,
     parse_csv_preview,
     register_guest,
 )
 from apps.guests.tasks import process_csv_import_task, send_qr_email_task
 from apps.orgs.models import Organization
 from apps.orgs.views import StandardPagination
+
+_EXPORT_ORDERING = {"full_name", "email", "created_at", "entry_status", "checked_in_at"}
 
 
 class PublicRegistrationView(APIView):
@@ -78,6 +83,72 @@ class PublicRegistrationView(APIView):
         return Response(body, status=status.HTTP_201_CREATED)
 
 
+class GuestExportView(APIView):
+    """POST /api/v1/orgs/<org>/events/<event>/guests/export/ — streamed CSV."""
+
+    permission_classes = (IsAuthenticated, IsOrgMember)
+
+    def post(self, request: Request, org_slug: str, event_slug: str) -> StreamingHttpResponse:
+        event = get_object_or_404(Event, organization=request.organization, slug=event_slug)
+        body = request.data if isinstance(request.data, dict) else {}
+        ids = body.get("ids")
+        filters_body = body.get("filters") or {}
+
+        if ids:
+            qs = Guest.objects.filter(organization=request.organization, event=event, id__in=ids)
+        else:
+            qs = filtered_event_guests(
+                organization=request.organization,
+                event_slug=event_slug,
+                search=filters_body.get("search", ""),
+                entry_status=filters_body.get("entry_status", ""),
+                guest_type=filters_body.get("guest_type", ""),
+            )
+        ordering = filters_body.get("ordering") or "-created_at"
+        qs = qs.order_by(ordering if ordering.lstrip("-") in _EXPORT_ORDERING else "-created_at")
+
+        reg_fields = list(
+            RegistrationField.objects.filter(event=event)
+            .exclude(field_key__in=PRESET_FIELDS)
+            .order_by("order_index", "field_key")
+        )
+        header = (
+            ["Name", "Email", "Phone/Chat"]
+            + [f.label_en for f in reg_fields]
+            + ["Type", "Entry status", "Checked in at", "Registered at"]
+        )
+
+        def stream():
+            buf = _io.StringIO()
+            writer = _csv.writer(buf)
+
+            def flush():
+                data = buf.getvalue()
+                buf.seek(0)
+                buf.truncate(0)
+                return data
+
+            writer.writerow(header)
+            yield flush()
+            for g in qs.iterator():
+                cf = g.custom_fields or {}
+                writer.writerow(
+                    [g.full_name, g.email, g.phone_or_chat]
+                    + [cf.get(f.field_key, "") for f in reg_fields]
+                    + [
+                        g.guest_type,
+                        g.entry_status,
+                        g.checked_in_at.isoformat() if g.checked_in_at else "",
+                        g.created_at.isoformat() if g.created_at else "",
+                    ]
+                )
+                yield flush()
+
+        resp = StreamingHttpResponse(stream(), content_type="text/csv")
+        resp["Content-Disposition"] = f'attachment; filename="{event_slug}-guests.csv"'
+        return resp
+
+
 class GuestListView(viewsets.GenericViewSet):
     """GET /api/v1/orgs/<org_slug>/events/<event_slug>/guests/ — staff list."""
 
@@ -88,24 +159,14 @@ class GuestListView(viewsets.GenericViewSet):
     ordering_fields = ("full_name", "email", "created_at", "entry_status", "checked_in_at")
 
     def get_queryset(self):
-        qs = Guest.objects.filter(
+        p = self.request.query_params
+        return filtered_event_guests(
             organization=self.request.organization,
-            event__slug=self.kwargs["event_slug"],
+            event_slug=self.kwargs["event_slug"],
+            search=p.get("search", ""),
+            entry_status=p.get("entry_status", ""),
+            guest_type=p.get("guest_type", ""),
         )
-        entry_status = self.request.query_params.get("entry_status")
-        if entry_status:
-            qs = qs.filter(entry_status=entry_status)
-        guest_type = self.request.query_params.get("guest_type")
-        if guest_type:
-            qs = qs.filter(guest_type=guest_type)
-        search = self.request.query_params.get("search")
-        if search:
-            qs = qs.filter(
-                Q(full_name__icontains=search)
-                | Q(email__icontains=search)
-                | Q(phone_or_chat__icontains=search)
-            )
-        return qs
 
     def list(self, request, *args, **kwargs):
         qs = self.filter_queryset(self.get_queryset())
@@ -351,6 +412,89 @@ class GuestTelegramLinkView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         return Response({"url": f"https://t.me/{bot}?start={guest.entry_token}"})
+
+
+class GuestBulkView(APIView):
+    """POST /api/v1/orgs/<org>/events/<event>/guests/bulk/ — apply one action to many guests."""
+
+    permission_classes = (IsAuthenticated, IsOrgMember, HasOrgRole)
+    required_org_roles = ("owner", "admin", "manager")
+
+    def post(self, request: Request, org_slug: str, event_slug: str) -> Response:
+        from apps.audit.models import AuditEvent
+
+        action = request.data.get("action")
+        ids = request.data.get("guest_ids") or []
+        if action not in ("void", "resend_qr", "delete"):
+            return Response({"detail": "Invalid action."}, status=status.HTTP_400_BAD_REQUEST)
+
+        found = {
+            str(g.id): g
+            for g in Guest.objects.filter(
+                organization=request.organization, event__slug=event_slug, id__in=ids
+            )
+        }
+        done = 0
+        skipped: list[dict] = []
+        errors: list[dict] = []
+        actor_id = str(request.user.id)
+
+        for raw_id in ids:
+            g = found.get(str(raw_id))
+            if g is None:
+                skipped.append({"id": str(raw_id), "reason": "not_found"})
+                continue
+            try:
+                if action == "void":
+                    previous = g.entry_status
+                    if g.entry_status != "voided":
+                        g.entry_status = "voided"
+                        g.save(update_fields=["entry_status", "updated_at"])
+                    write_audit(
+                        organization=g.organization,
+                        event=g.event,
+                        guest=g,
+                        actor_type="user",
+                        actor_id=actor_id,
+                        action="guest.voided",
+                        result="success",
+                        previous_status=previous,
+                        new_status="voided",
+                    )
+                    done += 1
+                elif action == "resend_qr":
+                    if g.guest_type != "pre_registered":
+                        skipped.append({"id": str(g.id), "reason": "walk_in"})
+                        continue
+                    if not g.email:
+                        skipped.append({"id": str(g.id), "reason": "no_email"})
+                        continue
+                    send_qr_email_task.delay(guest_id=str(g.id))
+                    done += 1
+                else:  # delete
+                    if AuditEvent.objects.filter(guest=g).exists():
+                        skipped.append({"id": str(g.id), "reason": "has_history"})
+                        continue
+                    with transaction.atomic():
+                        write_audit(
+                            organization=g.organization,
+                            event=g.event,
+                            actor_type="user",
+                            actor_id=actor_id,
+                            action="guest.deleted",
+                            result="success",
+                            details={
+                                "guest_id": str(g.id),
+                                "full_name": g.full_name,
+                                "email": g.email,
+                            },
+                        )
+                        g.delete()
+                    done += 1
+            except Exception as exc:
+                errors.append({"id": str(g.id), "error": str(exc)})
+
+        return Response({"action": action, "done": done, "skipped": skipped, "errors": errors})
 
 
 class GuestVoidView(APIView):

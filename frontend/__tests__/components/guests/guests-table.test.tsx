@@ -237,7 +237,7 @@ describe("GuestsTable frozen columns", () => {
     wrap(<GuestsTable orgSlug="o" eventSlug="e" />);
     const noHeader = screen.getByRole("columnheader", { name: "No" });
     expect(noHeader.className).toContain("sticky");
-    expect(noHeader.className).toContain("left-0");
+    expect(noHeader.className).toContain("left-8");
     expect(noHeader.className).not.toContain("border-r");
     const actionsHeader = screen.getByRole("columnheader", { name: "Actions" });
     expect(actionsHeader.className).toContain("sticky");

@@ -14,7 +14,14 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { NoGuests } from "@/lib/illustrations";
 import { useFields, type RegistrationField } from "@/lib/events";
 import { GuestEditDrawer } from "@/components/guests/guest-edit-drawer";
-import { fetchTelegramLink, useGuests, useSendQrEmail, type Guest } from "@/lib/guests";
+import { BulkActionBar } from "@/components/guests/bulk-action-bar";
+import {
+  exportGuestsCsv,
+  fetchTelegramLink,
+  useGuests,
+  useSendQrEmail,
+  type Guest,
+} from "@/lib/guests";
 import { notify } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -122,7 +129,26 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
     setEntryStatus("");
     setPage(1);
   };
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleRow = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const allOnPageSelected = rows.length > 0 && rows.every((g) => selectedIds.has(g.id));
+  const toggleAllOnPage = () =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) rows.forEach((g) => next.delete(g.id));
+      else rows.forEach((g) => next.add(g.id));
+      return next;
+    });
+  const clearSelection = () => setSelectedIds(new Set());
+
   const stickyLeft = "sticky left-0 z-10 bg-card";
+  const stickyLeftNo = "sticky left-8 z-10 bg-card";
   const stickyRight = "sticky right-0 z-10 bg-card";
 
   return (
@@ -131,13 +157,26 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
         <CardTitle>Guests {guests.data && `(${count})`}</CardTitle>
       </CardHeader>
       <CardContent>
-        <Input
-          type="search"
-          value={search}
-          onChange={(e) => onSearch(e.target.value)}
-          placeholder="Search name, email, or phone…"
-          className="mb-3 max-w-sm"
-        />
+        <div className="mb-3 flex items-center gap-2">
+          <Input
+            type="search"
+            value={search}
+            onChange={(e) => onSearch(e.target.value)}
+            placeholder="Search name, email, or phone…"
+            className="max-w-sm"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportGuestsCsv(orgSlug, eventSlug, {
+                filters: { search, entry_status: entryStatus, guest_type: guestType, ordering },
+              }).catch((e) => notify.error(e))
+            }
+          >
+            Export CSV
+          </Button>
+        </div>
         <div className="mb-4 flex flex-wrap gap-3">
           <SegmentedControl
             aria-label="Filter by guest type"
@@ -189,11 +228,27 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
         ) : null}
         {rows.length > 0 && (
           <>
+            {selectedIds.size > 0 && (
+              <BulkActionBar
+                orgSlug={orgSlug}
+                eventSlug={eventSlug}
+                selectedIds={[...selectedIds]}
+                onDone={clearSelection}
+              />
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-muted-foreground">
                   <tr className="border-b">
-                    <th className={cn(stickyLeft, "w-12 text-left font-normal py-2")}>No</th>
+                    <th className={cn(stickyLeft, "w-8 py-2")}>
+                      <input
+                        type="checkbox"
+                        aria-label="Select all on page"
+                        checked={allOnPageSelected}
+                        onChange={toggleAllOnPage}
+                      />
+                    </th>
+                    <th className={cn(stickyLeftNo, "w-12 text-left font-normal py-2")}>No</th>
                     {regFields.map((f) => (
                       <th
                         key={f.field_key}
@@ -227,7 +282,15 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                 <tbody>
                   {rows.map((g, idx) => (
                     <tr key={g.id} className="border-b">
-                      <td className={cn(stickyLeft, "py-2 text-muted-foreground")}>
+                      <td className={cn(stickyLeft, "py-2")}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${g.full_name || g.email || g.id}`}
+                          checked={selectedIds.has(g.id)}
+                          onChange={() => toggleRow(g.id)}
+                        />
+                      </td>
+                      <td className={cn(stickyLeftNo, "py-2 text-muted-foreground")}>
                         {firstRow + idx}
                       </td>
                       {regFields.map((f) => (

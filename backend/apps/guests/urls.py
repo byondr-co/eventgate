@@ -4,7 +4,9 @@ from apps.guests.views import (
     CsvImportCommitView,
     CsvImportPreviewView,
     CsvImportStatusView,
+    GuestBulkView,
     GuestDetailView,
+    GuestExportView,
     GuestListView,
     GuestQrView,
     GuestSendQrEmailView,
@@ -26,9 +28,19 @@ urlpatterns = [
         name="guest-list",
     ),
     path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/bulk/",
+        GuestBulkView.as_view(),
+        name="guest-bulk",
+    ),
+    path(
         "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/sync/",
         GuestSyncView.as_view(),
         name="guest-sync",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/guests/export/",
+        GuestExportView.as_view(),
+        name="guest-export",
     ),
     path(
         "orgs/<slug:org_slug>/events/<slug:event_slug>/imports/preview/",
