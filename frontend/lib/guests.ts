@@ -151,3 +151,52 @@ export function useDeleteGuest(orgSlug: string, eventSlug: string) {
     onSuccess: () => invalidateGuests(qc, orgSlug, eventSlug),
   });
 }
+
+export type BulkAction = "void" | "resend_qr" | "delete";
+export type BulkResult = {
+  action: BulkAction;
+  done: number;
+  skipped: { id: string; reason: string }[];
+  errors: { id: string; error: string }[];
+};
+
+export function useBulkGuests(orgSlug: string, eventSlug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ action, guestIds }: { action: BulkAction; guestIds: string[] }) =>
+      apiFetch<BulkResult>(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/bulk/`, {
+        method: "POST",
+        body: JSON.stringify({ action, guest_ids: guestIds }),
+      }),
+    onSuccess: () => invalidateGuests(qc, orgSlug, eventSlug),
+  });
+}
+
+export type ExportOpts = {
+  filters?: { search?: string; entry_status?: string; guest_type?: string; ordering?: string };
+  ids?: string[];
+};
+
+export async function exportGuestsCsv(
+  orgSlug: string,
+  eventSlug: string,
+  opts: ExportOpts,
+): Promise<void> {
+  // Raw fetch (not apiFetch — we need the CSV blob, not JSON). Cookie-auth via credentials.
+  const res = await fetch(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/guests/export/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(opts),
+  });
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${eventSlug}-guests.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
