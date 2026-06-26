@@ -21,8 +21,21 @@ import {
 
 type Role = "owner" | "admin" | "manager" | "staff";
 
+const PAGE_SIZES = [25, 50, 100];
+const PAGE_SIZE_KEY = "members.pageSize";
+
+function loadPageSize(): number {
+  if (typeof window === "undefined") return PAGE_SIZES[0];
+  const saved = Number(window.localStorage.getItem(PAGE_SIZE_KEY));
+  return PAGE_SIZES.includes(saved) ? saved : PAGE_SIZES[0];
+}
+
 export function MembersTable({ slug }: { slug: string }) {
-  const members = useMembers(slug);
+  const [ordering, setOrdering] = useState("user__email");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(loadPageSize);
+
+  const members = useMembers(slug, { ordering, page, pageSize });
   const invites = usePendingInvites(slug);
   const invite = useSendInvite(slug);
   const updateRole = useUpdateMembership(slug);
@@ -33,6 +46,17 @@ export function MembersTable({ slug }: { slug: string }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("admin");
   const [success, setSuccess] = useState<string | null>(null);
+
+  const count = members.data?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+
+  const toggleSort = (field: string) => setOrdering((o) => (o === field ? `-${field}` : field));
+
+  const onPageSize = (v: number) => {
+    setPageSize(v);
+    setPage(1);
+    if (typeof window !== "undefined") window.localStorage.setItem(PAGE_SIZE_KEY, String(v));
+  };
 
   const onInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,9 +108,33 @@ export function MembersTable({ slug }: { slug: string }) {
             <table className="w-full text-sm">
               <thead className="text-muted-foreground">
                 <tr className="border-b">
-                  <th className="text-left font-normal py-2">Email</th>
-                  <th className="text-left font-normal py-2">Role</th>
-                  <th className="text-left font-normal py-2">Joined</th>
+                  <th className="text-left font-normal py-2">
+                    <button
+                      type="button"
+                      className="hover:underline"
+                      onClick={() => toggleSort("user__email")}
+                    >
+                      Email
+                    </button>
+                  </th>
+                  <th className="text-left font-normal py-2">
+                    <button
+                      type="button"
+                      className="hover:underline"
+                      onClick={() => toggleSort("role")}
+                    >
+                      Role
+                    </button>
+                  </th>
+                  <th className="text-left font-normal py-2">
+                    <button
+                      type="button"
+                      className="hover:underline"
+                      onClick={() => toggleSort("accepted_at")}
+                    >
+                      Joined
+                    </button>
+                  </th>
                   <th className="text-right font-normal py-2">Actions</th>
                 </tr>
               </thead>
@@ -159,6 +207,46 @@ export function MembersTable({ slug }: { slug: string }) {
           {removeMember.isError && (
             <p className="mt-2 text-sm text-destructive">{extractApiError(removeMember.error)}</p>
           )}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <label htmlFor="mem-page-size" className="text-muted-foreground">
+                Rows per page
+              </label>
+              <Select
+                id="mem-page-size"
+                value={pageSize}
+                onChange={(e) => onPageSize(Number(e.target.value))}
+                className="w-auto"
+              >
+                {PAGE_SIZES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <span className="text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
