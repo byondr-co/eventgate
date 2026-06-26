@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
-from rest_framework import status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
@@ -84,6 +84,8 @@ class GuestListView(viewsets.GenericViewSet):
     serializer_class = GuestSerializer
     pagination_class = StandardPagination
     permission_classes = (IsAuthenticated, IsOrgMember)
+    filter_backends = (filters.OrderingFilter,)
+    ordering_fields = ("full_name", "email", "created_at", "entry_status", "checked_in_at")
 
     def get_queryset(self):
         qs = Guest.objects.filter(
