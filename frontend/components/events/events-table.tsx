@@ -79,7 +79,10 @@ export function EventsTable({ orgSlug }: { orgSlug: string }) {
     setPage(1);
     if (typeof window !== "undefined") window.localStorage.setItem(PAGE_SIZE_KEY, String(v));
   };
-  const toggleSort = (field: string) => setOrdering((o) => (o === field ? `-${field}` : field));
+  const toggleSort = (field: string) => {
+    setOrdering((o) => (o === field ? `-${field}` : field));
+    setPage(1);
+  };
 
   return (
     <Card>

@@ -50,7 +50,10 @@ export function MembersTable({ slug }: { slug: string }) {
   const count = members.data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
 
-  const toggleSort = (field: string) => setOrdering((o) => (o === field ? `-${field}` : field));
+  const toggleSort = (field: string) => {
+    setOrdering((o) => (o === field ? `-${field}` : field));
+    setPage(1);
+  };
 
   const onPageSize = (v: number) => {
     setPageSize(v);
