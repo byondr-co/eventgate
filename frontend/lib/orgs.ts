@@ -53,10 +53,21 @@ export function useCreateOrg() {
   });
 }
 
-export function useMembers(slug: string) {
+export type MemberListFilters = {
+  ordering?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export function useMembers(slug: string, filters: MemberListFilters = {}) {
+  const { ordering = "", page = 1, pageSize = 25 } = filters;
   return useQuery({
-    queryKey: ["orgs", slug, "members"],
-    queryFn: () => apiFetch<Paginated<Member>>(`/api/v1/orgs/${slug}/members/`),
+    queryKey: ["orgs", slug, "members", ordering, page, pageSize],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+      if (ordering) params.set("ordering", ordering);
+      return apiFetch<Paginated<Member>>(`/api/v1/orgs/${slug}/members/?${params.toString()}`);
+    },
     enabled: !!slug,
   });
 }
