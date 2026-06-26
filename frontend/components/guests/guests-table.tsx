@@ -148,6 +148,7 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
   const clearSelection = () => setSelectedIds(new Set());
 
   const stickyLeft = "sticky left-0 z-10 bg-card";
+  const stickyLeftNo = "sticky left-8 z-10 bg-card";
   const stickyRight = "sticky right-0 z-10 bg-card";
 
   return (
@@ -247,7 +248,7 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                         onChange={toggleAllOnPage}
                       />
                     </th>
-                    <th className={cn(stickyLeft, "w-12 text-left font-normal py-2")}>No</th>
+                    <th className={cn(stickyLeftNo, "w-12 text-left font-normal py-2")}>No</th>
                     {regFields.map((f) => (
                       <th
                         key={f.field_key}
@@ -289,7 +290,7 @@ export function GuestsTable({ orgSlug, eventSlug }: { orgSlug: string; eventSlug
                           onChange={() => toggleRow(g.id)}
                         />
                       </td>
-                      <td className={cn(stickyLeft, "py-2 text-muted-foreground")}>
+                      <td className={cn(stickyLeftNo, "py-2 text-muted-foreground")}>
                         {firstRow + idx}
                       </td>
                       {regFields.map((f) => (
