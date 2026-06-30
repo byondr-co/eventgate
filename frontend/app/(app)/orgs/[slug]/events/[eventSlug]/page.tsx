@@ -3,10 +3,16 @@
 import { useParams } from "next/navigation";
 
 import { EventStatusCard } from "@/components/events/event-status-card";
+import { GateUtilizationPanel } from "@/components/events/gate-utilization-panel";
+import { LiveStatusBadge } from "@/components/events/live-status-badge";
+import { PeakWindowPanel } from "@/components/events/peak-window-panel";
 import { PublicUrlCard } from "@/components/events/public-url-card";
+import { RecentActivityPanel } from "@/components/events/recent-activity-panel";
 import { StatsWidget } from "@/components/events/stats-widget";
+import { ThroughputPanel } from "@/components/events/throughput-panel";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEventLive } from "@/lib/event-live";
 import { useEvent } from "@/lib/events";
 
 export function EventDashboardSkeleton() {
@@ -49,22 +55,35 @@ export function EventDashboardSkeleton() {
 export default function EventDashboardPage() {
   const { slug, eventSlug } = useParams<{ slug: string; eventSlug: string }>();
   const { data: event, isLoading } = useEvent(slug, eventSlug);
+  const live = useEventLive(slug, eventSlug);
 
   if (isLoading) return <EventDashboardSkeleton />;
   if (!event) return <p className="text-sm text-destructive">Event not found.</p>;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{event.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {event.slug} · {event.status} · {event.venue || "—"}
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">{event.name}</h1>
+          <p className="text-sm text-muted-foreground">
+            {event.slug} · {event.status} · {event.venue || "—"}
+          </p>
+        </div>
+        <LiveStatusBadge state={live.connectionState} />
       </div>
 
       <EventStatusCard event={event} orgSlug={slug} eventSlug={eventSlug} />
 
-      <StatsWidget orgSlug={slug} eventSlug={eventSlug} />
+      <StatsWidget orgSlug={slug} eventSlug={eventSlug} snapshot={live.snapshot} />
+
+      <div className="space-y-4">
+        <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr_0.9fr]">
+          <ThroughputPanel analytics={live.snapshot?.analytics} />
+          <GateUtilizationPanel analytics={live.snapshot?.analytics} />
+          <PeakWindowPanel analytics={live.snapshot?.analytics} />
+        </div>
+        <RecentActivityPanel items={live.snapshot?.recent_activity} />
+      </div>
 
       <PublicUrlCard orgSlug={slug} eventSlug={eventSlug} />
     </div>
