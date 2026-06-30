@@ -12,7 +12,7 @@ vi.mock("@/lib/event-stats", async () => {
 });
 
 import { useEventLive } from "@/lib/event-live";
-import { useEventStats, type TrendPoint } from "@/lib/event-stats";
+import { useEventStats, type EventLiveSnapshot, type TrendPoint } from "@/lib/event-stats";
 
 type Listener = (event: MessageEvent<string>) => void;
 
@@ -60,9 +60,9 @@ function queryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
 }
 
-function liveSnapshot() {
+function liveSnapshot(checkedIn = 1): EventLiveSnapshot {
   return {
-    checked_in: 1,
+    checked_in: checkedIn,
     registered_not_arrived: 2,
     manual_review: 0,
     displayed: 0,
@@ -157,6 +157,82 @@ it("falls back to polling after repeated errors and closes the source", async ()
     enabled: true,
     refetchInterval: 5_000,
   });
+});
+
+it("prefers polling data after repeated errors when an SSE snapshot already exists", async () => {
+  const qc = queryClient();
+  const { result } = renderHook(() => useEventLive("acme", "launch"), {
+    wrapper: wrapper(qc),
+  });
+
+  act(() => {
+    FakeEventSource.instances[0].onopen?.();
+    FakeEventSource.instances[0].emit("snapshot", liveSnapshot(1));
+  });
+
+  await waitFor(() => expect(result.current.snapshot?.checked_in).toBe(1));
+
+  mockUseEventStats.mockReturnValue({ data: liveSnapshot(9), isLoading: false } as ReturnType<
+    typeof useEventStats
+  >);
+
+  act(() => {
+    FakeEventSource.instances[0].onerror?.();
+    FakeEventSource.instances[0].onerror?.();
+    FakeEventSource.instances[0].onerror?.();
+  });
+
+  await waitFor(() => expect(result.current.connectionState).toBe("polling"));
+  expect(result.current.snapshot?.checked_in).toBe(9);
+});
+
+it("clears the previous snapshot and reconnects when event slugs change", async () => {
+  const qc = queryClient();
+  const { result, rerender } = renderHook(
+    ({ orgSlug, eventSlug }) => useEventLive(orgSlug, eventSlug),
+    {
+      initialProps: { orgSlug: "acme", eventSlug: "launch" },
+      wrapper: wrapper(qc),
+    },
+  );
+
+  act(() => {
+    FakeEventSource.instances[0].onopen?.();
+    FakeEventSource.instances[0].emit("snapshot", liveSnapshot(1));
+  });
+
+  await waitFor(() => expect(result.current.snapshot?.checked_in).toBe(1));
+
+  rerender({ orgSlug: "beta", eventSlug: "expo" });
+
+  await waitFor(() => expect(FakeEventSource.instances).toHaveLength(2));
+  expect(FakeEventSource.instances[0].closed).toBe(true);
+  expect(FakeEventSource.instances[1].url).toBe("/api/v1/orgs/beta/events/expo/live/");
+  await waitFor(() => expect(result.current.snapshot).toBeUndefined());
+});
+
+it("clears the previous snapshot when event slugs become missing", async () => {
+  const qc = queryClient();
+  const { result, rerender } = renderHook(
+    ({ orgSlug, eventSlug }) => useEventLive(orgSlug, eventSlug),
+    {
+      initialProps: { orgSlug: "acme", eventSlug: "launch" },
+      wrapper: wrapper(qc),
+    },
+  );
+
+  act(() => {
+    FakeEventSource.instances[0].onopen?.();
+    FakeEventSource.instances[0].emit("snapshot", liveSnapshot(1));
+  });
+
+  await waitFor(() => expect(result.current.snapshot?.checked_in).toBe(1));
+
+  rerender({ orgSlug: "", eventSlug: "" });
+
+  expect(FakeEventSource.instances[0].closed).toBe(true);
+  expect(FakeEventSource.instances).toHaveLength(1);
+  await waitFor(() => expect(result.current.snapshot).toBeUndefined());
 });
 
 it("uses polling immediately when EventSource is unavailable", async () => {

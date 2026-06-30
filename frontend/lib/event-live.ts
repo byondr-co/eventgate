@@ -11,6 +11,12 @@ type InvalidatePayload = {
   keys?: string[];
 };
 
+type ScopedSnapshot = {
+  orgSlug: string;
+  eventSlug: string;
+  data: EventLiveSnapshot;
+};
+
 const FAILURE_LIMIT = 3;
 
 function parseJson<T>(data: string): T | undefined {
@@ -49,32 +55,64 @@ function invalidateLiveKeys(
 
 export function useEventLive(orgSlug: string, eventSlug: string) {
   const queryClient = useQueryClient();
-  const [snapshot, setSnapshot] = useState<EventLiveSnapshot | undefined>();
+  const [snapshot, setSnapshot] = useState<ScopedSnapshot | undefined>();
   const [connectionState, setConnectionState] = useState<EventLiveConnectionState>("connecting");
   const failures = useRef(0);
+  const previousScope = useRef<string | undefined>(undefined);
+  const currentSnapshot =
+    snapshot?.orgSlug === orgSlug && snapshot.eventSlug === eventSlug ? snapshot.data : undefined;
 
   const polling = useEventStats(orgSlug, eventSlug, {
-    enabled: connectionState === "polling" || !snapshot,
+    enabled: connectionState === "polling" || !currentSnapshot,
     refetchInterval: connectionState === "polling" ? 5_000 : false,
   });
 
   useEffect(() => {
-    if (!orgSlug || !eventSlug) return;
+    failures.current = 0;
+    const scope = `${orgSlug}\u0000${eventSlug}`;
+    const lastScope = previousScope.current;
+    const shouldClearSnapshot =
+      !orgSlug || !eventSlug || (lastScope !== undefined && lastScope !== scope);
+    previousScope.current = scope;
+    const clearSnapshotTimer = shouldClearSnapshot
+      ? setTimeout(() => {
+          setSnapshot((previous) => {
+            if (!previous) return previous;
+            if (!orgSlug || !eventSlug) return undefined;
+            if (previous.orgSlug === orgSlug && previous.eventSlug === eventSlug) return previous;
+            return undefined;
+          });
+        }, 0)
+      : undefined;
+
+    if (!orgSlug || !eventSlug) {
+      const connectingTimer = setTimeout(() => setConnectionState("connecting"), 0);
+      return () => {
+        if (clearSnapshotTimer) clearTimeout(clearSnapshotTimer);
+        clearTimeout(connectingTimer);
+      };
+    }
 
     if (typeof window === "undefined") {
       const pollingTimer = setTimeout(() => setConnectionState("polling"), 0);
-      return () => clearTimeout(pollingTimer);
+      return () => {
+        if (clearSnapshotTimer) clearTimeout(clearSnapshotTimer);
+        clearTimeout(pollingTimer);
+      };
     }
 
     if (typeof window.EventSource === "undefined") {
       const pollingTimer = window.setTimeout(() => setConnectionState("polling"), 0);
-      return () => window.clearTimeout(pollingTimer);
+      return () => {
+        if (clearSnapshotTimer) clearTimeout(clearSnapshotTimer);
+        window.clearTimeout(pollingTimer);
+      };
     }
 
-    failures.current = 0;
+    let active = true;
     let opened = false;
     const connectingTimer = window.setTimeout(() => {
-      if (!opened) setConnectionState("connecting");
+      if (active && !opened) setConnectionState("connecting");
     }, 0);
 
     const source = new window.EventSource(`/api/v1/orgs/${orgSlug}/events/${eventSlug}/live/`, {
@@ -82,6 +120,7 @@ export function useEventLive(orgSlug: string, eventSlug: string) {
     });
 
     source.onopen = () => {
+      if (!active) return;
       opened = true;
       window.clearTimeout(connectingTimer);
       failures.current = 0;
@@ -89,6 +128,7 @@ export function useEventLive(orgSlug: string, eventSlug: string) {
     };
 
     source.onerror = () => {
+      if (!active) return;
       failures.current += 1;
       if (failures.current >= FAILURE_LIMIT) {
         source.close();
@@ -99,31 +139,39 @@ export function useEventLive(orgSlug: string, eventSlug: string) {
     };
 
     source.addEventListener("snapshot", (event) => {
+      if (!active) return;
       const nextSnapshot = parseJson<EventLiveSnapshot>(event.data);
       if (!nextSnapshot) return;
-      setSnapshot(nextSnapshot);
+      setSnapshot({ orgSlug, eventSlug, data: nextSnapshot });
       setConnectionState("live");
     });
 
     source.addEventListener("invalidate", (event) => {
+      if (!active) return;
       const payload = parseJson<InvalidatePayload>(event.data);
       if (!payload || !Array.isArray(payload.keys)) return;
       invalidateLiveKeys(queryClient, orgSlug, eventSlug, payload.keys);
     });
 
     return () => {
+      active = false;
+      if (clearSnapshotTimer) clearTimeout(clearSnapshotTimer);
       window.clearTimeout(connectingTimer);
       source.close();
     };
   }, [eventSlug, orgSlug, queryClient]);
 
+  const pollingSnapshot = polling.data as EventLiveSnapshot | undefined;
+  const returnedSnapshot =
+    connectionState === "polling" ? pollingSnapshot : (currentSnapshot ?? pollingSnapshot);
+
   return useMemo(
     () => ({
-      snapshot: snapshot ?? (polling.data as EventLiveSnapshot | undefined),
+      snapshot: returnedSnapshot,
       connectionState,
       isPollingFallback: connectionState === "polling",
-      isLoading: !snapshot && polling.isLoading,
+      isLoading: !returnedSnapshot && polling.isLoading,
     }),
-    [connectionState, polling.data, polling.isLoading, snapshot],
+    [connectionState, polling.isLoading, returnedSnapshot],
   );
 }
