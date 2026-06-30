@@ -17,11 +17,12 @@ ENV PATH="/app/.venv/bin:${PATH}"
 COPY . .
 RUN python manage.py collectstatic --noinput --settings=config.settings.prod || true
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", \
-     "--bind", "0.0.0.0:8000", \
-     "--workers", "3", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-"]
+CMD ["uvicorn", "config.asgi:application", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "2", \
+     "--proxy-headers", \
+     "--forwarded-allow-ips", "*"]
 
 # --- Local development image -------------------------------------------------
 # All dependencies INCLUDING dev (pytest/ruff/mypy) so the stack can run tests
