@@ -7,6 +7,7 @@ from apps.events.views import (
     PublicEventDetailView,
     RegistrationFieldViewSet,
 )
+from apps.events.views_live import EventLiveView
 from apps.events.views_stats import EventStatsView
 
 event_list = EventViewSet.as_view({"get": "list", "post": "create"})
@@ -64,6 +65,11 @@ urlpatterns = [
         "orgs/<slug:org_slug>/events/<slug:event_slug>/stats/",
         EventStatsView.as_view(),
         name="event-stats",
+    ),
+    path(
+        "orgs/<slug:org_slug>/events/<slug:event_slug>/live/",
+        EventLiveView,
+        name="event-live",
     ),
     path(
         "orgs/<slug:org_slug>/events/<slug:event_slug>/banner/",
