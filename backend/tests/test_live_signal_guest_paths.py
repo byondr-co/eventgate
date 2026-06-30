@@ -3,6 +3,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.audit.services import write_audit
 from apps.devices.models import ScannerDevice
 from apps.events.models import Event, RegistrationField
 from apps.guests.models import CsvImport, Guest
@@ -126,7 +127,7 @@ def test_guest_delete_schedules_live_publish(monkeypatch, env, authed_client):
     ]
 
 
-def test_guest_bulk_action_schedules_one_live_publish(monkeypatch, env, authed_client):
+def test_guest_bulk_void_schedules_one_live_publish(monkeypatch, env, authed_client):
     org, _, event = env
     guests = [make_guest(org, event, entry_token=f"bulk-{idx}") for idx in range(2)]
     publishes = []
@@ -149,6 +150,86 @@ def test_guest_bulk_action_schedules_one_live_publish(monkeypatch, env, authed_c
             "keys": ("stats", "audit", "guests_count"),
         }
     ]
+
+
+def test_guest_bulk_delete_schedules_per_guest_and_aggregate_live_publish(
+    monkeypatch, env, authed_client
+):
+    org, user, event = env
+    deletable_one = make_guest(org, event, entry_token="bulk-delete-1")
+    historied = make_guest(org, event, entry_token="bulk-delete-history")
+    deletable_two = make_guest(org, event, entry_token="bulk-delete-2")
+    write_audit(
+        organization=org,
+        event=event,
+        guest=historied,
+        actor_type="user",
+        actor_id=str(user.id),
+        action="checkin.success",
+        result="success",
+    )
+    publishes = []
+    monkeypatch.setattr(
+        "apps.guests.views.schedule_event_changed", lambda **kw: publishes.append(kw)
+    )
+
+    response = authed_client.post(
+        bulk_url(org, event),
+        {
+            "action": "delete",
+            "guest_ids": [
+                str(deletable_one.id),
+                str(historied.id),
+                str(deletable_two.id),
+            ],
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["done"] == 2
+    assert response.json()["skipped"] == [{"id": str(historied.id), "reason": "has_history"}]
+    assert publishes == [
+        {
+            "event_id": event.id,
+            "reason": "guest.deleted",
+            "keys": ("stats", "audit", "guests_count"),
+        },
+        {
+            "event_id": event.id,
+            "reason": "guest.deleted",
+            "keys": ("stats", "audit", "guests_count"),
+        },
+        {
+            "event_id": event.id,
+            "reason": "guest.bulk_action",
+            "keys": ("stats", "audit", "guests_count"),
+        },
+    ]
+
+
+def test_guest_bulk_resend_qr_does_not_publish_live_invalidation(monkeypatch, env, authed_client):
+    org, _, event = env
+    guest = make_guest(org, event, email="guest@example.com")
+    resends = []
+    publishes = []
+    monkeypatch.setattr(
+        "apps.guests.views.send_qr_email_task.delay", lambda **kw: resends.append(kw)
+    )
+    monkeypatch.setattr(
+        "apps.guests.views.schedule_event_changed", lambda **kw: publishes.append(kw)
+    )
+
+    response = authed_client.post(
+        bulk_url(org, event),
+        {"action": "resend_qr", "guest_ids": [str(guest.id)]},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["done"] == 1
+    assert resends == [{"guest_id": str(guest.id)}]
+    assert publishes == []
 
 
 def test_guest_bulk_no_done_does_not_publish(monkeypatch, env, authed_client):

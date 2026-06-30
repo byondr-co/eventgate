@@ -473,7 +473,6 @@ class GuestBulkView(APIView):
                         skipped.append({"id": str(g.id), "reason": "no_email"})
                         continue
                     send_qr_email_task.delay(guest_id=str(g.id))
-                    publish_event_id = publish_event_id or g.event_id
                     done += 1
                 else:  # delete
                     if AuditEvent.objects.filter(guest=g).exists():
@@ -495,6 +494,11 @@ class GuestBulkView(APIView):
                             },
                         )
                         g.delete()
+                        schedule_event_changed(
+                            event_id=deleted_event_id,
+                            reason="guest.deleted",
+                            keys=("stats", "audit", "guests_count"),
+                        )
                     publish_event_id = publish_event_id or deleted_event_id
                     done += 1
             except Exception as exc:
