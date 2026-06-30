@@ -21,10 +21,12 @@ from typing import Any
 from django.db import transaction
 from django.utils import timezone
 
+from apps.analytics.services import schedule_metric_increment
 from apps.audit.services import write_audit
 from apps.common.idempotency import already_seen, remember
 from apps.common.locks import advisory_xact_lock
 from apps.devices.models import ScannerDevice
+from apps.events.live_publish import schedule_event_changed
 from apps.guests.models import Guest
 from apps.guests.transitions import InvalidTransition, apply_entry_transition
 
@@ -109,6 +111,18 @@ def perform_checkin(
                 scanner=scanner_label,
                 entry_token=token[:32],
             )
+            schedule_metric_increment(
+                organization_id=device.organization_id,
+                event_id=device.event_id,
+                counter="checkins",
+                gate=gate,
+                scanner=scanner_label,
+            )
+            schedule_event_changed(
+                event_id=device.event_id,
+                reason="checkin.success",
+                keys=("stats", "audit", "guests_count"),
+            )
 
     if duplicate:
         write_audit(
@@ -150,6 +164,30 @@ def perform_checkin(
                     ),
                 },
             )
+            schedule_metric_increment(
+                organization_id=device.organization_id,
+                event_id=device.event_id,
+                counter="conflicts",
+                gate=gate,
+                scanner=scanner_label,
+            )
+            schedule_event_changed(
+                event_id=device.event_id,
+                reason="checkin.conflict",
+                keys=("stats", "audit", "helpdesk"),
+            )
+        schedule_metric_increment(
+            organization_id=device.organization_id,
+            event_id=device.event_id,
+            counter="duplicates",
+            gate=gate,
+            scanner=scanner_label,
+        )
+        schedule_event_changed(
+            event_id=device.event_id,
+            reason="checkin.duplicate",
+            keys=("stats", "audit", "helpdesk"),
+        )
         raise CheckinFailure(
             {
                 "status": "duplicate",

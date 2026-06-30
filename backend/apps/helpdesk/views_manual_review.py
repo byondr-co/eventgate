@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from apps.audit.services import write_audit
 from apps.common.permissions import IsOrgMember
+from apps.events.live_publish import schedule_event_changed
 from apps.events.models import Event
 from apps.guests.models import Guest
 from apps.guests.transitions import InvalidTransition, apply_entry_transition
@@ -53,6 +54,11 @@ class ManualReviewResolveView(APIView):
             previous_status="manual_review",
             new_status=target,
             details={"action": action, "notes": notes, "guest_id": str(guest.id)},
+        )
+        schedule_event_changed(
+            event_id=event.id,
+            reason="helpdesk.manual_review_resolved",
+            keys=("stats", "audit", "helpdesk", "manual_review", "guests_count"),
         )
         return Response(
             {

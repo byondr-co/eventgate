@@ -7,6 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.services import write_audit
+from apps.events.live_publish import schedule_event_changed
 from apps.guests.models import Guest
 from apps.guests.transitions import InvalidTransition, apply_entry_transition
 from apps.helpdesk.models import HelpDeskTicketState
@@ -34,6 +35,11 @@ def claim_ticket(*, ticket: HelpDeskTicketState, user) -> HelpDeskTicketState:
         result="success",
         details={"ticket_id": ticket.id, "audit_event_id": str(ticket.audit_event_id)},
     )
+    schedule_event_changed(
+        event_id=ticket.event_id,
+        reason="helpdesk.ticket_claimed",
+        keys=("stats", "audit", "helpdesk"),
+    )
     return ticket
 
 
@@ -51,6 +57,11 @@ def release_ticket(*, ticket: HelpDeskTicketState, user) -> HelpDeskTicketState:
         action="helpdesk.ticket_released",
         result="success",
         details={"ticket_id": ticket.id, "audit_event_id": str(ticket.audit_event_id)},
+    )
+    schedule_event_changed(
+        event_id=ticket.event_id,
+        reason="helpdesk.ticket_released",
+        keys=("stats", "audit", "helpdesk"),
     )
     return ticket
 
@@ -87,6 +98,11 @@ def resolve_ticket(
             "action": action,
             "notes": notes,
         },
+    )
+    schedule_event_changed(
+        event_id=ticket.event_id,
+        reason="helpdesk.ticket_resolved",
+        keys=("stats", "audit", "helpdesk", "manual_review"),
     )
     return ticket
 
@@ -130,4 +146,9 @@ def _escalate_guest_to_manual_review(*, ticket: HelpDeskTicketState, user, notes
             "audit_event_id": str(ticket.audit_event_id),
             "notes": notes,
         },
+    )
+    schedule_event_changed(
+        event_id=ticket.event_id,
+        reason="helpdesk.manual_review_escalated",
+        keys=("stats", "audit", "helpdesk", "manual_review", "guests_count"),
     )

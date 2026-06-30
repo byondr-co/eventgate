@@ -12,8 +12,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.analytics.services import schedule_metric_increment
 from apps.audit.services import write_audit
 from apps.devices.auth import SessionTokenAuthentication
+from apps.events.live_publish import schedule_event_changed
 from apps.helpdesk.models import HelpDeskTicketState
 
 
@@ -67,5 +69,17 @@ class EscalationView(APIView):
                 organization=device.organization,
                 event=device.event,
                 claim_status="open",
+            )
+            schedule_metric_increment(
+                organization_id=device.organization_id,
+                event_id=device.event_id,
+                counter="escalations",
+                gate="",
+                scanner=device.label,
+            )
+            schedule_event_changed(
+                event_id=device.event_id,
+                reason="checkin.help_desk_escalation",
+                keys=("stats", "audit", "helpdesk"),
             )
         return Response({"escalation_id": str(audit.id)}, status=201)
