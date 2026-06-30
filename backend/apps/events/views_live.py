@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from typing import Any
 
 import redis.asyncio as redis_async
@@ -47,23 +48,28 @@ def _resolve_live_event(request, *, org_slug: str, event_slug: str) -> Event:
 
 def _snapshot_for_event_id(event_id: Any) -> tuple[dict[str, Any], str]:
     event = Event.objects.get(id=event_id)
-    return build_event_live_snapshot(event), event_live_etag(event)
+    now = timezone.now()
+    return build_event_live_snapshot(event, now=now), event_live_etag(event, now=now)
 
 
 async def _stream_event(event_id: Any) -> AsyncIterator[str]:
-    snapshot, etag = await sync_to_async(_snapshot_for_event_id)(event_id)
-    yield format_sse("snapshot", snapshot, event_id=etag)
-
     client = redis_async.from_url(
         settings.REDIS_URL,
         decode_responses=True,
         socket_connect_timeout=settings.REDIS_PUBLISH_SOCKET_CONNECT_TIMEOUT,
         socket_timeout=settings.REDIS_PUBLISH_SOCKET_TIMEOUT,
     )
-    pubsub = client.pubsub()
+    pubsub: Any | None = None
     channel = event_live_channel(event_id)
-    await pubsub.subscribe(channel)
+    subscribed = False
     try:
+        pubsub = client.pubsub()
+        await pubsub.subscribe(channel)
+        subscribed = True
+
+        snapshot, etag = await sync_to_async(_snapshot_for_event_id)(event_id)
+        yield format_sse("snapshot", snapshot, event_id=etag)
+
         while True:
             msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=25.0)
             if msg is None:
@@ -77,9 +83,14 @@ async def _stream_event(event_id: Any) -> AsyncIterator[str]:
             snapshot, etag = await sync_to_async(_snapshot_for_event_id)(event_id)
             yield format_sse("snapshot", snapshot, event_id=etag)
     finally:
-        await pubsub.unsubscribe(channel)
-        await pubsub.close()
-        await client.aclose()
+        if pubsub is not None:
+            if subscribed:
+                with suppress(Exception):
+                    await pubsub.unsubscribe(channel)
+            with suppress(Exception):
+                await pubsub.close()
+        with suppress(Exception):
+            await client.aclose()
 
 
 async def EventLiveView(request, org_slug: str, event_slug: str):
