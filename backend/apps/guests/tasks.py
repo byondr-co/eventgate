@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from apps.audit.services import write_audit
 from apps.common.qr import render_png
+from apps.events.live_publish import schedule_event_changed
 from apps.guests.models import CsvImport, Guest
 from apps.notifications.models import NotificationDispatch
 
@@ -212,6 +213,11 @@ def process_csv_import_task(*, import_id: str) -> str:
                 "completed_at",
                 "error_report",
             ]
+        )
+        schedule_event_changed(
+            event_id=ci.event_id,
+            reason="csv_import.complete",
+            keys=("stats", "audit", "guests_count"),
         )
 
         return f"complete:{imported}/{total}"

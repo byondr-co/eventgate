@@ -26,9 +26,11 @@ from django.conf import settings
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 
+from apps.analytics.services import schedule_metric_increment
 from apps.audit.services import write_audit
 from apps.common.locks import advisory_xact_lock
 from apps.common.tokens import generate_token
+from apps.events.live_publish import schedule_event_changed
 from apps.events.models import Event
 from apps.guests.models import Guest
 from apps.guests.transitions import (
@@ -135,6 +137,11 @@ def get_or_create_displayed(*, device, gate: str, scanner_label: str) -> tuple[G
         scanner=scanner_label,
         entry_token=token[:32],
     )
+    schedule_event_changed(
+        event_id=device.event_id,
+        reason="walkin.display.create",
+        keys=("stats", "audit", "guests_count"),
+    )
     return guest, build_claim_url(event=device.event, token=token)
 
 
@@ -200,6 +207,18 @@ def claim_walkin(*, org_slug: str, event_slug: str, token: str, device_id: str =
         new_status="checked_in",
         entry_token=token[:32],
     )
+    schedule_metric_increment(
+        organization_id=guest.organization_id,
+        event_id=guest.event_id,
+        counter="checkins",
+        gate=guest.gate,
+        scanner=guest.scanner,
+    )
+    schedule_event_changed(
+        event_id=guest.event_id,
+        reason="walkin.claim",
+        keys=("stats", "audit", "guests_count"),
+    )
     return guest
 
 
@@ -260,5 +279,10 @@ def complete_walkin_info(
         previous_status="claimed_pending_info",
         new_status="info_completed",
         entry_token=token[:32],
+    )
+    schedule_event_changed(
+        event_id=guest.event_id,
+        reason="walkin.info_completed",
+        keys=("stats", "audit", "guests_count"),
     )
     return guest
