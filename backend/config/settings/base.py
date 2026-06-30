@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.events",
     "apps.guests",
     "apps.audit",
+    "apps.analytics",
     "apps.devices",
     "apps.checkins",
     "apps.walkins",
