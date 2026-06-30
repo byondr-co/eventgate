@@ -97,6 +97,17 @@ describe("EventDashboardPage", () => {
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("Loading…");
     expect(status.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    expect(mockUseEventLive).not.toHaveBeenCalled();
+  });
+
+  it("renders not found without starting live dashboard traffic", () => {
+    mockUseEvent.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as unknown as EventResult);
+    render(<EventDashboardPage />);
+    expect(screen.getByText("Event not found.")).toBeInTheDocument();
+    expect(mockUseEventLive).not.toHaveBeenCalled();
   });
 
   it("renders the dashboard once loaded, with no skeleton", () => {
@@ -117,6 +128,7 @@ describe("EventDashboardPage", () => {
     expect(screen.getByText("Ana Sok")).toBeInTheDocument();
     expect(screen.getByTestId("public-url-card")).toBeInTheDocument();
     expect(screen.queryByRole("status")).toBeNull();
+    expect(mockUseEventLive).toHaveBeenCalledWith("acme", "launch");
     expect(mockUseEventStats).toHaveBeenCalledWith("acme", "launch", {
       enabled: false,
       refetchInterval: false,

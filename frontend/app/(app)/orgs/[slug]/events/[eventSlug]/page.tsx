@@ -13,7 +13,7 @@ import { ThroughputPanel } from "@/components/events/throughput-panel";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEventLive } from "@/lib/event-live";
-import { useEvent } from "@/lib/events";
+import { useEvent, type Event } from "@/lib/events";
 
 export function EventDashboardSkeleton() {
   return (
@@ -55,10 +55,23 @@ export function EventDashboardSkeleton() {
 export default function EventDashboardPage() {
   const { slug, eventSlug } = useParams<{ slug: string; eventSlug: string }>();
   const { data: event, isLoading } = useEvent(slug, eventSlug);
-  const live = useEventLive(slug, eventSlug);
 
   if (isLoading) return <EventDashboardSkeleton />;
   if (!event) return <p className="text-sm text-destructive">Event not found.</p>;
+
+  return <EventDashboardContent event={event} slug={slug} eventSlug={eventSlug} />;
+}
+
+function EventDashboardContent({
+  event,
+  slug,
+  eventSlug,
+}: {
+  event: Event;
+  slug: string;
+  eventSlug: string;
+}) {
+  const live = useEventLive(slug, eventSlug);
 
   return (
     <div className="space-y-6">
