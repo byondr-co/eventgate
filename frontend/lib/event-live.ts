@@ -61,7 +61,10 @@ export function useEventLive(orgSlug: string, eventSlug: string) {
   useEffect(() => {
     if (!orgSlug || !eventSlug) return;
 
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      const pollingTimer = setTimeout(() => setConnectionState("polling"), 0);
+      return () => clearTimeout(pollingTimer);
+    }
 
     if (typeof window.EventSource === "undefined") {
       const pollingTimer = window.setTimeout(() => setConnectionState("polling"), 0);

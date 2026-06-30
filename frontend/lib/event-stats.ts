@@ -22,7 +22,7 @@ export type GateUtilizationRow = {
 };
 
 export type TrendPoint = {
-  bucket_start: string;
+  bucket_start: string | null;
   checkins: number;
 };
 

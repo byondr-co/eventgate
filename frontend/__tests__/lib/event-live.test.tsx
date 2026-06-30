@@ -12,7 +12,7 @@ vi.mock("@/lib/event-stats", async () => {
 });
 
 import { useEventLive } from "@/lib/event-live";
-import { useEventStats } from "@/lib/event-stats";
+import { useEventStats, type TrendPoint } from "@/lib/event-stats";
 
 type Listener = (event: MessageEvent<string>) => void;
 
@@ -172,4 +172,10 @@ it("uses polling immediately when EventSource is unavailable", async () => {
     enabled: true,
     refetchInterval: 5_000,
   });
+});
+
+it("allows trend points with null bucket starts from the stats contract", () => {
+  const point = { bucket_start: null, checkins: 0 } satisfies TrendPoint;
+
+  expect(point.bucket_start).toBeNull();
 });
