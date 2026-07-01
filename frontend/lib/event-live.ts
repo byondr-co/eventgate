@@ -61,10 +61,11 @@ export function useEventLive(orgSlug: string, eventSlug: string) {
   const previousScope = useRef<string | undefined>(undefined);
   const currentSnapshot =
     snapshot?.orgSlug === orgSlug && snapshot.eventSlug === eventSlug ? snapshot.data : undefined;
+  const shouldPollStats = connectionState === "polling" || !currentSnapshot;
 
   const polling = useEventStats(orgSlug, eventSlug, {
-    enabled: connectionState === "polling" || !currentSnapshot,
-    refetchInterval: connectionState === "polling" ? 5_000 : false,
+    enabled: shouldPollStats,
+    refetchInterval: shouldPollStats ? 5_000 : false,
   });
 
   useEffect(() => {

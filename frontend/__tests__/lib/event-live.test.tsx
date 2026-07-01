@@ -110,6 +110,33 @@ it("opens the event live URL and stores snapshot events", async () => {
   await waitFor(() => expect(result.current.connectionState).toBe("live"));
   expect(result.current.snapshot?.checked_in).toBe(1);
   expect(result.current.isPollingFallback).toBe(false);
+  expect(mockUseEventStats).toHaveBeenLastCalledWith("acme", "launch", {
+    enabled: false,
+    refetchInterval: false,
+  });
+});
+
+it("keeps stats polling active until the first SSE snapshot arrives", async () => {
+  const qc = queryClient();
+  const { result } = renderHook(() => useEventLive("acme", "launch"), {
+    wrapper: wrapper(qc),
+  });
+
+  expect(mockUseEventStats).toHaveBeenLastCalledWith("acme", "launch", {
+    enabled: true,
+    refetchInterval: 5_000,
+  });
+
+  act(() => {
+    FakeEventSource.instances[0].onopen?.();
+  });
+
+  await waitFor(() => expect(result.current.connectionState).toBe("live"));
+  expect(result.current.snapshot).toBeUndefined();
+  expect(mockUseEventStats).toHaveBeenLastCalledWith("acme", "launch", {
+    enabled: true,
+    refetchInterval: 5_000,
+  });
 });
 
 it("invalidates query keys from invalidate events", async () => {
