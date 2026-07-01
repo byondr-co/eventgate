@@ -169,13 +169,14 @@ def test_stream_emits_invalidate_and_fresh_snapshot_for_message(monkeypatch):
     assert ("snapshot", "evt-1", 2) in actions
 
 
-def test_stream_emits_heartbeat_when_no_message(monkeypatch):
+def test_stream_emits_heartbeat_and_fresh_snapshot_when_no_message(monkeypatch):
     install_stream_fakes(monkeypatch)
 
-    frames = asyncio.run(collect_stream_frames(views_live._stream_event("evt-1"), 2))
+    frames = asyncio.run(collect_stream_frames(views_live._stream_event("evt-1"), 3))
 
     assert frames[0].startswith("id: etag-1\nevent: snapshot\n")
     assert frames[1].startswith("event: heartbeat\ndata: {")
+    assert frames[2] == 'id: etag-2\nevent: snapshot\ndata: {"checked_in":2}\n\n'
 
 
 def test_stream_cleans_up_when_subscribe_fails(monkeypatch):

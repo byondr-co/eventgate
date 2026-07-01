@@ -74,6 +74,8 @@ async def _stream_event(event_id: Any) -> AsyncIterator[str]:
             msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=25.0)
             if msg is None:
                 yield format_sse("heartbeat", {"as_of": timezone.now().isoformat()})
+                snapshot, etag = await sync_to_async(_snapshot_for_event_id)(event_id)
+                yield format_sse("snapshot", snapshot, event_id=etag)
                 continue
             try:
                 payload = json.loads(msg.get("data") or "{}")
