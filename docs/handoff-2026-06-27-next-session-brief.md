@@ -65,8 +65,9 @@ SSE under WSGI/gunicorn would tie up workers and misrepresent production behavio
 - SSE endpoint: `GET /api/v1/orgs/<org>/events/<event>/live/` in
   `backend/apps/events/views_live.py`. It authenticates with the existing
   `eventgate_access` cookie, subscribes to Redis before the initial snapshot,
-  emits `snapshot`, `invalidate`, and `heartbeat` frames, and sets
-  `X-Accel-Buffering: no`.
+  emits `snapshot`, `invalidate`, and `heartbeat` frames, emits a fresh snapshot
+  after idle heartbeats so rolling analytics decay during quiet periods, and
+  sets `X-Accel-Buffering: no`.
 - Live signals are wired through check-in/helpdesk, guest CRUD/bulk, public/bridge
   registration, CSV completion, and walk-in display/claim/info paths.
 
@@ -81,7 +82,8 @@ SSE under WSGI/gunicorn would tie up workers and misrepresent production behavio
   throughput, gate utilization, peak-window, and recent activity panels.
 - Fallback behavior: after 3 SSE errors, the hook closes the stream, switches to
   polling, and makes polling data authoritative. EventSource/window-unavailable
-  browsers also fall back to polling.
+  browsers also fall back to polling. While SSE is healthy, polling stays off and
+  the server refreshes snapshots on heartbeat.
 
 **Verification completed 2026-07-01:**
 - Backend: `490 passed`, mypy clean across 185 source files, no pending

@@ -2662,6 +2662,7 @@ git commit -m "docs(dashboard): record SSE live data verification"
   - `7501c3f` `feat(frontend): wire live command-center dashboard`
   - `8caee79` `fix(frontend): defer live dashboard until event loads`
   - `898d9cf` `test(integrations): account for live registration callback`
+  - `3cd3424` `fix(events): refresh SSE snapshots during quiet periods`
 - Backend verification:
   - `POSTGRES_PORT=5442 uv run pytest -q` passed: `490 passed, 416 warnings`.
   - `uv run mypy apps config` passed: `Success: no issues found in 185 source files`.
@@ -2682,6 +2683,9 @@ git commit -m "docs(dashboard): record SSE live data verification"
 - Deviations:
   - Task 11 ASGI deployment conversion was pulled forward before completing Task 5 hardening because streaming SSE under the current WSGI runtime would have been misleading.
   - The SSE stream subscribes to Redis before sending the initial snapshot to avoid missing changes during connection setup.
+  - Idle SSE heartbeats now also emit a fresh `snapshot` frame so rolling metrics
+    such as throughput, gate utilization, and conflict windows decay during quiet
+    periods without re-enabling frontend polling.
   - CSV import currently emits per-row `guest.registered` invalidations via `register_guest()` plus a final `csv_import.complete` invalidation. Review accepted this as matching the written plan; future batch coalescing can suppress per-row live signals if imports become large.
   - Bulk delete now emits per-guest `guest.deleted` signals plus final `guest.bulk_action`; bulk `resend_qr` intentionally emits no dashboard invalidation.
   - Google Form bridge tests now expect two accepted-registration on-commit callbacks: QR email plus live dashboard invalidation.
