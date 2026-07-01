@@ -2554,7 +2554,7 @@ git commit -m "chore(backend): run web process under ASGI"
 **Interfaces:**
 - Records actual verification results and any implementation deviations.
 
-- [ ] **Step 1: Run full backend gates**
+- [x] **Step 1: Run full backend gates**
 
 Run:
 
@@ -2568,7 +2568,7 @@ uv run python manage.py check
 
 Expected: all pass, no pending migrations beyond committed `analytics.0001`.
 
-- [ ] **Step 2: Run full frontend gates**
+- [x] **Step 2: Run full frontend gates**
 
 Run:
 
@@ -2583,7 +2583,7 @@ pnpm format:check
 
 Expected: all pass. Existing `<img>` lint warnings, if still present, remain warnings only.
 
-- [ ] **Step 3: Manual local live smoke**
+- [x] **Step 3: Manual local live smoke**
 
 Run services:
 
@@ -2602,7 +2602,7 @@ http://127.0.0.1:8010/api/v1/orgs/<org>/events/<event>/live/
 
 Expected: response begins with an SSE `event: snapshot` frame. Perform one scanner check-in, then confirm a new `analytics_eventgateminutemetric` row exists and a connected dashboard updates without waiting for a 5s polling interval.
 
-- [ ] **Step 4: Update this plan's completion log**
+- [x] **Step 4: Update this plan's completion log**
 
 Append:
 
@@ -2620,7 +2620,7 @@ Append:
 
 Fill every line with concrete results from this implementation.
 
-- [ ] **Step 5: Update handoff brief**
+- [x] **Step 5: Update handoff brief**
 
 In `docs/handoff-2026-06-27-next-session-brief.md`, update slice #4 status and note:
 
@@ -2630,12 +2630,65 @@ In `docs/handoff-2026-06-27-next-session-brief.md`, update slice #4 status and n
 - frontend fallback behavior
 - any deployment caveats found during verification
 
-- [ ] **Step 6: Commit closeout docs**
+- [x] **Step 6: Commit closeout docs**
 
 ```bash
 git add docs/superpowers/plans/2026-06-27-dashboard-sse.md docs/handoff-2026-06-27-next-session-brief.md
 git commit -m "docs(dashboard): record SSE live data verification"
 ```
+
+---
+
+## Completion Log
+
+- Branch: `topic/dashboard-sse-live-data`
+- Commits:
+  - `9d518b5` `docs(dashboard): design SSE live data slice`
+  - `3752fcc` `docs(dashboard): plan SSE live data implementation`
+  - `4c1e6f1` `feat(analytics): add event gate minute metric model`
+  - `b80ec17` `feat(analytics): increment event gate minute metrics`
+  - `e0fbe71` `feat(events): build live dashboard snapshot for stats`
+  - `dc6babb` `feat(events): publish live dashboard change hints`
+  - `0c354ea` `feat(events): add SSE live dashboard endpoint`
+  - `2add59f` `chore(backend): run web process under ASGI`
+  - `90547bc` `fix(events): harden SSE live stream`
+  - `ce35aea` `feat(events): publish live updates from checkin and helpdesk paths`
+  - `d371e07` `feat(events): publish live updates from guest and walkin paths`
+  - `63d6d43` `fix(guests): correct bulk live signal publishing`
+  - `4588099` `feat(frontend): add event live stream hook`
+  - `e5a90d4` `fix(frontend): align event live fallback types`
+  - `b4ed6d8` `fix(frontend): prefer polling data after live fallback`
+  - `1a85b57` `feat(frontend): add live dashboard analytics panels`
+  - `7501c3f` `feat(frontend): wire live command-center dashboard`
+  - `8caee79` `fix(frontend): defer live dashboard until event loads`
+  - `898d9cf` `test(integrations): account for live registration callback`
+- Backend verification:
+  - `POSTGRES_PORT=5442 uv run pytest -q` passed: `490 passed, 416 warnings`.
+  - `uv run mypy apps config` passed: `Success: no issues found in 185 source files`.
+  - `DATABASE_URL=postgres://eventgate:eventgate@localhost:5442/eventgate uv run python manage.py makemigrations --check --dry-run` passed: `No changes detected`.
+  - `DATABASE_URL=postgres://eventgate:eventgate@localhost:5442/eventgate uv run python manage.py check` passed: `System check identified no issues (0 silenced).`
+- Frontend verification:
+  - `pnpm test` passed: `94 passed`, `369 passed`.
+  - `pnpm exec tsc --noEmit` passed.
+  - `pnpm lint` passed with the pre-existing three `<img>` warnings in `event-presentation-editor.tsx`, `registration-form.tsx`, and `walkins/info-form.tsx`.
+  - `pnpm format:check` passed: `All matched files use Prettier code style!`
+- Manual SSE smoke:
+  - Ran local Postgres on host port `5442` and Redis on host port `6389` because `6379` and `6380` were occupied.
+  - Migrated local DB, seeded `dev-acme/dev-conf`, started `uvicorn config.asgi:application --host 127.0.0.1 --port 8010`.
+  - Authenticated with a locally minted `eventgate_access` cookie and opened `/api/v1/orgs/dev-acme/events/dev-conf/live/`.
+  - SSE returned `200 OK`, `Content-Type: text/event-stream`, `Cache-Control: no-cache`, `X-Accel-Buffering: no`, and an initial `event: snapshot` frame.
+  - Performed two service-path scanner check-ins. The open SSE stream received `event: invalidate` with reason `checkin.success`, followed immediately by a refreshed `event: snapshot` showing `checked_in: 2`, throughput `2`, gate utilization for `North / Smoke Scanner`, and recent activity for Alice and Bob.
+  - `analytics_eventgateminutemetric` contained two persisted minute rows with `checkins: 1` each.
+- Deviations:
+  - Task 11 ASGI deployment conversion was pulled forward before completing Task 5 hardening because streaming SSE under the current WSGI runtime would have been misleading.
+  - The SSE stream subscribes to Redis before sending the initial snapshot to avoid missing changes during connection setup.
+  - CSV import currently emits per-row `guest.registered` invalidations via `register_guest()` plus a final `csv_import.complete` invalidation. Review accepted this as matching the written plan; future batch coalescing can suppress per-row live signals if imports become large.
+  - Bulk delete now emits per-guest `guest.deleted` signals plus final `guest.bulk_action`; bulk `resend_qr` intentionally emits no dashboard invalidation.
+  - Google Form bridge tests now expect two accepted-registration on-commit callbacks: QR email plus live dashboard invalidation.
+- Follow-ups:
+  - Consider coalescing CSV/bulk live invalidations if larger imports create noticeable SSE churn.
+  - Consider a future integration-style frontend test with real React Query fallback fetch, not only mocked `useEventStats`.
+  - Existing frontend `<img>` lint warnings remain unrelated to this slice.
 
 ---
 
