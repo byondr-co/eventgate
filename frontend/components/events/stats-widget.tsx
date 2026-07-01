@@ -2,14 +2,23 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEventStats } from "@/lib/event-stats";
+import { useEventStats, type EventStats } from "@/lib/event-stats";
 
 type Tile = { label: string; value: number; tone: "default" | "warning" | "danger" };
+type StatsWidgetProps = {
+  orgSlug: string;
+  eventSlug: string;
+  snapshot?: EventStats;
+};
 
-export function StatsWidget({ orgSlug, eventSlug }: { orgSlug: string; eventSlug: string }) {
-  const { data, isLoading } = useEventStats(orgSlug, eventSlug);
+export function StatsWidget({ orgSlug, eventSlug, snapshot }: StatsWidgetProps) {
+  const { data: polledData, isLoading } = useEventStats(orgSlug, eventSlug, {
+    enabled: !snapshot,
+    refetchInterval: snapshot ? false : 5_000,
+  });
+  const data = snapshot ?? polledData;
 
-  if (isLoading || !data) {
+  if (!data || (!snapshot && isLoading)) {
     return (
       <div role="status">
         <span className="sr-only">Loading…</span>

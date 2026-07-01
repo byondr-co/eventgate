@@ -22,6 +22,7 @@ from apps.common.permissions import HasOrgRole, IsOrgMember
 from apps.common.qr import render_png
 from apps.common.tokens import hash_token, tokens_match
 from apps.devices.auth import SessionTokenAuthentication
+from apps.events.live_publish import schedule_event_changed
 from apps.events.models import Event, RegistrationField
 from apps.guests.models import CsvImport, Guest
 from apps.guests.serializers import (
@@ -438,6 +439,7 @@ class GuestBulkView(APIView):
         skipped: list[dict] = []
         errors: list[dict] = []
         actor_id = str(request.user.id)
+        publish_event_id = None
 
         for raw_id in ids:
             g = found.get(str(raw_id))
@@ -461,6 +463,7 @@ class GuestBulkView(APIView):
                         previous_status=previous,
                         new_status="voided",
                     )
+                    publish_event_id = publish_event_id or g.event_id
                     done += 1
                 elif action == "resend_qr":
                     if g.guest_type != "pre_registered":
@@ -475,6 +478,7 @@ class GuestBulkView(APIView):
                     if AuditEvent.objects.filter(guest=g).exists():
                         skipped.append({"id": str(g.id), "reason": "has_history"})
                         continue
+                    deleted_event_id = g.event_id
                     with transaction.atomic():
                         write_audit(
                             organization=g.organization,
@@ -490,9 +494,22 @@ class GuestBulkView(APIView):
                             },
                         )
                         g.delete()
+                        schedule_event_changed(
+                            event_id=deleted_event_id,
+                            reason="guest.deleted",
+                            keys=("stats", "audit", "guests_count"),
+                        )
+                    publish_event_id = publish_event_id or deleted_event_id
                     done += 1
             except Exception as exc:
                 errors.append({"id": str(g.id), "error": str(exc)})
+
+        if done > 0 and publish_event_id is not None:
+            schedule_event_changed(
+                event_id=publish_event_id,
+                reason="guest.bulk_action",
+                keys=("stats", "audit", "guests_count"),
+            )
 
         return Response({"action": action, "done": done, "skipped": skipped, "errors": errors})
 
@@ -521,6 +538,11 @@ class GuestVoidView(APIView):
             result="success",
             previous_status=previous,
             new_status="voided",
+        )
+        schedule_event_changed(
+            event_id=guest.event_id,
+            reason="guest.voided",
+            keys=("stats", "audit", "guests_count"),
         )
         return Response(GuestWriteSerializer(guest).data)
 
@@ -558,6 +580,11 @@ class GuestDetailView(APIView):
             result="success",
             details={"fields": sorted(request.data.keys())},
         )
+        schedule_event_changed(
+            event_id=guest.event_id,
+            reason="guest.updated",
+            keys=("stats", "audit", "guests_count"),
+        )
         return Response(ser.data)
 
     @transaction.atomic
@@ -582,6 +609,11 @@ class GuestDetailView(APIView):
                 "full_name": guest.full_name,
                 "email": guest.email,
             },
+        )
+        schedule_event_changed(
+            event_id=guest.event_id,
+            reason="guest.deleted",
+            keys=("stats", "audit", "guests_count"),
         )
         guest.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

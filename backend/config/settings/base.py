@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.events",
     "apps.guests",
     "apps.audit",
+    "apps.analytics",
     "apps.devices",
     "apps.checkins",
     "apps.walkins",
@@ -92,10 +93,16 @@ DATABASES = {
     ),
 }
 
+REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
+REDIS_PUBLISH_SOCKET_CONNECT_TIMEOUT = env.float(
+    "REDIS_PUBLISH_SOCKET_CONNECT_TIMEOUT", default=0.5
+)
+REDIS_PUBLISH_SOCKET_TIMEOUT = env.float("REDIS_PUBLISH_SOCKET_TIMEOUT", default=0.5)
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": env("REDIS_URL", default="redis://localhost:6379/0"),
+        "LOCATION": REDIS_URL,
     }
 }
 

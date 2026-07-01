@@ -10,6 +10,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from apps.common.tokens import generate_token
+from apps.events.live_publish import schedule_event_changed
 from apps.events.models import Event
 from apps.guests.models import Guest
 
@@ -78,6 +79,12 @@ def register_guest(
         transaction.on_commit(lambda: send_qr_email_task.delay(guest_id=str(guest.id)))
     else:
         send_qr_email_task.delay(guest_id=str(guest.id))
+
+    schedule_event_changed(
+        event_id=event.id,
+        reason="guest.registered",
+        keys=("stats", "guests_count"),
+    )
 
     return guest
 

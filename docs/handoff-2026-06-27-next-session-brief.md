@@ -8,13 +8,16 @@
 1. ✅ Event Setup Wizard — PR #82
 2. ✅ Core CRUD (event edit/delete, guest edit/void/delete) — backend #85, frontend #88
 3. ✅ List-scaling (event search/filter/sort/pagination, member pagination/sort, guest sort) — #89
-4. ⬜ **Dashboard polish + SSE live data** ← NEXT (requested, not started)
+4. ✅ **Dashboard polish + SSE live data** — implemented on
+   `topic/dashboard-sse-live-data`, pending PR/merge
 5. ⬜ Remotion event share-video (own spec later)
 
 Also merged this week: env-driven local DB/redis ports (#86), Dockerized full dev
 stack "Model B" (#87), guest CSV export + bulk actions (#90), README Redis fix (#91).
 
-`main` HEAD = `8c83202`. **No open PRs.** Everything above is merged to `main`.
+Local `origin/main` HEAD = `7bdf98b`. **No open PR for slice #4 yet.** Slices
+#1-#3 and #91 are merged to `main`; slice #4 is complete on the feature branch
+and not deployed.
 
 ## ⚠️ Standing blockers (carry forward)
 
@@ -39,35 +42,69 @@ stack "Model B" (#87), guest CSV export + bulk actions (#90), README Redis fix (
 - Backend tests still expect Postgres reachable as the test settings dictate
   (`config/settings/test.py`). Use the compose DB; `nvm use 20` for frontend.
 
-## NEXT: brainstorm uplift #4 — Dashboard + SSE live data
+## Slice #4 complete on branch — Dashboard + SSE live data
 
-**Goal (from slate Tier 3 #10):** replace the dashboard's 5–10s polling with
-server-sent live updates, and add gate analytics (throughput / peak-window /
-gate-utilization). Business-tier differentiator.
+**Specs/plans:**
+- Spec: `docs/superpowers/specs/2026-06-27-dashboard-sse-design.md`
+- Plan: `docs/superpowers/plans/2026-06-27-dashboard-sse.md`
 
-**Current polling to replace/augment (verified 2026-06-27):**
-- `backend/apps/events/views_stats.py` — `EventStatsView`, cheap aggregates behind
-  a 5s ETag/304 poll (`frontend/lib/event-stats.ts` `refetchInterval: 5_000`).
-- Other polls: `lib/audit.ts` 10s, `lib/helpdesk.ts` 5s/30s, `lib/guests.ts`
-  count 30s.
-- **No SSE anywhere** (no `EventSource` / `text/event-stream`). Greenfield.
+**Architecture decision:** SSE over ASGI, not WebSocket and not smarter polling.
+`backend/fly.prod.toml` and `backend/Dockerfile` now run `uvicorn
+config.asgi:application` for the web process. This was required because streaming
+SSE under WSGI/gunicorn would tie up workers and misrepresent production behavior.
 
-**Open design questions for the brainstorm:**
-- SSE vs WebSocket vs keep-polling-but-smarter. (Django is WSGI gunicorn +
-  Celery; SSE over WSGI needs care — streaming response ties up a worker. Check
-  whether ASGI/Daphne is configured — `config/asgi.py` exists but gunicorn WSGI
-  is what's deployed per `fly.prod.toml`. This is THE load-bearing architecture
-  question.)
-- What's actually "live": check-in count, recent check-ins feed, gate throughput?
-- New analytics: throughput (check-ins/min), peak window, per-gate utilization —
-  new aggregates + a backend source.
-- Fallback when SSE unsupported / connection drops (degrade to polling).
+**Backend implemented:**
+- New persisted minute metric table: `analytics_eventgateminutemetric`
+  (`backend/apps/analytics/`) with counters for `checkins`, `duplicates`,
+  `conflicts`, and `escalations`, grouped by event/gate/scanner/minute.
+- Stats snapshot builder: `backend/apps/events/live_snapshot.py`; `/stats/` now
+  reuses the same snapshot and includes analytics/recent activity while keeping
+  ETag compatibility.
+- Redis publish helper: `backend/apps/events/live_publish.py`; mutation paths
+  publish compact invalidation hints after commit.
+- SSE endpoint: `GET /api/v1/orgs/<org>/events/<event>/live/` in
+  `backend/apps/events/views_live.py`. It authenticates with the existing
+  `eventgate_access` cookie, subscribes to Redis before the initial snapshot,
+  emits `snapshot`, `invalidate`, and `heartbeat` frames, emits a fresh snapshot
+  after idle heartbeats so rolling analytics decay during quiet periods, and
+  sets `X-Accel-Buffering: no`.
+- Live signals are wired through check-in/helpdesk, guest CRUD/bulk, public/bridge
+  registration, CSV completion, and walk-in display/claim/info paths.
 
-**Process:** follow the established rhythm — `superpowers:brainstorming` →
-`writing-plans` → `subagent-driven-development`. Spec to
-`docs/superpowers/specs/2026-06-27-dashboard-sse-design.md`. Mirror the most recent
-specs/plans (`docs/superpowers/specs/2026-06-27-guest-export-bulk-design.md`,
-`docs/superpowers/plans/2026-06-27-guest-export-bulk.md`) for format + rigor.
+**Frontend implemented:**
+- `frontend/lib/event-live.ts` exposes `useEventLive(orgSlug, eventSlug)` with
+  connection states `connecting | live | reconnecting | polling`.
+- `frontend/lib/event-stats.ts` now includes `EventLiveSnapshot`,
+  `EventAnalytics`, throughput, gate utilization, trend, and recent activity
+  types. Polling can be disabled by callers.
+- Dashboard page calls the live hook only after event metadata exists, shows a
+  `LiveStatusBadge`, feeds live snapshots into count tiles, and renders
+  throughput, gate utilization, peak-window, and recent activity panels.
+- Fallback behavior: after 3 SSE errors, the hook closes the stream, switches to
+  polling, and makes polling data authoritative. EventSource/window-unavailable
+  browsers also fall back to polling. While SSE is healthy, polling stays off and
+  the server refreshes snapshots on heartbeat.
+
+**Verification completed 2026-07-01:**
+- Backend: `490 passed`, mypy clean across 185 source files, no pending
+  migrations, Django system check clean.
+- Frontend: `369 passed`, TypeScript clean, lint passed with the three existing
+  unrelated `<img>` warnings, Prettier check passed.
+- Manual local SSE smoke: `uvicorn` on `127.0.0.1:8010`, Redis host port `6389`
+  due local port conflicts. Authenticated SSE returned initial `snapshot`; two
+  scanner check-ins produced persisted analytics rows and a live `invalidate` +
+  refreshed `snapshot` showing `checked_in: 2`, throughput/gate utilization, and
+  recent activity without waiting for the polling interval.
+
+**Known caveats/follow-ups:**
+- Production is still blocked by Fly billing/manual machine stop; none of this is
+  deployed yet.
+- CSV import emits per-row `guest.registered` invalidations plus final
+  `csv_import.complete`. Acceptable for current scale; coalesce later if large
+  imports create noisy streams.
+- Existing frontend `<img>` lint warnings remain outside this slice.
+- Consider a future frontend integration test that uses real React Query fallback
+  fetches instead of mocked `useEventStats`.
 
 ## Project conventions (reminders)
 

@@ -14,6 +14,8 @@ from apps.integrations.models import GoogleFormBridge, GoogleFormSubmission
 from apps.integrations.services import process_google_form_submission
 from apps.orgs.models import Organization, OrganizationMembership
 
+ACCEPTED_REGISTRATION_ON_COMMIT_CALLBACKS = 2  # QR email + live dashboard invalidation.
+
 
 def _create_setup():
     org = Organization.objects.create(name="Acme", slug="acme")
@@ -82,7 +84,7 @@ def test_process_submission_creates_guest_sends_qr_and_audits(mock_delay, setup)
     assert guest.phone_or_chat == "+85512345678"
     assert guest.custom_fields == {"company": "The Click Cam"}
     assert guest.source == "google_form_bridge"
-    assert len(callbacks) == 1
+    assert len(callbacks) == ACCEPTED_REGISTRATION_ON_COMMIT_CALLBACKS
     mock_delay.assert_called_once_with(guest_id=str(guest.id))
     assert GoogleFormSubmission.objects.get(bridge=bridge).guest == guest
     audit = AuditEvent.objects.get(action="integration.google_form_guest_created")
@@ -104,7 +106,7 @@ class GoogleFormBridgeOnCommitTests(TestCase):
             assert result["guest_id"] == str(guest.id)
             mock_delay.assert_not_called()
 
-        assert len(callbacks) == 1
+        assert len(callbacks) == ACCEPTED_REGISTRATION_ON_COMMIT_CALLBACKS
         mock_delay.assert_called_once_with(guest_id=str(guest.id))
 
 
@@ -121,7 +123,7 @@ def test_process_submission_is_idempotent_by_submission_id(mock_delay, setup):
     assert first["status"] == "accepted"
     assert second["status"] == "accepted"
     assert Guest.objects.filter(event=event, email="alice@example.com").count() == 1
-    assert len(callbacks) == 1
+    assert len(callbacks) == ACCEPTED_REGISTRATION_ON_COMMIT_CALLBACKS
     mock_delay.assert_called_once()
     assert GoogleFormSubmission.objects.filter(bridge=bridge, submission_id="row-2").count() == 1
 
@@ -250,7 +252,7 @@ def test_submission_replay_with_changed_payload_is_rejected_without_mutation(moc
     assert submission.error == ""
     assert submission.received_payload == first_payload
     assert GoogleFormSubmission.objects.filter(bridge=bridge, submission_id="row-2").count() == 1
-    assert len(callbacks) == 1
+    assert len(callbacks) == ACCEPTED_REGISTRATION_ON_COMMIT_CALLBACKS
     mock_delay.assert_called_once_with(guest_id=str(guest.id))
     assert AuditEvent.objects.filter(action="integration.google_form_guest_created").count() == 1
     assert (
@@ -465,7 +467,7 @@ def test_webhook_accepts_right_secret_and_returns_guest_id(mock_delay, setup):
     assert resp.json()["status"] == "accepted"
     guest = Guest.objects.get(event=event, email="alice@example.com")
     assert resp.json()["guest_id"] == str(guest.id)
-    assert len(callbacks) == 1
+    assert len(callbacks) == ACCEPTED_REGISTRATION_ON_COMMIT_CALLBACKS
     mock_delay.assert_called_once_with(guest_id=str(guest.id))
 
 
@@ -499,7 +501,7 @@ def test_webhook_repeated_accepted_submission_returns_200_without_reenqueue(
     assert second.json()["status"] == "accepted"
     assert Guest.objects.filter(event=event, email="alice@example.com").count() == 1
     assert GoogleFormSubmission.objects.filter(bridge=bridge, submission_id="row-2").count() == 1
-    assert len(callbacks) == 1
+    assert len(callbacks) == ACCEPTED_REGISTRATION_ON_COMMIT_CALLBACKS
     mock_delay.assert_called_once()
 
 
@@ -635,5 +637,5 @@ def test_webhook_replay_mismatch_returns_rejected_without_guest_mutation(mock_de
         "detail": "Submission replay payload does not match original payload.",
     }
     assert guest.full_name == "Alice"
-    assert len(callbacks) == 1
+    assert len(callbacks) == ACCEPTED_REGISTRATION_ON_COMMIT_CALLBACKS
     mock_delay.assert_called_once_with(guest_id=str(guest.id))

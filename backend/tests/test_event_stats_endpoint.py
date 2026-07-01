@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from types import SimpleNamespace
+
 import pytest
 from rest_framework.test import APIClient
 
@@ -124,6 +127,61 @@ def test_stats_etag_304(env):
     etag = r1["ETag"]
     r2 = c.get(f"/api/v1/orgs/{org.slug}/events/{event.slug}/stats/", HTTP_IF_NONE_MATCH=etag)
     assert r2.status_code == 304
+
+
+def test_stats_includes_additive_live_analytics(env):
+    c, org, event = env
+    r = c.get(f"/api/v1/orgs/{org.slug}/events/{event.slug}/stats/")
+    body = r.json()
+    assert "analytics" in body
+    assert "throughput_5m" in body["analytics"]
+    assert "gate_utilization_15m" in body["analytics"]
+    assert "recent_activity" in body
+
+
+def test_stats_uses_same_now_for_etag_and_snapshot(env, monkeypatch):
+    c, org, event = env
+    now = datetime(2026, 6, 30, 12, 0, 10, tzinfo=UTC)
+    seen = {}
+
+    from apps.events import views_stats
+
+    monkeypatch.setattr(views_stats, "timezone", SimpleNamespace(now=lambda: now), raising=False)
+
+    def fake_etag(event_arg, *, now=None):
+        seen["etag_event"] = event_arg
+        seen["etag_now"] = now
+        return 'W/"same-now"'
+
+    def fake_snapshot(event_arg, *, now=None):
+        seen["snapshot_event"] = event_arg
+        seen["snapshot_now"] = now
+        return {
+            "checked_in": 0,
+            "registered_not_arrived": 0,
+            "manual_review": 0,
+            "displayed": 0,
+            "total_walkins": 0,
+            "open_escalations": 0,
+            "conflicts_recent_15min": 0,
+            "analytics": {},
+            "recent_activity": [],
+            "as_of": "2026-06-30T12:00:10Z",
+        }
+
+    monkeypatch.setattr(views_stats, "event_live_etag", fake_etag)
+    monkeypatch.setattr(views_stats, "build_event_live_snapshot", fake_snapshot)
+
+    r = c.get(f"/api/v1/orgs/{org.slug}/events/{event.slug}/stats/")
+
+    assert r.status_code == 200
+    assert r["ETag"] == 'W/"same-now"'
+    assert seen == {
+        "etag_event": event,
+        "etag_now": now,
+        "snapshot_event": event,
+        "snapshot_now": now,
+    }
 
 
 def test_stats_anonymous_forbidden(env):
